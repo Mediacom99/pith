@@ -1,12 +1,15 @@
 import AppKit
 
-/// The open apps (those with a Dock icon), most recently used first like ⌘Tab (decision 13). Kept current by
-/// NSWorkspace notifications, and identified by resolved bundle path, the same id the index uses.
+/// The open apps (those with a Dock icon), most recently used first like ⌘Tab (decision 13), identified by resolved
+/// bundle path, the same id the index uses.
+///
+/// `NSWorkspace.runningApplications` is the source of truth: every launch or quit re-reads it, and so does every show,
+/// in case a notification was missed. Notifications only say when to look, and activations set the order.
 final class RunningApps {
     /// Ids, most recently active first.
     private(set) var order: [String] = []
     private var apps: [String: NSRunningApplication] = [:]
-    /// Each process's id, resolved once at launch, so an app switch never touches the file system.
+    /// Each process's id, resolved once, so an app switch never touches the file system.
     private var ids: [pid_t: String] = [:]
     private var observers: [any NSObjectProtocol] = []
 
@@ -15,10 +18,7 @@ final class RunningApps {
 
     init() {
         let workspace = NSWorkspace.shared
-        let launched = workspace.runningApplications
-            .filter { $0.activationPolicy == .regular }
-            .sorted { ($0.launchDate ?? .distantPast) > ($1.launchDate ?? .distantPast) }
-        for app in launched { track(app) }
+        sync()
         if let front = workspace.frontmostApplication { activated(front) }
 
         let names = [
@@ -32,18 +32,14 @@ final class RunningApps {
                 // Posted on the main queue, as asked.
                 let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
                 MainActor.assumeIsolated {
-                    guard let app else { return }
-                    self?.handle(name, app)
+                    guard let self else { return }
+                    if name == NSWorkspace.didActivateApplicationNotification, let app {
+                        self.activated(app)
+                    } else if self.sync() {
+                        self.onChange?(true)
+                    }
                 }
             }
-        }
-    }
-
-    private func handle(_ name: Notification.Name, _ app: NSRunningApplication) {
-        switch name {
-        case NSWorkspace.didLaunchApplicationNotification: launched(app)
-        case NSWorkspace.didActivateApplicationNotification: activated(app)
-        default: terminated(app)
         }
     }
 
@@ -55,6 +51,31 @@ final class RunningApps {
         apps[id]
     }
 
+    /// Re-reads the open apps, keeping the most-recently-used order of those still open; new ones go last, newest
+    /// launch first. True if anything changed.
+    @discardableResult
+    func sync() -> Bool {
+        var current: [String: NSRunningApplication] = [:]
+        let open = NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular && !$0.isTerminated }
+            .sorted { ($0.launchDate ?? .distantPast) > ($1.launchDate ?? .distantPast) }
+        var launched: [String] = []
+        for app in open {
+            guard let id = id(of: app) else { continue }
+            if current[id] == nil { launched.append(id) }
+            current[id] = app
+        }
+        let alive = Set(open.map(\.processIdentifier))
+        ids = ids.filter { alive.contains($0.key) }
+
+        let kept = order.filter { current[$0] != nil }
+        let new = kept + launched.filter { !kept.contains($0) }
+        let changed = new != order || Set(current.keys) != Set(apps.keys)
+        order = new
+        apps = current
+        return changed
+    }
+
     private func id(of app: NSRunningApplication) -> String? {
         if let id = ids[app.processIdentifier] { return id }
         guard let url = app.bundleURL else { return nil }
@@ -63,31 +84,11 @@ final class RunningApps {
         return id
     }
 
-    @discardableResult
-    private func track(_ app: NSRunningApplication) -> String? {
-        guard app.activationPolicy == .regular, let id = id(of: app) else { return nil }
-        if apps[id] == nil { order.append(id) }
-        apps[id] = app
-        return id
-    }
-
-    private func launched(_ app: NSRunningApplication) {
-        guard track(app) != nil else { return }
-        onChange?(true)
-    }
-
     private func activated(_ app: NSRunningApplication) {
-        let isNew = app.activationPolicy == .regular && id(of: app).map { apps[$0] == nil } == true
-        guard let id = track(app) else { return }
+        guard app.activationPolicy == .regular, let id = id(of: app) else { return }
+        let membership = apps[id] == nil && sync()
         order.removeAll { $0 == id }
         order.insert(id, at: 0)
-        onChange?(isNew)
-    }
-
-    private func terminated(_ app: NSRunningApplication) {
-        guard let id = ids.removeValue(forKey: app.processIdentifier), apps[id] === app else { return }
-        apps[id] = nil
-        order.removeAll { $0 == id }
-        onChange?(true)
+        onChange?(membership)
     }
 }

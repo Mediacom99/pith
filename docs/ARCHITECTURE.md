@@ -51,7 +51,7 @@ Sources/
     Background.swift       runInBackground: blocking work on a GCD worker, awaited from the main actor
     ConfigStore.swift      ~/.config/launcher/config.toml: create, read and parse on a worker, reload on change, open
     HistoryStore.swift     the History, loaded and saved as JSON on workers
-    RunningApps.swift      open apps in most-recently-used order, from NSWorkspace notifications
+    RunningApps.swift      open apps in MRU order: runningApplications re-read on launch/quit and on show
     LoginItem.swift        SMAppService registration, for a copy in an Applications folder only
     HotKeyCenter.swift     global hotkeys via Carbon RegisterEventHotKey, registered and replaced at runtime
     LauncherPanel.swift    the NSPanel: show/hide, collapse/expand, key routing (⌃K/⌃J, ⌘K), the search field's editor

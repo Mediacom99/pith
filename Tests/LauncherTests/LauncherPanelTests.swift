@@ -187,3 +187,16 @@ struct RunningAppsTests {
         #expect(indexed.allSatisfy { index.position(of: $0) != nil }, "\(indexed)")
     }
 }
+
+extension RunningAppsTests {
+    @Test func syncMatchesWhatMacOSReportsAndIsStable() {
+        let running = RunningApps()
+        let open = Set(
+            NSWorkspace.shared.runningApplications
+                .filter { $0.activationPolicy == .regular && !$0.isTerminated }
+                .compactMap { $0.bundleURL?.resolvingSymlinksInPath().path })
+        #expect(Set(running.order) == open)
+        #expect(running.order.allSatisfy { running.application($0)?.isTerminated == false })
+        #expect(!running.sync(), "nothing changed, so nothing to report")
+    }
+}

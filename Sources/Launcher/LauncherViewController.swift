@@ -126,6 +126,8 @@ final class LauncherViewController: NSViewController {
 
     /// Fills in the empty state, so the panel appears with its final size and content.
     func prepareToShow() {
+        // Catches an app that quit without us noticing, so no row shows a stale running dot.
+        if running.sync() { loadIcons() }
         boosts = history.history.boosts(for: index)
         refresh()
     }
