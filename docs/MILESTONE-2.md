@@ -9,14 +9,17 @@ Status values: **done**, **in review** (built and tested, waiting for Edoardo), 
 
 ## 1. File index
 
-Status: **todo**.
-- A scan with `fts` on a worker of the configured folders.
-- Default folders: `~` (decision 22). Default ignore list: hidden files, `~/Library`, `node_modules`, `.build`,
-  `*.photoslibrary`. Maximum depth 6.
-- Packages such as bundles and libraries count as files, not folders. The scan never crosses into another volume, so
-  mounts like ~/OrbStack are skipped.
-- Names are stored contiguously (one byte buffer for all folded names), so 100k entries cost a few MB and no per-item
-  allocations.
+Status: **done** (core library; the app uses it from step 2).
+- `FileScanner` walks the roots with `fts` (physical, no stat, never crossing volumes) and reads names straight from
+  it. Packages count as files.
+- `IgnoreRules` covers names (`node_modules`), prefixes and suffixes (`.*`, `*.photoslibrary`), globs, and paths
+  (`~/Library`).
+- `FileIndex` is a tree in flat arrays: names, parents, depths, flags, keys in a `KeyStore`, plus an O(1) lookup by
+  (parent, name hash). Paths are rebuilt only for results.
+- Your home folder with the defaults: 35,627 entries, a 130–150 ms scan (warm cache) and 4.4 MB; 100k files take
+  16 MB. A search takes 0.1–0.3 ms, spread over the cores.
+- Covered by 17 tests: ignore rules, scanning real temporary folder trees, the tree's lookup, removal, compaction,
+  boosts, and the engine.
 
 ## 2. Search across apps and files
 

@@ -12,6 +12,8 @@ public struct SearchKey: Sendable {
     public init(_ text: String) {
         var bytes: [UInt8] = []
         var bonus: [UInt8] = []
+        bytes.reserveCapacity(text.utf8.count)
+        bonus.reserveCapacity(text.utf8.count)
         Folding.fold(text, bytes: &bytes, bonus: &bonus)
         self.bytes = bytes
         self.bonus = bonus
@@ -21,9 +23,9 @@ public struct SearchKey: Sendable {
 
 /// Turns text into lowercased, diacritic-folded UTF-8 plus a per-byte match bonus.
 enum Folding {
+    /// Appends `text`'s folded bytes and their bonuses. Doesn't reserve capacity: callers appending many texts to one
+    /// buffer (`KeyStore`) rely on the array's geometric growth.
     static func fold(_ text: String, bytes: inout [UInt8], bonus: inout [UInt8]) {
-        bytes.reserveCapacity(text.utf8.count)
-        bonus.reserveCapacity(text.utf8.count)
         var previous = CharClass.white
 
         // Most names are ASCII: fold them byte by byte, without creating any strings.
@@ -49,7 +51,7 @@ enum Folding {
         }
     }
 
-    static func mask(of bytes: [UInt8]) -> UInt64 {
+    static func mask(of bytes: some Sequence<UInt8>) -> UInt64 {
         var mask: UInt64 = 0
         for byte in bytes { mask |= 1 << bit(byte) }
         return mask

@@ -41,6 +41,57 @@ import Testing
         report(index, iterations: 10)
     }
 
+    /// The real home folder with the default rules (decision 22).
+    @Test func homeFolder() {
+        let rules = FileRules(
+            roots: [NSHomeDirectory()],
+            ignore: IgnoreRules([".*", "~/Library", "node_modules", ".build", "*.photoslibrary"]),
+            maxDepth: 6)
+        var first = FileIndex()
+        let cold = ContinuousClock().measure { FileScanner.scan(rules, into: &first) }
+        first = FileIndex()
+        var index = FileIndex()
+        let before = footprint()
+        let scan = ContinuousClock().measure {
+            FileScanner.scan(rules, into: &index)
+            index.trim()
+        }
+        print(
+            "home folder: \(index.count) entries, first scan \(cold.ms), next \(scan.ms), index \(index.memoryBytes / 1024) KB (footprint +\((footprint() - before) / 1_048_576) MB)"
+        )
+        report(index, iterations: 50)
+    }
+
+    @Test func hundredThousandFiles() {
+        var random = SplitMix64(seed: 7)
+        let words = ["project", "report", "final", "draft", "invoice", "photo", "notes", "budget", "readme", "main"]
+        var index = FileIndex()
+        let before = footprint()
+        index.addRoot("/Users/me")
+        for folder in 0..<500 { index.insert("/Users/me/folder\(folder)", isFolder: true) }
+        for number in 0..<100_000 {
+            let name = (0..<3).map { _ in words.randomElement(using: &random)! }.joined(separator: "-")
+            index.insert("/Users/me/folder\(number % 500)/\(name) \(number).txt", isFolder: false)
+        }
+        index.trim()
+        print(
+            "synthetic files: \(index.count), index \(index.memoryBytes / 1024) KB (footprint +\((footprint() - before) / 1_048_576) MB)"
+        )
+        report(index, iterations: 50)
+    }
+
+    private func report(_ index: FileIndex, iterations: Int) {
+        for query in Self.queries {
+            var matches = 0
+            let elapsed = ContinuousClock().measure {
+                for _ in 0..<iterations { matches = index.search(query, limit: 50).count }
+            }
+            print(
+                "  \(query.padding(toLength: 8, withPad: " ", startingAt: 0)) \((elapsed / iterations).ms) per search, \(matches) shown"
+            )
+        }
+    }
+
     private func report(_ index: SearchIndex, iterations: Int) {
         for query in Self.queries {
             var matches = 0
@@ -52,6 +103,18 @@ import Testing
             )
         }
     }
+}
+
+/// The process's memory footprint, as Activity Monitor shows it.
+private func footprint() -> Int {
+    var info = task_vm_info_data_t()
+    var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+    let result = withUnsafeMutablePointer(to: &info) {
+        $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+            task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+        }
+    }
+    return result == KERN_SUCCESS ? Int(info.phys_footprint) : 0
 }
 
 private struct SplitMix64: RandomNumberGenerator {

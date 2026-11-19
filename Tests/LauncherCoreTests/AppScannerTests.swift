@@ -16,6 +16,13 @@ struct TemporaryDirectory: ~Copyable {
         try FileManager.default.createDirectory(at: url.appending(path: path), withIntermediateDirectories: true)
     }
 
+    /// An empty file, with its folders.
+    func makeFile(_ path: String) throws {
+        let file = url.appending(path: path)
+        try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data().write(to: file)
+    }
+
     deinit {
         try? FileManager.default.removeItem(at: url)
     }

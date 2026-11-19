@@ -23,19 +23,24 @@ public struct FuzzyMatcher {
 
     /// The match score, higher is better, or nil when the query isn't a subsequence of the key.
     public mutating func score(_ key: SearchKey) -> Int32? {
-        let length = key.bytes.count
-        guard !query.isEmpty, query.count <= length, key.mask & queryMask == queryMask else { return nil }
+        key.bytes.withUnsafeBufferPointer { text in
+            key.bonus.withUnsafeBufferPointer { bonus in
+                score(text: text, bonus: bonus, mask: key.mask)
+            }
+        }
+    }
+
+    /// The same, for a key stored in a `KeyStore`'s flat buffers.
+    mutating func score(text: UnsafeBufferPointer<UInt8>, bonus: UnsafeBufferPointer<UInt8>, mask: UInt64) -> Int32? {
+        let length = text.count
+        guard !query.isEmpty, query.count <= length, mask & queryMask == queryMask else { return nil }
         if scratch.count < 6 * length {
             scratch = Array(repeating: 0, count: max(6 * length, 2 * scratch.count))
         }
         let query = self.query
         return scratch.withUnsafeMutableBufferPointer { scratch in
             query.withUnsafeBufferPointer { query in
-                key.bytes.withUnsafeBufferPointer { text in
-                    key.bonus.withUnsafeBufferPointer { bonus in
-                        Self.align(query, in: text, bonus: bonus, scratch: scratch.baseAddress!)
-                    }
-                }
+                Self.align(query, in: text, bonus: bonus, scratch: scratch.baseAddress!)
             }
         }
     }
