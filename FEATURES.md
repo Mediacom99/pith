@@ -84,7 +84,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 | Key | Action |
 |---|---|
-| `Enter` | Open with default app |
+| `Enter` | Open with the app set for its type in `[open_with]`, else the default app |
 | `⌘K` → Reveal in Finder | |
 | `⌘K` → Copy path | Full POSIX path to clipboard |
 | `⌘K` → Open with… | Pick an app |
@@ -149,7 +149,7 @@ Both limits apply; whichever triggers first wins:
 | `⌘K` → Edit text | In-panel editor; saving creates a new entry at the top and puts it on the clipboard (original kept) |
 | `⌘K` → Edit image | Opens in Preview; when saved, the edited image comes back as a new entry at the top |
 | `⌘K` → Save as file | Images / text to a file |
-| `⌘K` → Open URL | For copied links |
+| `⌘K` → Open URL | For copied links, with the app set for the scheme in `[open_links]`, else the default |
 | `⌘K` → Reveal in Finder | For copied files |
 
 ---
@@ -195,6 +195,16 @@ max_depth = 6
 
 [actions]
 terminal = "Ghostty"   # Terminal | iTerm | Ghostty | Warp | …
+
+# Which app opens what, for files and links opened from the launcher (macOS defaults are untouched).
+[open_with]            # file extension or type → app (name, bundle id or path)
+md  = "Visual Studio Code"
+pdf = "Preview"
+"public.image" = "Pixelmator Pro"
+
+[open_links]           # URL scheme → app
+https  = "Safari"
+mailto = "Mail"
 
 [clipboard]
 max_size_gb = 2

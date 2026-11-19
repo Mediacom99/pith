@@ -21,6 +21,8 @@ supersede an earlier one.
 | 12 | 2026-11-19 | `recent` lists the items you opened from the launcher, newest first, and ⏎ opens one again. It shares its history with the learned ranking. `recent` is the default. | Recommended option. | Edoardo |
 | 13 | 2026-11-19 | `running` lists open apps, most recently used first (like ⌘Tab). | Recommended option; ⌘P ⏎ switches back. | Edoardo |
 | 14 | 2026-11-19 | Launch at login is on by default, but only a copy running from an Applications folder registers itself. Dev builds in `.build` never do. | No stray login items from dev builds. | Edoardo |
+| 15 | 2026-11-19 | Which app opens each file type is set in config.toml under `[open_with]` (extension or type → app). It applies only to files opened from the launcher; macOS defaults stay untouched. It ships with file search (features 11–15, a later milestone). | The launcher shouldn't change system settings. | Edoardo |
+| 16 | 2026-11-19 | Links get the same treatment: `[open_links]` maps URL schemes (`https`, `mailto`…) to apps, for links the launcher opens, such as the clipboard's Open URL. | Consistency with decision 15. | Edoardo |
 
 ## Principles
 
