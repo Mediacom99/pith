@@ -24,6 +24,11 @@ supersede an earlier one.
 | 15 | 2026-11-19 | Which app opens each file type is set in config.toml under `[open_with]` (extension or type → app). It applies only to files opened from the launcher; macOS defaults stay untouched. It ships with file search (features 11–15, a later milestone). | The launcher shouldn't change system settings. | Edoardo |
 | 16 | 2026-11-19 | Links get the same treatment: `[open_links]` maps URL schemes (`https`, `mailto`…) to apps, for links the launcher opens, such as the clipboard's Open URL. | Consistency with decision 15. | Edoardo |
 | 17 | 2026-11-19 | The `running` empty state continues past the open apps with every other app, alphabetically (no duplicates, no commands), so scrolling down browses all apps. | Requested. | Edoardo |
+| 18 | 2026-11-19 | Milestone 2 is files and folders: features 11–15 (search, file actions, Quick Look, folder actions, Zip). | Scope. | Edoardo |
+| 19 | 2026-11-19 | Apps and files share one ranked list (match quality plus history), with a head start for apps. | "saf" should give Safari before safari-notes.md; a clearly better or habitual file can still win. | Edoardo |
+| 20 | 2026-11-19 | Quick Look opens with ⌘Y always, and with Space only when the search field is empty. | Space must stay a space in queries. | Edoardo |
+| 21 | 2026-11-19 | A finished Zip posts a macOS notification (permission asked once); clicking it reveals the zip. | Feedback without popping windows. | Edoardo |
+| 22 | 2026-11-19 | With no `folders` in config.toml, the file index covers the whole home folder, minus ~/Library, hidden files and the ignore list. | Find anything by default. | Edoardo |
 
 ## Principles
 
