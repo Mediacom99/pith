@@ -1,20 +1,23 @@
 import AppKit
 
-/// One row: icon, title, an optional detail (a file's folder) after it, and a dot under the icon when the app is
-/// running. Laid out with fixed frames (no Auto Layout) and reused by the table as rows change.
+/// One row: icon and title, with a detail line under the title when there is one (a file's folder), and a dot under
+/// the icon when the app is running. Laid out with fixed frames (no Auto Layout, no text measuring) and reused by
+/// the table as rows change.
 final class ResultCell: NSTableCellView {
     static let identifier = NSUserInterfaceItemIdentifier("ResultCell")
 
     let icon = IconView()
     private let runningDot = DotView()
     private let detailLabel = NSTextField(labelWithString: "")
+    private let titleHeight: CGFloat
+    private let detailHeight: CGFloat
 
     var isRunning: Bool {
         get { !runningDot.isHidden }
         set { runningDot.isHidden = !newValue }
     }
 
-    /// Shown after the title in the secondary color, cut from the start when it doesn't fit.
+    /// The small second line, in the secondary color, cut in the middle when it doesn't fit.
     var detail: String {
         get { detailLabel.stringValue }
         set {
@@ -29,32 +32,24 @@ final class ResultCell: NSTableCellView {
     }
 
     init() {
-        // Any width: the table sizes the cell to the column and the title stretches with it.
-        let width: CGFloat = 600
-        super.init(frame: NSRect(x: 0, y: 0, width: width, height: Layout.rowHeight))
+        let title = NSTextField(labelWithString: "")
+        title.font = .systemFont(ofSize: 15)
+        // Cut in the middle, so both the start and the extension stay visible.
+        title.lineBreakMode = .byTruncatingMiddle
+        titleHeight = ceil(title.intrinsicContentSize.height)
+        detailLabel.font = .systemFont(ofSize: 11)
+        detailLabel.textColor = .secondaryLabelColor
+        detailLabel.lineBreakMode = .byTruncatingMiddle
+        detailHeight = ceil(detailLabel.intrinsicContentSize.height)
+
+        // Any width: the table sizes the cell to the column and `layout` fits the labels.
+        super.init(frame: NSRect(x: 0, y: 0, width: 600, height: Layout.rowHeight))
         identifier = Self.identifier
 
         let iconY = ((Layout.rowHeight - Layout.iconSize) / 2).rounded()
         icon.frame = NSRect(x: 8, y: iconY, width: Layout.iconSize, height: Layout.iconSize)
         runningDot.frame = NSRect(x: icon.frame.midX - 2, y: iconY - 5, width: 4, height: 4)
         runningDot.isHidden = true
-
-        let title = NSTextField(labelWithString: "")
-        title.font = .systemFont(ofSize: 15)
-        title.lineBreakMode = .byTruncatingTail
-        let titleX = icon.frame.maxX + 10
-        let titleHeight = ceil(title.intrinsicContentSize.height)
-        title.frame = NSRect(
-            x: titleX, y: ((Layout.rowHeight - titleHeight) / 2).rounded(), width: width - titleX - 8,
-            height: titleHeight)
-        title.autoresizingMask = [.width]
-
-        detailLabel.font = .systemFont(ofSize: 12)
-        detailLabel.textColor = .secondaryLabelColor
-        detailLabel.lineBreakMode = .byTruncatingHead
-        let detailHeight = ceil(detailLabel.intrinsicContentSize.height)
-        detailLabel.frame = NSRect(
-            x: 0, y: ((Layout.rowHeight - detailHeight) / 2).rounded(), width: 0, height: detailHeight)
 
         addSubview(icon)
         addSubview(runningDot)
@@ -63,23 +58,22 @@ final class ResultCell: NSTableCellView {
         textField = title
     }
 
-    /// The title takes what it needs, up to two thirds of the row; the detail gets the rest.
+    /// One line centered, or the title over the detail, both as wide as the row.
     override func layout() {
         super.layout()
         guard let title = textField else { return }
-        let end = bounds.width - 8
-        guard !detailLabel.stringValue.isEmpty else {
-            title.frame.size.width = end - title.frame.minX
+        let x = icon.frame.maxX + 10
+        let width = max(0, bounds.width - 8 - x)
+        if detailLabel.stringValue.isEmpty {
             detailLabel.isHidden = true
-            return
+            title.frame = NSRect(
+                x: x, y: ((bounds.height - titleHeight) / 2).rounded(), width: width, height: titleHeight)
+        } else {
+            detailLabel.isHidden = false
+            let bottom = ((bounds.height - titleHeight - detailHeight) / 2).rounded()
+            detailLabel.frame = NSRect(x: x, y: bottom, width: width, height: detailHeight)
+            title.frame = NSRect(x: x, y: bottom + detailHeight, width: width, height: titleHeight)
         }
-        let available = end - title.frame.minX
-        let titleWidth = min(ceil(title.intrinsicContentSize.width), (available * 2 / 3).rounded())
-        title.frame.size.width = titleWidth
-        let detailX = title.frame.maxX + 10
-        detailLabel.frame.origin.x = detailX
-        detailLabel.frame.size.width = max(0, end - detailX)
-        detailLabel.isHidden = false
     }
 
     @available(*, unavailable)

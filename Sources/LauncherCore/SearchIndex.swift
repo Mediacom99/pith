@@ -38,18 +38,24 @@ public struct SearchIndex: Sendable {
     }
 
     /// The same, with each match's score (boost included), for merging with file results.
+    /// Every word of the query (`QueryTerms`) must match the name or file name; the scores add up.
     public func scoredSearch(_ query: String, limit: Int, boosts: [Int32] = []) -> [(index: Int, score: Int32)] {
-        var matcher = FuzzyMatcher(query: query)
-        guard !matcher.isEmpty else { return [] }
+        var matchers = QueryTerms(query).matchers()
+        guard !matchers.isEmpty else { return [] }
         let boosted = boosts.count == items.count
 
         var hits: [(index: Int, score: Int32)] = []
-        for index in items.indices {
-            var best = matcher.score(names[index])
-            if let fileName = fileNames[index], let score = matcher.score(fileName), score > best ?? .min {
-                best = score
+        items: for index in items.indices {
+            var total: Int32 = 0
+            for word in matchers.indices {
+                var best = matchers[word].score(names[index])
+                if let fileName = fileNames[index], let score = matchers[word].score(fileName), score > best ?? .min {
+                    best = score
+                }
+                guard let best else { continue items }
+                total += best
             }
-            if let best { hits.append((index, boosted ? best + boosts[index] : best)) }
+            hits.append((index, boosted ? total + boosts[index] : total))
         }
         hits.sort { a, b in
             if a.score != b.score { return a.score > b.score }

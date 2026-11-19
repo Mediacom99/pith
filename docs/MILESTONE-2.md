@@ -28,8 +28,10 @@ Status: **in review**.
   Apps get a +24 head start (decision 19), and the history boosts both.
 - The settings `folders`, `ignore` and `max_depth` (from step 4) set what's indexed; changing them rebuilds the
   index.
-- File rows show the name, then the folder (`~/…`, cut from the start when long), with icons per type (folder, per
-  extension, an app's own) rendered on first sight off the main thread.
+- File rows show the name and, under it, the full folder path, with icons per type (folder, per extension, an app's
+  own) rendered on first sight off the main thread.
+- Queries match word by word, in any order. For files, earlier words can match folders in the path (decision 23).
+  Two or three words take 0.2–0.4 ms on the home folder.
 - `recent` lists files and folders too; deleted ones are dropped from the history when it loads.
 - Opening a file uses its default app (`[open_with]` comes in step 5), and a folder opens in Finder.
 - ⌘K on a file offers Open and Reveal for now. Leaving ⌘K restores the results and selection without searching

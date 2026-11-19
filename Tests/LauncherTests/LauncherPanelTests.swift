@@ -204,7 +204,12 @@ struct LauncherPanelTests {
             names(panel.launcher.rows) == ["Gizmo", "Quarterly Gizmo.pdf"], "the app first: same match, head start")
         let cell = try #require(
             panel.launcher.tableView.view(atColumn: 0, row: 1, makeIfNecessary: false) as? ResultCell)
+        cell.layoutSubtreeIfNeeded()
+        let title = try #require(cell.textField)
+        let detail = try #require(cell.subviews.compactMap { $0 as? NSTextField }.first { $0 !== title })
         #expect(cell.detail.hasSuffix("/Reports"))
+        #expect(detail.frame.maxY <= title.frame.minY, "the folder sits under the name")
+        #expect(title.frame.width > Layout.width - 120 && detail.frame.width == title.frame.width, "both full width")
 
         await type("quarterly", in: panel)
         #expect(

@@ -4,7 +4,7 @@ import Testing
 
 /// Timings, not assertions: run with `make bench` (release build). `make test` skips this suite.
 @Suite(.serialized) struct Benchmark {
-    private static let queries = ["s", "sa", "saf", "term", "vsc", "sys set", "qqq"]
+    private static let queries = ["s", "sa", "saf", "term", "vsc", "sys set", "proj read", "doc s r", "qqq"]
 
     @Test func installedApps() {
         var apps: [Item] = []

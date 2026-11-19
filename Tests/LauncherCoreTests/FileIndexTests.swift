@@ -155,6 +155,45 @@ struct FileIndexTests {
             "the folder named launcher matches; README.md inside it doesn't")
     }
 
+    @Test func matchesSeveralWordsInAnyOrder() {
+        let files = index([
+            "/f/Downloads/Quarterly_Budget_Review_Final.pdf", "/f/Downloads/Quarterly_Sales.pdf",
+        ])
+        let budget = ["/f/Downloads/Quarterly_Budget_Review_Final.pdf"]
+        #expect(files.search("quarterly review", limit: 10).map(\.path) == budget)
+        #expect(files.search("review quarterly", limit: 10).map(\.path) == budget)
+        #expect(files.search("  quarterly   review ", limit: 10).map(\.path) == budget)
+        #expect(files.search("quarterly zebra", limit: 10).isEmpty, "every word must match")
+    }
+
+    @Test func earlierWordsCanMatchFoldersAbove() {
+        let files = index([
+            "/f/Projects/Acme/customers/scripts/deploy.sh", "/f/Projects/Other/scripts/deploy.sh",
+            "/f/Projects/Acme/readme.md",
+        ])
+        #expect(
+            files.search("acme deploy", limit: 10).map(\.path) == ["/f/Projects/Acme/customers/scripts/deploy.sh"]
+        )
+        #expect(
+            files.search("acme/deploy", limit: 10).map(\.path) == ["/f/Projects/Acme/customers/scripts/deploy.sh"]
+        )
+        #expect(files.search("~/Projects/Acme/deploy", limit: 10).count == 1)
+        #expect(
+            Set(files.search("scripts deploy", limit: 10).map(\.path)) == [
+                "/f/Projects/Acme/customers/scripts/deploy.sh", "/f/Projects/Other/scripts/deploy.sh",
+            ])
+        #expect(
+            files.search("acme", limit: 10).map(\.path) == ["/f/Projects/Acme"], "one word: names only, no flood")
+        #expect(
+            files.search("deploy acme", limit: 10).isEmpty,
+            "the last word names the item, and nothing named acme sits under a deploy folder")
+    }
+
+    @Test func aMatchInTheNameBeatsOneInThePath() {
+        let files = index(["/f/notes/plan.txt", "/f/misc/notes-plan.txt"])
+        #expect(files.search("notes plan", limit: 10).first?.path == "/f/misc/notes-plan.txt")
+    }
+
     @Test func ranksAndLimits() {
         let files = index((0..<100).map { "/f/report \($0).pdf" } + ["/f/report.pdf"])
         let hits = files.search("report", limit: 5)

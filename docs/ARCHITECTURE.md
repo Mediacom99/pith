@@ -29,6 +29,7 @@ supersede an earlier one.
 | 20 | 2026-11-19 | Quick Look opens with ⌘Y always, and with Space only when the search field is empty. | Space must stay a space in queries. | Edoardo |
 | 21 | 2026-11-19 | A finished Zip posts a macOS notification (permission asked once); clicking it reveals the zip. | Feedback without popping windows. | Edoardo |
 | 22 | 2026-11-19 | With no `folders` in config.toml, the file index covers the whole home folder, minus ~/Library, hidden files and the ignore list. | Find anything by default. | Edoardo |
+| 23 | 2026-11-20 | Queries are split into words at spaces and `/`; every word must match, in any order. For files, the last word matches the name and earlier words match the name or a folder above it, at half weight; one word matches names only. | Requested: multi-word queries failed, and paths should work. The rules are Claude's proposal; one word staying names-only keeps a folder name from flooding the results. | Edoardo |
 
 ## Principles
 
@@ -144,6 +145,11 @@ At idle, nothing is scheduled: no timers, no polling. Workers exist only while t
   after whitespace, 9 after `/,:;|`, 8 after other punctuation), camelCase humps and digits (7), and runs of
   consecutive matches. The first query character's bonus counts double. Leading and trailing text is free.
 - Apps match on their localized name and, when it differs, on their file name, so "calcu" finds Calcolatrice.
+- Words (decision 23): the query splits at spaces and `/`, and every word must match. The scores add up, so more
+  words in the name rank higher. For files, the last word must match the name, and each earlier word must match the
+  name or a folder above it, at half weight. Folder scores are computed once per search, in one pass down the tree
+  (parents always come before children), so a path word costs one score per folder rather than per file. `~` and `.`
+  are skipped, so `~/Projects/acme/deploy` works.
 - Ranking: match score plus the history boost, then shorter name, then alphabetical. The boost is
   `min(48, 12 · log2(1 + frecency / 100))`: one open today is worth +12, a daily habit tops out at +48 (about three
   well-placed characters), so habits reorder close matches without burying a clearly better one.
@@ -172,8 +178,8 @@ identical.
 | Search over installed apps | ≤ 0.003 ms per keystroke | `make bench` |
 | Scan of the home folder with the default rules (35,627 entries) | 130–150 ms on a worker (warm cache) | `make bench` |
 | File index memory | 4.4 MB for the home folder; 16 MB for 100k files | `make bench` (`FileIndex.memoryBytes`) |
-| File search | 0.1–0.3 ms (35k or 100k entries, over the cores); round trip from the main thread 0.1–0.2 ms | `make bench` |
-| Keystroke work in-process (apps + 35.6k files, merge, update the rows, render; offscreen) | ~1.5 ms | `make bench` (UIBenchmark) |
+| File search | 0.1–0.3 ms for one word, 0.2–0.4 ms for two or three (35k entries); up to 0.7 ms at 100k; round trip from the main thread 0.1–0.2 ms | `make bench` |
+| Keystroke work in-process (apps + 35.6k files, merge, update the rows, render; offscreen) | ~1.7 ms | `make bench` (UIBenchmark) |
 | ⌘P work in-process (sync running apps, fill the empty state, lay out, draw; offscreen) | 0.3 ms recent (8 rows), 0.4 ms running (114 rows), 0.1 ms none | `make bench` (UIBenchmark) |
 | FSEvents → file searchable | about 0.5–1 s (0.5 s coalescing) | tests |
 | ⌘P → panel drawn, on screen (milestone 1 build, before the cell reuse fix) | 28–49 ms, almost all of it "update" | `make logs` |
@@ -186,13 +192,13 @@ Speed first and style later (decision 9), so this is the plain, fast version.
 
 | Element | Choice | By |
 |---|---|---|
-| Panel | 680 pt wide. Only the 56 pt search bar when there are no results (FEATURES §4); 389 pt, with 8 rows × 40 pt, when there are. The top edge stays fixed. | Claude |
+| Panel | 680 pt wide. Only the 56 pt search bar when there are no results (FEATURES §4); 421 pt, with 8 rows × 44 pt, when there are. The top edge stays fixed. | Claude |
 | Surface | An opaque window in the system window-background color, with square corners and the system shadow. No glass or blur, so the window server never blends or blurs what's behind. | Claude |
 | Position | On the screen under the mouse pointer, which is how "the active screen" is defined. The expanded panel would be centered, and the search bar is its top edge. | Claude |
-| Type | Search field 22 pt regular with a magnifying glass symbol and a "Search" placeholder. Rows 15 pt with 28 pt icons. | Claude |
+| Type | Search field 22 pt regular with a magnifying glass symbol and a "Search" placeholder. Rows 15 pt with 28 pt icons; names cut in the middle. | Claude |
 | Selection | System inset table style in the accent color, always drawn emphasized (the focus stays in the search field). | Claude |
 | Running indicator | A 4 pt dot in the secondary label color under the icon, like the Dock. | Claude |
-| File rows | The name, then its folder (`~/…`) in 12 pt secondary text, cut from the start when long; the name gets up to two thirds of the row. Icons by type: one for folders, one per extension, an app's own. | Claude |
+| File rows | Two lines: the name (15 pt), and under it the full folder path (`~/…`, 11 pt, secondary color), both full width and cut in the middle only when too long, so the start and the extension stay visible. Other rows are one centered line. Icons by type: one for folders, one per extension, an app's own. | Edoardo's suggestion |
 | Commands, actions, problems | SF Symbols in the secondary label color in place of an icon: gearshape, arrow.clockwise, power for commands; arrow.up.forward.app, folder, link, square.grid.2x2, terminal, doc.on.doc, trash, xmark.circle, xmark.octagon for actions; exclamationmark.triangle for problems. A problem row reads "Config problem, line N: …". | Claude |
 | ⌘K | Sublists replace the list in place: "Actions for <item>", then "Open <file> with…". ⎋ steps back one level as it was; ⌘K goes back to the search. | Claude |
 | Motion | None: the panel appears and disappears without animation. | Claude |

@@ -326,7 +326,6 @@ final class LauncherViewController: NSViewController {
         }
         cell.detail = detail
         cell.isRunning = isRunning
-        cell.needsLayout = true  // the title's width depends on its text
     }
 
     /// New icons or running states: update the rows on screen without reloading.

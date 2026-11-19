@@ -4,7 +4,7 @@ import AppKit
 enum Layout {
     static let width: CGFloat = 680
     static let barHeight: CGFloat = 56
-    static let rowHeight: CGFloat = 40
+    static let rowHeight: CGFloat = 44
     static let visibleRows: CGFloat = 8
     static let resultsInset: CGFloat = 6
     static let iconSize: CGFloat = 28

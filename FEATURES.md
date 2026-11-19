@@ -59,7 +59,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 - **Empty state:** configurable (`[launcher] empty_state`): `recent` (default; what you opened last, newest first), `running` (open apps, most recently used first, then all other apps alphabetically) or `none` (just the search field).
 - **Sources:** applications and files/folders from configured folders.
-- **Matching:** fuzzy.
+- **Matching:** fuzzy, word by word: every word must match, in any order. For files, earlier words may also match a folder in the path, so `acme/deploy` or `acme deploy` find `deploy.sh` under `Acme`.
 - **Ranking:** match quality, boosted by frequency + recency of what you pick. Learns over time.
 - **Calculator results** appear inline as the top row when the query parses as an expression (§6).
 - **Prefix `c `** switches to clipboard mode.

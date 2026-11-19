@@ -41,6 +41,14 @@ struct SearchIndexTests {
         #expect(names(index, "calenda") == ["Calendario"])
     }
 
+    @Test func matchesSeveralWordsInAnyOrder() {
+        let index = SearchIndex(items: ["Visual Studio Code", "Google Chrome", "Code Runner"].map { app($0) })
+        #expect(names(index, "visual code") == ["Visual Studio Code"])
+        #expect(names(index, "code visual") == ["Visual Studio Code"])
+        #expect(names(index, "chrome google") == ["Google Chrome"])
+        #expect(names(index, "code zebra").isEmpty)
+    }
+
     @Test func findsCommands() {
         let index = SearchIndex(items: Command.allCases.map(Item.init(command:)) + [app("Safari")])
         #expect(names(index, "quit") == ["Quit Launcher"])
