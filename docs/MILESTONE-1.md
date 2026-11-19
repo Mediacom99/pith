@@ -75,7 +75,4 @@ shows its "login item added" notification.
 
 ## 9. Performance pass
 
-Status: **in progress**. Each latency is now logged in three phases: delivery (key press → our code), update and
-draw. In-process work per keystroke is ~1.6 ms (UIBenchmark) and searches take microseconds. Next: an on-screen run
-with `make logs` and `make stats` to measure ⌘P → drawn (39 ms on the first ⌘P last time) and keystroke → drawn
-against the 5 ms target, now that text services are off. Then fix whatever phase is over.
+Status: **in progress**, merged with milestone 2 step 8, which measures both on the same build.

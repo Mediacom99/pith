@@ -176,8 +176,8 @@ identical.
 | Keystroke work in-process (apps + 35.6k files, merge, update the rows, render; offscreen) | ~1.5 ms | `make bench` (UIBenchmark) |
 | ⌘P work in-process (sync running apps, fill the empty state, lay out, draw; offscreen) | 0.3 ms recent (8 rows), 0.4 ms running (114 rows), 0.1 ms none | `make bench` (UIBenchmark) |
 | FSEvents → file searchable | about 0.5–1 s (0.5 s coalescing) | tests |
-| ⌘P → panel drawn, on screen | 5–8 ms; 39 ms the first time after launch | `make logs` |
-| Keystroke → results drawn, on screen | 4–32 ms, typically 6–13 ms, before text services were switched off | `make logs` |
+| ⌘P → panel drawn, on screen (milestone 1 build, before the cell reuse fix) | 28–49 ms, almost all of it "update" | `make logs` |
+| Keystroke → results drawn, on screen (same build) | 4–18 ms, mostly 5–14 ms: delivery 1.4–11, update 0.1–6.5, draw 0.5–9 | `make logs` |
 | Idle | 24 MB footprint, 0% CPU, 6 threads | `make stats` |
 
 ## Visual decisions
