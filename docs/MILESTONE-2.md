@@ -93,8 +93,15 @@ Status: **in review**.
 
 ## 7. Zip (feature 15)
 
-Status: **todo**. `ditto -c -k --sequesterRsrc --keepParent` in the background, writing `name.zip` (or `name 2.zip`)
-next to the original. A notification on completion; clicking it reveals the zip (decision 21).
+Status: **in review**.
+- ⌘K → Zip on a file or folder runs `ditto -c -k --sequesterRsrc --keepParent` on a worker, so the launcher closes
+  right away.
+- Names follow Finder: `report.pdf.zip`, `Folder.zip`, then `… 2.zip`.
+- When it finishes, a notification reads "Zipped: name.zip", and clicking it reveals the zip; a failure says why.
+  macOS asks for notification permission the first time, alongside the zip rather than before it; without
+  permission the zip simply appears.
+- Tested on real folders: the zip unpacks to the same contents, taken names are numbered, failures are reported. The
+  notification isn't exercised in tests.
 
 ## 8. Performance pass
 

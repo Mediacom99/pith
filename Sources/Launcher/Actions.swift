@@ -10,6 +10,7 @@ nonisolated enum Action: CaseIterable {
     case openWith
     case openInTerminal
     case copyItem
+    case zip
     case trash
     case quit
     case forceQuit
@@ -23,6 +24,7 @@ nonisolated enum Action: CaseIterable {
         case .openWith: "Open With…"
         case .openInTerminal: "Open in Terminal"
         case .copyItem: isFolder ? "Copy Folder" : "Copy File"
+        case .zip: "Zip"
         case .trash: "Move to Trash"
         case .quit: "Quit"
         case .forceQuit: "Force Quit"
@@ -37,6 +39,7 @@ nonisolated enum Action: CaseIterable {
         case .openWith: "square.grid.2x2"
         case .openInTerminal: "terminal"
         case .copyItem: "doc.on.doc"
+        case .zip: "doc.zipper"
         case .trash: "trash"
         case .quit: "xmark.circle"
         case .forceQuit: "xmark.octagon"
@@ -47,8 +50,8 @@ nonisolated enum Action: CaseIterable {
     static func available(for item: Item, running: Bool) -> [Action] {
         switch item.kind {
         case .app: running ? [.open, .reveal, .quit, .forceQuit] : [.open, .reveal]
-        case .file: [.open, .reveal, .copyPath, .openWith, .copyItem, .trash]
-        case .folder: [.open, .reveal, .copyPath, .openInTerminal, .copyItem, .trash]
+        case .file: [.open, .reveal, .copyPath, .openWith, .copyItem, .zip, .trash]
+        case .folder: [.open, .reveal, .copyPath, .openInTerminal, .copyItem, .zip, .trash]
         case .command: []
         }
     }

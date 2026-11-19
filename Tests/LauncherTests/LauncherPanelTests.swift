@@ -227,7 +227,10 @@ struct LauncherPanelTests {
         let panel = makePanel(items: [], files: files)
         await type("notes", in: panel)
         panel.launcher.toggleActions()
-        #expect(names(panel) == ["Open", "Reveal in Finder", "Copy Path", "Open With…", "Copy File", "Move to Trash"])
+        #expect(
+            names(panel) == [
+                "Open", "Reveal in Finder", "Copy Path", "Open With…", "Copy File", "Zip", "Move to Trash",
+            ])
     }
 
     @Test func commandKOnAFolderOffersTerminal() async throws {
@@ -240,7 +243,8 @@ struct LauncherPanelTests {
         panel.launcher.toggleActions()
         #expect(
             names(panel) == [
-                "Open in Finder", "Reveal in Finder", "Copy Path", "Open in Terminal", "Copy Folder", "Move to Trash",
+                "Open in Finder", "Reveal in Finder", "Copy Path", "Open in Terminal", "Copy Folder", "Zip",
+                "Move to Trash",
             ])
     }
 

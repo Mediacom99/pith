@@ -52,6 +52,7 @@ Sources/
     FileScanner.swift      fts walk of the configured folders; IgnoreRules; FileRules
     FileSearchEngine.swift owns the FileIndex on a serial queue: rebuilds, FSEvents patches, searches
     History.swift          what was opened and when: recent list, frecency, boosts for apps and files
+    Zipper.swift           Finder-style zip with ditto, next to the original, numbered when taken
     AppScanner.swift       walks the app folders (+ Finder) → [Item] with resolved-path ids
     DirectoryWatcher.swift FSEvents → folders or per-file events with flags, with source-level exclusions
     Config.swift           config.toml settings, defaults, problems with line numbers, the commented template
@@ -71,6 +72,7 @@ Sources/
     Actions.swift          ⌘K actions per kind, the SF Symbols rows use, AppResolver (config app names, Open With…)
     IconStore.swift        app, symbol and file-type icons as exact-size bitmaps rendered off the main thread
     ResultViews.swift      fixed-frame cell (title, folder detail, running dot), bitmap IconView, row view
+    ZipNotifier.swift      Zip in the background, a notification when done, reveal on click
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement), copied in by `make app`
 ```
 
@@ -125,7 +127,7 @@ it to the front) or runs the command. Losing focus also hides the panel. Every h
 |---|---|---|
 | Main | Events, the hotkey handler, NSWorkspace callbacks, the app search, merging results, table updates, applying results | File I/O, icon rendering, IPC, waiting on anything (the one exception: resolving a newly launched app's bundle path, once per process) |
 | Serial GCD queue `launcher.files` (`.userInitiated`) | Owns the file index: searches (spread over the cores with `concurrentPerform`), FSEvents patches (one `lstat` each), subtree rescans | Touching UI |
-| GCD worker (`runInBackground` or `global`) | Full file scans (`.utility`); the app scan and index build; config reading, parsing and app resolution; loading the history; opening files; Reveal, Copy, Trash; Open With… choices; login item registration | Touching UI or shared state |
+| GCD worker (`runInBackground` or `global`) | Full file scans (`.utility`); the app scan and index build; config reading, parsing and app resolution; loading the history; opening files; Reveal, Copy, Trash, Zip (`ditto`, `.utility`); Open With… choices; login item registration | Touching UI or shared state |
 | GCD workers (`concurrentPerform`, one per core, `.userInitiated`) | Rendering missing icons in parallel, each into its own slot | Touching UI or shared state |
 | Serial GCD queue `launcher.history` (`.utility`) | Saving the history, in order; quitting waits for it | Touching UI or shared state |
 | Swift cooperative pool | Only awaiting; nothing blocks on it | Blocking calls |
@@ -215,6 +217,9 @@ No third-party dependencies.
 | File walk | `fts` (libc) with `FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV | FTS_NOSTAT` | As fast as `find`; no stat per file, no symlink following, no crossing into mounts. `FileManager`'s enumerator is slower and allocates a URL per entry. |
 | File types | UniformTypeIdentifiers (system) | Package detection, file-type icons, `[open_with]` type matching. |
 | Shared state for stale searches | `Atomic` (Synchronization, toolchain) | One relaxed integer, so no lock. |
+| Zip | `/usr/bin/ditto` via `Process` (system) | What Finder's Compress uses (FEATURES §4.4): same format, resource forks kept. |
+| Quick Look | `QLPreviewPanel` (Quartz, system) | The system preview; the launcher acts as its controller. |
+| Notifications | UserNotifications (system) | For Zip completion (decision 21). |
 | Tests | Swift Testing (toolchain) | The current standard over XCTest. |
 | Formatting | swift-format (toolchain), configured in `.swift-format` | Ships with Swift, so nothing to install. |
 

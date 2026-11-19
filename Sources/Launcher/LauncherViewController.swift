@@ -45,6 +45,8 @@ final class LauncherViewController: NSViewController {
     var openWithApps: [String: URL] = [:]
     /// `[actions] terminal`, resolved.
     var terminalApp: URL?
+    /// Runs Zip in the background and notifies when done.
+    var zipper: ZipNotifier?
 
     private static let resultLimit = 50
     private static let recentLimit = Int(Layout.visibleRows)
@@ -562,6 +564,8 @@ final class LauncherViewController: NSViewController {
             }
         case .openInTerminal:
             open(url, with: terminalApp)
+        case .zip:
+            zipper?.zip(url)
         case .trash:
             history.forget(paths: [url.path])
             Task {

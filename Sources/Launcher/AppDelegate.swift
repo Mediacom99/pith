@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let configStore = ConfigStore()
     private let history = HistoryStore()
     private let hotKeys = HotKeyCenter()
+    private let zipper = ZipNotifier()
     private lazy var files = FileSearchEngine { [weak self] removed in
         Task { @MainActor in self?.history.forget(paths: removed) }
     }
@@ -48,6 +49,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Built now, so the hotkey only has to show it.
         let launcher = LauncherViewController(history: history, running: RunningApps(), files: files)
         launcher.runCommand = { [weak self] in self?.run($0) }
+        launcher.zipper = zipper
+        zipper.install()
         panel = LauncherPanel(launcher: launcher)
 
         configStore.onChange = { [weak self] previous in self?.apply(previous: previous) }
