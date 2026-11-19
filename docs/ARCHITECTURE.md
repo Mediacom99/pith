@@ -43,13 +43,17 @@ supersede an earlier one.
 ```
 Sources/
   LauncherCore/            pure Swift, no AppKit, unit-tested
-    Item.swift             Item (an app or a Command) with a stable id; Command (Open/Reload Config, Quit Launcher)
+    Item.swift             Item (an app, file, folder or Command) with a stable id; Command (Open/Reload Config, Quit)
     SearchKey.swift        text → lowercased, diacritic-folded UTF-8 + per-byte bonus + 64-bit byte mask
-    FuzzyMatcher.swift     query × SearchKey → score (fzf v2-style dynamic programming)
-    SearchIndex.swift      items + keys + id lookup; search(query, limit, boosts) → ranked indices
-    History.swift          what was opened and when: recent list, frecency, per-item ranking boosts
+    KeyStore.swift         many search keys in four flat buffers (for the file index)
+    FuzzyMatcher.swift     query × key → score (fzf v2-style dynamic programming)
+    SearchIndex.swift      apps and commands + keys + id lookup; scored search with boosts
+    FileIndex.swift        files and folders as a tree in flat arrays, O(1) path lookup, parallel top-k search
+    FileScanner.swift      fts walk of the configured folders; IgnoreRules; FileRules
+    FileSearchEngine.swift owns the FileIndex on a serial queue: rebuilds, FSEvents patches, searches
+    History.swift          what was opened and when: recent list, frecency, boosts for apps and files
     AppScanner.swift       walks the app folders (+ Finder) → [Item] with resolved-path ids
-    DirectoryWatcher.swift FSEvents → callback with the changed folders
+    DirectoryWatcher.swift FSEvents → folders or per-file events with flags, with source-level exclusions
     Config.swift           config.toml settings, defaults, problems with line numbers, the commented template
     TOMLReader.swift       a small strict TOML reader (the subset the config needs)
     Hotkey.swift           "cmd+shift+p" → Carbon key code + modifiers
@@ -63,10 +67,10 @@ Sources/
     LoginItem.swift        SMAppService registration, for a copy in an Applications folder only
     HotKeyCenter.swift     global hotkeys via Carbon RegisterEventHotKey, registered and replaced at runtime
     LauncherPanel.swift    the NSPanel: show/hide, collapse/expand, key routing (⌃K/⌃J, ⌘K), the search field's editor
-    LauncherViewController.swift  rows (items, ⌘K actions, config problems), empty state, keyboard, opening
-    Actions.swift          the ⌘K app actions and the SF Symbols rows use
-    IconStore.swift        app icons and symbols pre-rendered to exact-size bitmaps off the main thread, re-styled
-    ResultViews.swift      fixed-frame cell with running dot, bitmap IconView, row view
+    LauncherViewController.swift  rows, merged app + file search, empty state, ⌘K sublists, keyboard, opening
+    Actions.swift          ⌘K actions per kind, the SF Symbols rows use, AppResolver (config app names, Open With…)
+    IconStore.swift        app, symbol and file-type icons as exact-size bitmaps rendered off the main thread
+    ResultViews.swift      fixed-frame cell (title, folder detail, running dot), bitmap IconView, row view
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement), copied in by `make app`
 ```
 
@@ -75,7 +79,7 @@ Files the app keeps:
 | File | What | Written |
 |---|---|---|
 | `~/.config/launcher/config.toml` | Settings (FEATURES §8) | Created with commented defaults on first launch; then only by you |
-| `~/Library/Application Support/launcher/history.json` | What you opened and when (≤ 200 items × 10 times) | After every open, on a serial worker, atomically |
+| `~/Library/Application Support/launcher/history.json` | What you opened and when (≤ 200 items × 10 times); deleted files are dropped | After every open or deletion, on a serial worker, atomically |
 
 **Startup.** `AppDelegate` builds and draws the panel, loads the history, then the config, and registers the
 configured hotkey. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
@@ -119,8 +123,9 @@ it to the front) or runs the command. Losing focus also hides the panel. Every h
 
 | Thread | Runs | Never |
 |---|---|---|
-| Main | Events, the hotkey handler, FSEvents and NSWorkspace callbacks, search, table updates, applying results | File I/O, icon rendering, waiting on anything (the one exception: resolving a newly launched app's bundle path, once per process) |
-| GCD worker (`runInBackground`) | The app scan and index build (~15 ms, `.utility`); reading and parsing the config, loading the history, opening the config, Reveal in Finder, login item registration | Touching UI or shared state |
+| Main | Events, the hotkey handler, NSWorkspace callbacks, the app search, merging results, table updates, applying results | File I/O, icon rendering, IPC, waiting on anything (the one exception: resolving a newly launched app's bundle path, once per process) |
+| Serial GCD queue `launcher.files` (`.userInitiated`) | Owns the file index: searches (spread over the cores with `concurrentPerform`), FSEvents patches (one `lstat` each), subtree rescans | Touching UI |
+| GCD worker (`runInBackground` or `global`) | Full file scans (`.utility`); the app scan and index build; config reading, parsing and app resolution; loading the history; opening files; Reveal, Copy, Trash; Open With… choices; login item registration | Touching UI or shared state |
 | GCD workers (`concurrentPerform`, one per core, `.userInitiated`) | Rendering missing icons in parallel, each into its own slot | Touching UI or shared state |
 | Serial GCD queue `launcher.history` (`.utility`) | Saving the history, in order; quitting waits for it | Touching UI or shared state |
 | Swift cooperative pool | Only awaiting; nothing blocks on it | Blocking calls |
@@ -163,9 +168,12 @@ identical.
 |---|---|---|
 | Scan of the 3 app folders (113 apps) | ~12–15 ms, on a worker | `make bench` |
 | Search over installed apps | ≤ 0.003 ms per keystroke | `make bench` |
-| Search over 100k synthetic names | 0.3–7 ms; 1–2 letter queries are the slow end | `make bench` |
-| Keystroke work in-process (search + reload + render, offscreen panel, 114 apps + commands, with boosts) | ~1.6 ms | `make bench` (UIBenchmark) |
-| ⌘P work in-process (sync running apps, fill the empty state, lay out, draw; offscreen) | 1.6 ms recent (8 rows), 1.7 ms running (114 rows), 0.2 ms none | `make bench` (UIBenchmark) |
+| Scan of the home folder with the default rules (35,627 entries) | 130–150 ms on a worker (warm cache) | `make bench` |
+| File index memory | 4.4 MB for the home folder; 16 MB for 100k files | `make bench` (`FileIndex.memoryBytes`) |
+| File search | 0.1–0.3 ms (35k or 100k entries, over the cores); round trip from the main thread 0.1–0.2 ms | `make bench` |
+| Keystroke work in-process (apps + 35.6k files, merge, update the rows, render; offscreen) | ~1.5 ms | `make bench` (UIBenchmark) |
+| ⌘P work in-process (sync running apps, fill the empty state, lay out, draw; offscreen) | 0.3 ms recent (8 rows), 0.4 ms running (114 rows), 0.1 ms none | `make bench` (UIBenchmark) |
+| FSEvents → file searchable | about 0.5–1 s (0.5 s coalescing) | tests |
 | ⌘P → panel drawn, on screen | 5–8 ms; 39 ms the first time after launch | `make logs` |
 | Keystroke → results drawn, on screen | 4–32 ms, typically 6–13 ms, before text services were switched off | `make logs` |
 | Idle | 24 MB footprint, 0% CPU, 6 threads | `make stats` |
@@ -182,8 +190,9 @@ Speed first and style later (decision 9), so this is the plain, fast version.
 | Type | Search field 22 pt regular with a magnifying glass symbol and a "Search" placeholder. Rows 15 pt with 28 pt icons. | Claude |
 | Selection | System inset table style in the accent color, always drawn emphasized (the focus stays in the search field). | Claude |
 | Running indicator | A 4 pt dot in the secondary label color under the icon, like the Dock. | Claude |
-| Commands, actions, problems | SF Symbols in the secondary label color in place of an icon: gearshape, arrow.clockwise, power; arrow.up.forward.app, folder, xmark.circle, xmark.octagon; exclamationmark.triangle. A problem row reads "Config problem, line N: …". | Claude |
-| ⌘K | The actions replace the list in place; the placeholder reads "Actions for <app>". | Claude |
+| File rows | The name, then its folder (`~/…`) in 12 pt secondary text, cut from the start when long; the name gets up to two thirds of the row. Icons by type: one for folders, one per extension, an app's own. | Claude |
+| Commands, actions, problems | SF Symbols in the secondary label color in place of an icon: gearshape, arrow.clockwise, power for commands; arrow.up.forward.app, folder, link, square.grid.2x2, terminal, doc.on.doc, trash, xmark.circle, xmark.octagon for actions; exclamationmark.triangle for problems. A problem row reads "Config problem, line N: …". | Claude |
+| ⌘K | Sublists replace the list in place: "Actions for <item>", then "Open <file> with…". ⎋ steps back one level as it was; ⌘K goes back to the search. | Claude |
 | Motion | None: the panel appears and disappears without animation. | Claude |
 
 ## Libraries
@@ -203,6 +212,9 @@ No third-party dependencies.
 | History storage | JSON via `Codable` (system) | ≤ 200 small entries, so SQLite would be overkill. GRDB stays a candidate for the clipboard. |
 | Launch at login | `SMAppService.mainApp` (ServiceManagement, system) | The current API; no helper app needed. |
 | Running apps | `NSWorkspace` notifications (system) | Launch, activation and quit events, so no polling. |
+| File walk | `fts` (libc) with `FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV | FTS_NOSTAT` | As fast as `find`; no stat per file, no symlink following, no crossing into mounts. `FileManager`'s enumerator is slower and allocates a URL per entry. |
+| File types | UniformTypeIdentifiers (system) | Package detection, file-type icons, `[open_with]` type matching. |
+| Shared state for stale searches | `Atomic` (Synchronization, toolchain) | One relaxed integer, so no lock. |
 | Tests | Swift Testing (toolchain) | The current standard over XCTest. |
 | Formatting | swift-format (toolchain), configured in `.swift-format` | Ships with Swift, so nothing to install. |
 

@@ -40,14 +40,26 @@ private let apps = ["Gizmo", "Gadget Pro", "Widget", "Hollow Thing", "Sprocket"]
     Item(name: $0, appAt: URL(filePath: "/nonexistent/\($0).app"))
 }
 
-private func names(_ rows: [Row]) -> [String] {
+private func names(_ rows: [Row], for item: Item? = nil) -> [String] {
     rows.map {
         switch $0 {
         case .item(let item): item.name
-        case .action(let action): action.title
+        case .action(let action): item.map(action.title(for:)) ?? "\(action)"
         case .problem(let message): message
         }
     }
+}
+
+/// What the panel lists, with action titles for the item they're for.
+private func names(_ panel: LauncherPanel) -> [String] {
+    if case .actions(let item)? = panel.launcher.sublist { return names(panel.launcher.rows, for: item) }
+    return names(panel.launcher.rows)
+}
+
+/// Polls `condition` on the main actor until it holds or a few seconds pass, for work that hops through a worker.
+private func eventually(_ condition: () -> Bool) async -> Bool {
+    for _ in 0..<200 where !condition() { try? await Task.sleep(for: .milliseconds(25)) }
+    return condition()
 }
 
 struct LauncherPanelTests {
@@ -160,12 +172,12 @@ struct LauncherPanelTests {
         let selected = panel.launcher.tableView.selectedRow
 
         panel.launcher.toggleActions()
-        #expect(names(panel.launcher.rows) == ["Open", "Reveal in Finder"], "not running: no Quit")
+        #expect(names(panel) == ["Open", "Reveal in Finder"], "not running: no Quit")
         #expect(panel.launcher.searchField.stringValue.isEmpty)
         #expect(panel.launcher.searchField.placeholderString?.hasPrefix("Actions for ") == true)
 
         await type("rev", in: panel)
-        #expect(names(panel.launcher.rows) == ["Reveal in Finder"])
+        #expect(names(panel) == ["Reveal in Finder"])
 
         press(#selector(NSResponder.cancelOperation(_:)), in: panel)
         #expect(panel.launcher.searchField.stringValue == "g")
@@ -215,7 +227,45 @@ struct LauncherPanelTests {
         let panel = makePanel(items: [], files: files)
         await type("notes", in: panel)
         panel.launcher.toggleActions()
-        #expect(names(panel.launcher.rows) == ["Open", "Reveal in Finder"])
+        #expect(names(panel) == ["Open", "Reveal in Finder", "Copy Path", "Open With…", "Copy File", "Move to Trash"])
+    }
+
+    @Test func commandKOnAFolderOffersTerminal() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFolder("Projects Zeta")
+        let files = FileSearchEngine()
+        await files.rebuild(FileRules(roots: [folder.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        let panel = makePanel(items: [], files: files)
+        await type("zeta", in: panel)
+        panel.launcher.toggleActions()
+        #expect(
+            names(panel) == [
+                "Open in Finder", "Reveal in Finder", "Copy Path", "Open in Terminal", "Copy Folder", "Move to Trash",
+            ])
+    }
+
+    @Test func openWithListsAppsAndEscapeStepsBack() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFile("letter.txt")
+        let files = FileSearchEngine()
+        await files.rebuild(FileRules(roots: [folder.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        let panel = makePanel(items: [], files: files)
+        await type("letter", in: panel)
+        panel.launcher.toggleActions()
+        await type("with", in: panel)
+        #expect(names(panel) == ["Open With…"])
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+
+        #expect(await eventually { if case .openWith? = panel.launcher.sublist { true } else { false } })
+        #expect(names(panel).contains("TextEdit"), "\(names(panel))")
+        #expect(panel.launcher.searchField.placeholderString == "Open letter.txt with…")
+
+        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        #expect(names(panel) == ["Open With…"], "back to the actions, still filtered")
+        #expect(panel.launcher.searchField.stringValue == "with")
+        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        #expect(panel.launcher.sublist == nil)
+        #expect(panel.launcher.searchField.stringValue == "letter")
     }
 
     @Test func everySymbolExists() {

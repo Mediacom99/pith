@@ -58,17 +58,26 @@ Status: **in review**.
 
 ## 4. Config
 
-Status: **in progress**. `folders`, `ignore`, `max_depth`, `terminal` and `[open_with]` are parsed, documented in
-the template and tested. What's left is resolving `terminal` and `[open_with]` app names to apps, with problems for
-unknown apps; that lands with the actions in step 5.
+Status: **in review**.
+- `folders`, `ignore`, `max_depth`, `[actions] terminal` and `[open_with]` are parsed, documented in the template
+  and tested.
+- App names resolve by name (as listed, or the file name, any case), bundle id or path, on a worker, once the index
+  knows the installed apps.
+- An unknown app or type becomes a problem row: `open_with.md: no app "…"`, `actions.terminal: no app "…"`.
 
 ## 5. File and folder actions (features 12, 14)
 
-Status: **todo**.
-- ⏎ opens a file in its `[open_with]` app (else the default) and a folder in Finder.
-- ⌘K offers Reveal in Finder, Copy path, Open with… (a list of the apps that can open it), Copy file/folder (onto the
-  clipboard for pasting in Finder, Slack…), Move to Trash (no confirmation: it's reversible from the Trash), and Open
-  in terminal for folders.
+Status: **in review**.
+- ⏎ opens a file in its `[open_with]` app: by extension, else the most specific matching type (`public.png` before
+  `public.image`), else the default app. A folder opens in Finder.
+- ⌘K on a file: Open, Reveal in Finder, Copy Path, Open With…, Copy File, Move to Trash.
+- ⌘K on a folder: Open in Finder, Reveal in Finder, Copy Path, Open in Terminal (the `terminal` app), Copy Folder,
+  Move to Trash.
+- Open With… lists the apps LaunchServices offers for the file, filterable; ⏎ opens it with the chosen app.
+- ⎋ steps back one level as it was, and ⌘K goes back to the search.
+- Copying, revealing and trashing run on a worker. Trash asks no confirmation, since it's reversible.
+- Covered by tests: the resolver against real apps, type matching, action lists per kind, Open With… navigation. The
+  clipboard and Trash actions aren't exercised, so tests never touch your clipboard or Trash.
 
 ## 6. Quick Look (feature 13)
 

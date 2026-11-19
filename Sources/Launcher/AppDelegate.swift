@@ -1,5 +1,6 @@
 import AppKit
 import LauncherCore
+import UniformTypeIdentifiers
 import os
 
 nonisolated enum Log {
@@ -38,6 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appsWatcher: DirectoryWatcher?
     private var indexGeneration = 0
     private var hasAppliedConfig = false
+    private var hotkeyProblem: String?
+    /// Apps in config.toml that don't resolve to an installed app.
+    private var appProblems: [String] = []
+    private var resolveGeneration = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Built now, so the hotkey only has to show it.
@@ -66,7 +71,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func apply(previous: Config) {
         guard let panel else { return }
         let config = configStore.config
-        var problems = configStore.problems
 
         if launcherHotkey?.hotkey != config.launcherHotkey {
             if let id = hotKeys.register(
@@ -74,13 +78,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             {
                 if let old = launcherHotkey { hotKeys.unregister(old.id) }
                 launcherHotkey = (config.launcherHotkey, id)
+                hotkeyProblem = nil
             } else {
                 let fallback = launcherHotkey.map { ", still using \($0.hotkey)" } ?? ""
-                problems.append("hotkeys.launcher \(config.launcherHotkey) is taken by another app\(fallback)")
+                hotkeyProblem = "hotkeys.launcher \(config.launcherHotkey) is taken by another app\(fallback)"
             }
         }
         panel.launcher.emptyState = config.emptyState
-        panel.launcher.problems = problems
+        publishProblems()
+        resolveApps()
 
         let rules = config.fileRules()
         if rules != fileRules {
@@ -92,6 +98,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             LoginItem.update(enabled: config.launchAtLogin)
         }
         hasAppliedConfig = true
+    }
+
+    private func publishProblems() {
+        panel?.launcher.problems = configStore.problems + [hotkeyProblem].compactMap(\.self) + appProblems
+    }
+
+    /// Resolves the apps config.toml names (`[open_with]`, the terminal) on a worker, once the index knows the
+    /// installed apps; names that match no app become problems.
+    private func resolveApps() {
+        guard let launcher = panel?.launcher, !launcher.index.items.isEmpty else { return }
+        let config = configStore.config
+        let apps = launcher.knownApps
+        resolveGeneration += 1
+        let generation = resolveGeneration
+        Task {
+            let (openWith, terminal, problems) = await runInBackground(qos: .utility) {
+                var problems: [String] = []
+                var openWith: [String: URL] = [:]
+                for (key, spec) in config.openWith.sorted(by: { $0.key < $1.key }) {
+                    if key.contains("."), UTType(key) == nil {
+                        problems.append("open_with \"\(key)\" isn't a known file type")
+                    } else if let app = AppResolver.resolve(spec, among: apps) {
+                        openWith[key] = app
+                    } else {
+                        problems.append("open_with.\(key): no app \"\(spec)\"")
+                    }
+                }
+                let terminal = AppResolver.resolve(config.terminal, among: apps)
+                if terminal == nil { problems.append("actions.terminal: no app \"\(config.terminal)\"") }
+                return (openWith, terminal, problems)
+            }
+            guard generation == resolveGeneration else { return }
+            launcher.openWithApps = openWith
+            launcher.terminalApp = terminal
+            appProblems = problems
+            publishProblems()
+        }
     }
 
     private func run(_ command: Command) {
@@ -116,6 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // A newer rescan started meanwhile: its result wins.
             guard generation == indexGeneration else { return }
             panel?.launcher.index = index
+            resolveApps()
         }
     }
 }

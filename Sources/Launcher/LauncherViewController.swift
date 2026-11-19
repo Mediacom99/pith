@@ -4,10 +4,18 @@ import LauncherCore
 /// One line in the list.
 enum Row: Equatable {
     case item(Item)
-    /// A ⌘K action for the app in `LauncherViewController.actionsTarget`.
-    case action(AppAction)
+    /// A ⌘K action for the item the actions list is for.
+    case action(Action)
     /// Something wrong in config.toml; ⏎ opens the file.
     case problem(String)
+}
+
+/// A list shown in place of the search, from ⌘K.
+enum Sublist: Equatable {
+    /// An item's actions.
+    case actions(Item)
+    /// The apps that can open a file, from Open With….
+    case openWith(file: Item, apps: [Item])
 }
 
 /// The search field and the list under it: the empty state before you type, search results while you do, and an
@@ -32,6 +40,10 @@ final class LauncherViewController: NSViewController {
     var problems: [String] = []
     /// Runs a launcher command (Open Config, Quit Launcher…).
     var runCommand: (Command) -> Void = { _ in }
+    /// `[open_with]`, resolved: extension or type → app.
+    var openWithApps: [String: URL] = [:]
+    /// `[actions] terminal`, resolved.
+    var terminalApp: URL?
 
     private static let resultLimit = 50
     private static let recentLimit = Int(Layout.visibleRows)
@@ -58,8 +70,10 @@ final class LauncherViewController: NSViewController {
     /// What the table holds: `rows`, or the last non-empty rows while the list is hidden. Keeping them means the
     /// table keeps its cells, which the next results reconfigure in place instead of building new ones.
     private var tableRows: [Row] = []
-    /// While ⌘K actions are listed: the item, and the search to go back to, as it was.
-    private var actionsTarget: (item: Item, query: String, rows: [Row], selection: Int)?
+    /// The ⌘K list showing, if any.
+    private(set) var sublist: Sublist?
+    /// What ⎋ goes back to, innermost last: each level's sublist (nil for the search), query, rows and selection.
+    private var backStack: [(sublist: Sublist?, query: String, rows: [Row], selection: Int)] = []
 
     private var panel: LauncherPanel? { viewIfLoaded?.window as? LauncherPanel }
 
@@ -154,7 +168,8 @@ final class LauncherViewController: NSViewController {
 
     /// Empties the field and the list for next time.
     func reset() {
-        actionsTarget = nil
+        sublist = nil
+        backStack = []
         searchField.placeholderString = "Search"
         setQuery("")
         if !rows.isEmpty { show([], selecting: 0) }
@@ -169,8 +184,8 @@ final class LauncherViewController: NSViewController {
         searchGeneration += 1
         let generation = searchGeneration
         let query = searchField.stringValue
-        if let target = actionsTarget {
-            update(actions(for: target.item, matching: query), selecting: 0, keystroke: keystroke)
+        if let sublist {
+            update(rows(for: sublist, matching: query), selecting: 0, keystroke: keystroke)
         } else if query.allSatisfy(\.isWhitespace) {
             let (rows, selection) = emptyStateRows()
             update(rows, selecting: selection, keystroke: keystroke)
@@ -239,15 +254,24 @@ final class LauncherViewController: NSViewController {
         return Item(name: app.localizedName ?? url.deletingPathExtension().lastPathComponent, appAt: url, id: id)
     }
 
-    private func actions(for item: Item, matching query: String) -> [Row] {
-        let available = AppAction.available(for: item, running: running.isRunning(item.id))
+    /// A sublist's rows, filtered by `query` (fuzzy, best first).
+    private func rows(for sublist: Sublist, matching query: String) -> [Row] {
+        let candidates: [(row: Row, name: String)] =
+            switch sublist {
+            case .actions(let item):
+                Action.available(for: item, running: running.isRunning(item.id)).map {
+                    (.action($0), $0.title(for: item))
+                }
+            case .openWith(_, let apps):
+                apps.map { (.item($0), $0.name) }
+            }
         var matcher = FuzzyMatcher(query: query)
-        guard !matcher.isEmpty else { return available.map(Row.action) }
+        guard !matcher.isEmpty else { return candidates.map(\.row) }
         return
-            available
-            .compactMap { action in matcher.score(SearchKey(action.title)).map { (action, $0) } }
+            candidates
+            .compactMap { candidate in matcher.score(SearchKey(candidate.name)).map { (candidate.row, $0) } }
             .sorted { $0.1 > $1.1 }
-            .map { .action($0.0) }
+            .map(\.0)
     }
 
     private func show(_ new: [Row], selecting selection: Int) {
@@ -291,7 +315,7 @@ final class LauncherViewController: NSViewController {
                 cell.icon.image = icons.symbol(Symbols.command(command))
             }
         case .action(let action):
-            cell.textField?.stringValue = action.title
+            if case .actions(let item) = sublist { cell.textField?.stringValue = action.title(for: item) }
             cell.icon.image = icons.symbol(action.symbol)
         case .problem(let message):
             cell.textField?.stringValue = "Config problem, \(message)"
@@ -336,30 +360,47 @@ final class LauncherViewController: NSViewController {
         searchField.currentEditor()?.selectedRange = NSRange(location: query.utf16.count, length: 0)
     }
 
-    // MARK: ⌘K actions
+    // MARK: ⌘K
 
-    /// Lists the selected app's actions, or goes back to the search.
+    /// Lists the selected item's actions, or goes back to the search.
     func toggleActions() {
-        if actionsTarget != nil {
-            closeActions()
+        if sublist != nil {
+            while sublist != nil { goBack() }
             return
         }
         let selection = tableView.selectedRow
-        guard rows.indices.contains(selection), case .item(let item) = rows[selection], item.url != nil else { return }
-        actionsTarget = (item, searchField.stringValue, rows, selection)
-        searchField.placeholderString = "Actions for \(item.name)"
+        guard rows.indices.contains(selection), case .item(let item) = rows[selection],
+            !Action.available(for: item, running: false).isEmpty
+        else { return }
+        enter(.actions(item))
+    }
+
+    /// Shows `sublist` in place of what's showing; ⎋ comes back to it as it is.
+    private func enter(_ new: Sublist) {
+        backStack.append((sublist, searchField.stringValue, rows, tableView.selectedRow))
+        sublist = new
+        searchField.placeholderString =
+            switch new {
+            case .actions(let item): "Actions for \(item.name)"
+            case .openWith(let file, _): "Open \(file.name) with…"
+            }
         setQuery("")
         refresh()
     }
 
-    /// Back to the search as it was: same query, rows and selection, without searching again.
-    private func closeActions() {
-        guard let target = actionsTarget else { return }
-        actionsTarget = nil
+    /// Back one level, as it was: same query, rows and selection, without searching again.
+    private func goBack() {
+        guard let previous = backStack.popLast() else { return }
+        sublist = previous.sublist
         searchGeneration += 1  // a search still in flight would overwrite the restored rows
-        searchField.placeholderString = "Search"
-        setQuery(target.query)
-        show(target.rows, selecting: target.selection)
+        searchField.placeholderString =
+            switch previous.sublist {
+            case .actions(let item): "Actions for \(item.name)"
+            case .openWith(let file, _): "Open \(file.name) with…"
+            case nil: "Search"
+            }
+        setQuery(previous.query)
+        show(previous.rows, selecting: previous.selection)
     }
 
     // MARK: Opening
@@ -370,12 +411,18 @@ final class LauncherViewController: NSViewController {
 
     private func activate(row: Int) {
         guard rows.indices.contains(row) else { return }
-        switch rows[row] {
-        case .item(let item):
+        switch (rows[row], sublist) {
+        case (.item(let app), .openWith(let file, _)?):
+            history.record(file.id)
+            panel?.dismiss()
+            if let url = file.url, let appURL = app.url { open(url, with: appURL) }
+        case (.item(let item), _):
             open(item)
-        case .action(let action):
-            if let item = actionsTarget?.item { perform(action, on: item) }
-        case .problem:
+        case (.action(let action), .actions(let item)?):
+            perform(action, on: item)
+        case (.action, _):
+            break
+        case (.problem, _):
             panel?.dismiss()
             runCommand(.openConfig)
         }
@@ -386,16 +433,30 @@ final class LauncherViewController: NSViewController {
         panel?.dismiss()
         switch item.kind {
         case .app(let url): openApp(at: url)
-        case .file(let url), .folder(let url): openFile(at: url)
+        case .file(let url): openFile(at: url)
+        case .folder(let url): open(url, with: nil)
         case .command(let command): runCommand(command)
         }
     }
 
-    /// Opens a file in its default app, a folder in Finder.
+    /// Opens a file in the app `[open_with]` sets for its type, else its default app.
     private func openFile(at url: URL) {
+        let openWith = openWithApps
+        Task {
+            let app = await runInBackground(qos: .userInitiated) { AppResolver.app(forFile: url, openWith: openWith) }
+            open(url, with: app)
+        }
+    }
+
+    /// Opens `url` in `app`, or in its default app.
+    private func open(_ url: URL, with app: URL?) {
         Task {
             do {
-                _ = try await NSWorkspace.shared.open(url, configuration: .init())
+                if let app {
+                    _ = try await NSWorkspace.shared.open([url], withApplicationAt: app, configuration: .init())
+                } else {
+                    _ = try await NSWorkspace.shared.open(url, configuration: .init())
+                }
             } catch {
                 Log.app.error(
                     "Couldn't open \(url.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
@@ -403,22 +464,68 @@ final class LauncherViewController: NSViewController {
         }
     }
 
-    private func perform(_ action: AppAction, on item: Item) {
+    private func perform(_ action: Action, on item: Item) {
         guard let url = item.url else { return }
+        if action == .openWith {
+            let apps = knownApps
+            Task {
+                let choices = await runInBackground(qos: .userInitiated) { AppResolver.apps(toOpen: url, among: apps) }
+                enter(.openWith(file: item, apps: choices))
+            }
+            return
+        }
+        panel?.dismiss()
         switch action {
         case .open:
             open(item)
         case .reveal:
-            panel?.dismiss()
             Task {
                 await runInBackground(qos: .userInitiated) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             }
+        case .copyPath:
+            Task {
+                await runInBackground(qos: .userInitiated) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(url.path, forType: .string)
+                }
+            }
+        case .copyItem:
+            // The file itself, to paste in Finder, Mail, Slack…
+            Task {
+                await runInBackground(qos: .userInitiated) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.writeObjects([url as NSURL])
+                }
+            }
+        case .openInTerminal:
+            open(url, with: terminalApp)
+        case .trash:
+            history.forget(paths: [url.path])
+            Task {
+                await runInBackground(qos: .userInitiated) {
+                    do {
+                        try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                    } catch {
+                        Log.app.error(
+                            "Couldn't trash \(url.path, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                        )
+                    }
+                }
+            }
         case .quit:
-            panel?.dismiss()
             running.application(item.id)?.terminate()
         case .forceQuit:
-            panel?.dismiss()
             running.application(item.id)?.forceTerminate()
+        case .openWith:
+            break
+        }
+    }
+
+    /// The indexed apps, for resolving app names and naming the Open With… choices.
+    var knownApps: [AppResolver.App] {
+        index.items.compactMap { item in
+            guard item.isApp, let url = item.url else { return nil }
+            return AppResolver.App(names: [item.name, url.deletingPathExtension().lastPathComponent], url: url)
         }
     }
 
@@ -449,7 +556,7 @@ extension LauncherViewController: NSTextFieldDelegate {
         case #selector(NSResponder.moveDown(_:)): moveSelection(by: 1)
         case #selector(NSResponder.insertNewline(_:)): activate(row: tableView.selectedRow)
         case #selector(NSResponder.cancelOperation(_:)):
-            if actionsTarget != nil { closeActions() } else { panel?.dismiss() }
+            if sublist != nil { goBack() } else { panel?.dismiss() }
         default: return false
         }
         return true
