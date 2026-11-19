@@ -1,68 +1,55 @@
 # Milestone 1: launcher
 
-Goal: ⌘P opens a launcher that finds and opens apps, then files and folders, in one frame and without lag
-(`FEATURES.md` §1–4, §7, §8). Clipboard and calculator come in later milestones.
+Goal: ⌘P opens a launcher that finds and opens apps and launcher commands, learns from what you open, shows something
+useful before you type, and is configured from one file. All of it meets the `FEATURES.md` §1 targets. Scope is
+decision 10. Files and folders, the clipboard and the calculator come in later milestones.
 
 Status values: **done**, **in review** (built and tested, waiting for Edoardo), **in progress**, **todo**.
 
 ## 1. Scaffold: panel, hotkey, app index, fuzzy search
 
-Status: **in review**. The second run on screen measured:
-- idle: 24 MB, 0% CPU, 6 threads;
-- ⌘P → drawn: 5–8 ms (39 ms the first time);
-- keystroke → drawn: 6–13 ms typically, 32 ms at worst, against a target under 5 ms.
+Status: **done**. ⌘P toggles a pre-built, non-activating, opaque panel on the screen under the mouse. Fuzzy search
+covers `/Applications`, `/System/Applications` and `~/Applications`, with icons pre-rendered off the main thread. The
+panel is only the search bar when there's nothing to list. Measured on screen: 24 MB idle, 0% CPU, 6 threads. The
+latency work continues in step 9.
 
-The in-process work is ~1.5 ms (UIBenchmark), so the rest goes to text-field processing and drawing on screen. Since
-that run:
-- the search field's editor runs no text services (predictions, spell checking, Writing Tools…);
-- the keystroke and ⌘P logs are split into delivery, update and draw;
-- names use the whole row (the column was stuck at 100 pt);
-- the panel is back to only the search bar when there are no results.
+## 2. Launcher commands and Finder (features 9, 17)
 
-The 26 tests and lint pass. Next: the third run with `make logs`, to see which phase is left over 5 ms, and confirming
-that an opened app comes to the front.
+Status: **todo**. The index holds apps and launcher commands: Open Config, Reload Config, Quit Launcher. Finder is
+indexed, and the launcher leaves itself out.
 
-- Swift Package with `LauncherCore` (logic) and `Launcher` (AppKit). `make app` builds an ad-hoc signed `.app` with
-  `LSUIElement`.
-- A pre-built, pre-drawn, non-activating, opaque `NSPanel` on the screen under the mouse. It's only the search bar
-  until there are results.
-- ⌘P registered through Carbon toggles the panel. It hides on ⎋, on losing focus, and after opening an app.
-- In-memory app index of `/Applications`, `/System/Applications` and `~/Applications`, up to 3 folders deep. It
-  matches on localized names and file names, and FSEvents triggers a rescan. App icons are rendered once, in parallel,
-  on workers.
-- fzf-style fuzzy search. ↑/↓ and ⌃K/⌃J move, ⏎ (or a double click) opens.
-- Not yet: Finder isn't indexed (it lives in `/System/Library/CoreServices`), and icons ignore the dark or tinted icon
-  style.
+## 3. Config file (feature 16)
 
-## 2. Ranking learns from picks
+Status: **todo**. `~/.config/launcher/config.toml`, created with commented defaults on first use and reloaded on save.
+It sets the launcher hotkey, the empty state (`recent`, `running` or `none`) and launch at login. A config error shows
+up as a row in the launcher, and ⏎ on that row opens the file.
 
-Status: **todo**. Boost the match score by how often and how recently each item was opened (`FEATURES.md` §4). Needs
-a small persisted store, decided at step start (it could share GRDB with the clipboard).
+## 4. Running apps (feature 7)
 
-## 3. Running apps and the actions panel (⌘K)
+Status: **todo**. A running indicator on app rows. Apps are tracked in most-recently-used order for the `running`
+empty state.
 
-Status: **todo**. Show a running indicator. ⌘K opens a sub-view with Quit, Force Quit (running apps only) and Reveal
-in Finder. ⎋ goes back one level.
+## 5. Learned ranking and the empty state (feature 6, decisions 11–13)
 
-## 4. Files and folders index
+Status: **todo**. A history of what you open, kept on disk off the main thread, adds a frequency and recency boost to
+the match score. Before you type, the launcher shows recent items, running apps, or nothing.
 
-Status: **todo**. Index the configured folders with ignore patterns and a maximum depth, kept fresh by FSEvents
-(`FEATURES.md` §4.2–4.3). This needs a generic index (`AppIndex` is apps-only) and probably a search off the main
-thread: 1–2 letter queries over 100k names take up to 7 ms today, above the 5 ms target. Building an index of 100k
-items takes ~0.9 s.
+## 6. ⌘K actions (feature 8)
 
-## 5. File and folder actions
+Status: **todo**. ⌘K on an app lists Open, Reveal in Finder, and Quit and Force Quit for running apps. Typing filters
+the list, ⏎ runs an action, and ⎋ goes back to the results.
 
-Status: **todo**. Open, Reveal in Finder, Copy path, Open with…, Quick Look (also Space and ⌘Y), Copy file, Zip
-(`ditto`, in the background), Move to Trash, Open in terminal.
+## 7. Icons follow the icon style (feature 10)
 
-## 6. Config file and app commands
+Status: **todo**. Icons render under the current appearance and re-render when the light/dark appearance or the
+system icon style (Default, Dark, Clear, Tinted) changes.
 
-Status: **todo**. `~/.config/launcher/config.toml` (library picked at step start), reloaded on save. Hotkeys, folders,
-ignore patterns and the terminal app become configurable. Add the launcher commands Open config, Reload config and
-Quit launcher (`FEATURES.md` §7–8).
+## 8. Launch at login (feature 18, decision 14)
 
-## 7. Launch at login and a performance pass
+Status: **todo**. `SMAppService`, on by default, registered only by a copy running from an Applications folder.
+`make install` puts the app in `~/Applications`.
 
-Status: **todo**. Launch at login through `SMAppService`, which needs a stable install location. Measure hotkey →
-visible, keystroke → results, idle CPU and idle RAM against the `FEATURES.md` §1 targets.
+## 9. Performance pass
+
+Status: **todo**. Measure ⌘P → visible, keystroke → results, idle CPU, idle memory and threads against `FEATURES.md`
+§1, and fix whatever is over: the 39 ms first ⌘P, and keystrokes still over 5 ms.
