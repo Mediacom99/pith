@@ -10,6 +10,13 @@ public struct TemporaryDirectory: ~Copyable {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     }
 
+    /// The path with symlinks resolved (/private/var/…), as FSEvents reports it.
+    public var canonicalPath: String {
+        guard let real = realpath(url.path, nil) else { return url.path }
+        defer { free(real) }
+        return String(cString: real)
+    }
+
     public func makeFolder(_ path: String) throws {
         try FileManager.default.createDirectory(at: url.appending(path: path), withIntermediateDirectories: true)
     }

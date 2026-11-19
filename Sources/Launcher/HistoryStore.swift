@@ -36,6 +36,17 @@ final class HistoryStore {
         writer.async { Self.write(snapshot, to: file) }
     }
 
+    /// Forgets deleted files and folders, saving only if that changed anything.
+    func forget(paths: [String]) {
+        var updated = history
+        updated.forget(paths: paths)
+        guard updated != history else { return }
+        history = updated
+        let snapshot = updated
+        let file = self.file
+        writer.async { Self.write(snapshot, to: file) }
+    }
+
     /// Waits for pending saves: called when the app quits.
     func flush() {
         writer.sync {}

@@ -43,9 +43,18 @@ Waiting for Edoardo's run.
 
 ## 3. Live updates
 
-Status: **todo**. FSEvents with per-file events on the configured folders, with ~/Library excluded at the source.
-Created, removed and renamed items are patched into the index on its queue. Dropped events trigger a rescan of that
-subtree. No rescans of the whole tree.
+Status: **in review**.
+- The engine owns an FSEvents stream with per-file events on its roots, delivered straight onto its queue, with the
+  ignore list's paths (`~/Library`) excluded at the source.
+- An event under a folder that isn't indexed (hidden, ignored, too deep) is dropped with a hash lookup and no
+  file-system call. Otherwise one `lstat` decides whether to add, update or remove, so repeated and out-of-order
+  events are harmless.
+- A folder that appears is scanned with its contents; dropped events trigger a rescan of that subtree. Events during
+  a rebuild are buffered and replayed.
+- Roots are resolved with `realpath`, because FSEvents reports real paths. Deleted files and folders are also dropped
+  from the history.
+- Covered by tests on real FSEvents: new files, folders moved in, deletions and renames (each picked up within about
+  1 s), and ignored or too-deep items kept out.
 
 ## 4. Config
 

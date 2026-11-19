@@ -29,7 +29,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let configStore = ConfigStore()
     private let history = HistoryStore()
     private let hotKeys = HotKeyCenter()
-    private let files = FileSearchEngine()
+    private lazy var files = FileSearchEngine { [weak self] removed in
+        Task { @MainActor in self?.history.forget(paths: removed) }
+    }
     private var fileRules: FileRules?
     private var panel: LauncherPanel?
     private var launcherHotkey: (hotkey: Hotkey, id: HotKeyCenter.ID)?

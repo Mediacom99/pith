@@ -30,10 +30,15 @@ public struct Config: Sendable, Equatable {
 
     public init() {}
 
-    /// What the file index scans, with `~` expanded.
+    /// What the file index scans, with `~` expanded and symlinks resolved: FSEvents reports real paths, so a
+    /// symlinked folder would otherwise never see its changes.
     public func fileRules(home: String = NSHomeDirectory()) -> FileRules {
         let roots = folders.map { folder -> String in
             var path = folder == "~" || folder.hasPrefix("~/") ? home + folder.dropFirst() : folder
+            if let real = realpath(path, nil) {
+                path = String(cString: real)
+                free(real)
+            }
             while path.count > 1, path.hasSuffix("/") { path.removeLast() }
             return path
         }

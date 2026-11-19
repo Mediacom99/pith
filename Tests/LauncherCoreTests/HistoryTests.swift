@@ -58,6 +58,24 @@ struct HistoryTests {
         #expect(history.frecency(of: "busy", now: now) > 0, "the most used item survives")
     }
 
+    @Test func forgetsDeletedFilesAndWhatWasInDeletedFolders() {
+        var history = History()
+        for id in [
+            "file:/u/a.txt", "folder:/u/Docs", "file:/u/Docs/b.txt", "file:/u/Docs2/c.txt", "/Applications/X.app",
+        ] {
+            history.record(id, at: now)
+        }
+        history.forget(paths: ["/u/a.txt", "/u/Docs"])
+        #expect(Set(history.recent(limit: 10)) == ["file:/u/Docs2/c.txt", "/Applications/X.app"])
+    }
+
+    @Test func fileBoostsAreByPath() {
+        var history = History()
+        history.record("file:/u/a.txt", at: now)
+        history.record("/Applications/X.app", at: now)
+        #expect(history.fileBoosts(now: now) == ["/u/a.txt": 12])
+    }
+
     @Test func roundTripsThroughJSON() throws {
         var history = History()
         history.record("a", at: now)

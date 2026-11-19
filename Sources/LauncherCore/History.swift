@@ -40,6 +40,15 @@ public struct History: Sendable, Codable, Equatable {
         entries[id] = nil
     }
 
+    /// Forgets files and folders that were deleted: each path, and for folders everything under it.
+    public mutating func forget(paths: [String]) {
+        guard !paths.isEmpty else { return }
+        for id in Array(entries.keys) {
+            guard let path = Item(fileID: id)?.url?.path else { continue }
+            if paths.contains(where: { path == $0 || path.hasPrefix($0 + "/") }) { entries[id] = nil }
+        }
+    }
+
     /// The ranking boost of each file and folder in the history, by path, for the file index.
     public func fileBoosts(now: Date = .now) -> [String: Int32] {
         var boosts: [String: Int32] = [:]

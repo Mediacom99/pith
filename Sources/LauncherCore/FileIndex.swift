@@ -73,16 +73,16 @@ public struct FileIndex: Sendable {
     }
 
     /// Adds `path`, or updates whether it's a folder. Returns false if `path` is outside the index: not under a root,
-    /// or its parent folder isn't indexed (ignored, or too deep).
+    /// its parent folder isn't indexed (ignored, or a file), or it would be deeper than `maxDepth`.
     @discardableResult
-    public mutating func insert(_ path: String, isFolder: Bool) -> Bool {
+    public mutating func insert(_ path: String, isFolder: Bool, maxDepth: Int = .max) -> Bool {
         if let entry = entry(at: path) {
             guard flags[Int(entry)] & Self.root == 0 else { return true }
             flags[Int(entry)] = (flags[Int(entry)] & ~Self.folder) | (isFolder ? Self.folder : 0)
             return true
         }
         guard let slash = path.lastIndex(of: "/"), let parent = entry(at: String(path[..<slash])),
-            flags[Int(parent)] & Self.folder != 0
+            flags[Int(parent)] & Self.folder != 0, depth(of: parent) < maxDepth
         else { return false }
         add(name: String(path[path.index(after: slash)...]), parent: parent, isFolder: isFolder)
         return true
