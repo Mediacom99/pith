@@ -1,32 +1,7 @@
 import Foundation
 import LauncherCore
+import TestSupport
 import Testing
-
-/// A fresh folder under the system temporary directory, deleted when it goes out of scope.
-struct TemporaryDirectory: ~Copyable {
-    let url: URL
-
-    init() throws {
-        url = FileManager.default.temporaryDirectory
-            .appending(path: "LauncherTests-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-    }
-
-    func makeFolder(_ path: String) throws {
-        try FileManager.default.createDirectory(at: url.appending(path: path), withIntermediateDirectories: true)
-    }
-
-    /// An empty file, with its folders.
-    func makeFile(_ path: String) throws {
-        let file = url.appending(path: path)
-        try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Data().write(to: file)
-    }
-
-    deinit {
-        try? FileManager.default.removeItem(at: url)
-    }
-}
 
 struct AppScannerTests {
     @Test func includesExtrasLikeFinder() {

@@ -1,5 +1,6 @@
 import Foundation
 import LauncherCore
+import TestSupport
 import Testing
 
 struct DirectoryWatcherTests {

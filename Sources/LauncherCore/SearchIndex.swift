@@ -34,17 +34,22 @@ public struct SearchIndex: Sendable {
     /// Ranked by match score plus `boosts[index]` (the learned ranking, see `History.boosts`; pass none to rank by
     /// match alone), then by shorter name, then alphabetically.
     public func search(_ query: String, limit: Int, boosts: [Int32] = []) -> [Int] {
+        scoredSearch(query, limit: limit, boosts: boosts).map(\.index)
+    }
+
+    /// The same, with each match's score (boost included), for merging with file results.
+    public func scoredSearch(_ query: String, limit: Int, boosts: [Int32] = []) -> [(index: Int, score: Int32)] {
         var matcher = FuzzyMatcher(query: query)
         guard !matcher.isEmpty else { return [] }
         let boosted = boosts.count == items.count
 
-        var hits: [(score: Int32, index: Int)] = []
+        var hits: [(index: Int, score: Int32)] = []
         for index in items.indices {
             var best = matcher.score(names[index])
             if let fileName = fileNames[index], let score = matcher.score(fileName), score > best ?? .min {
                 best = score
             }
-            if let best { hits.append((boosted ? best + boosts[index] : best, index)) }
+            if let best { hits.append((index, boosted ? best + boosts[index] : best)) }
         }
         hits.sort { a, b in
             if a.score != b.score { return a.score > b.score }
@@ -52,6 +57,6 @@ public struct SearchIndex: Sendable {
             let lengthB = names[b.index].bytes.count
             return lengthA != lengthB ? lengthA < lengthB : a.index < b.index
         }
-        return hits.prefix(limit).map(\.index)
+        return Array(hits.prefix(limit))
     }
 }

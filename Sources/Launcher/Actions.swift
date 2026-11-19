@@ -26,8 +26,8 @@ nonisolated enum AppAction: CaseIterable {
     }
 
     /// Quit and Force Quit only make sense for a running app.
-    static func available(running: Bool) -> [AppAction] {
-        running ? allCases : [.open, .reveal]
+    static func available(for item: Item, running: Bool) -> [AppAction] {
+        item.isApp && running ? allCases : [.open, .reveal]
     }
 }
 

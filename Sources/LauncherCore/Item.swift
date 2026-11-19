@@ -1,17 +1,20 @@
 import Foundation
 
-/// Something the launcher can find and open: an app or one of the launcher's own commands.
+/// Something the launcher can find and open: an app, a file, a folder, or one of the launcher's own commands.
 public struct Item: Sendable, Hashable {
     public enum Kind: Sendable, Hashable {
         case app(URL)
+        case file(URL)
+        case folder(URL)
         case command(Command)
     }
 
     public let kind: Kind
-    /// What the row shows and the query matches: an app's localized name, a command's title.
+    /// What the row shows and the query matches: an app's localized name, a file's or folder's name, a command's
+    /// title.
     public let name: String
     /// Stable identity for the history and for matching running apps: an app's bundle path with symlinks resolved,
-    /// `command:<name>` for a command.
+    /// `file:<path>` or `folder:<path>`, `command:<name>` for a command.
     public let id: String
 
     /// `id` defaults to the path as given; the scanner passes the resolved one.
@@ -27,9 +30,37 @@ public struct Item: Sendable, Hashable {
         id = "command:\(command.rawValue)"
     }
 
-    /// The app bundle, for apps.
+    public init(path: String, isFolder: Bool) {
+        let url = URL(filePath: path, directoryHint: isFolder ? .isDirectory : .notDirectory)
+        kind = isFolder ? .folder(url) : .file(url)
+        name = url.lastPathComponent
+        id = (isFolder ? Self.folderPrefix : Self.filePrefix) + path
+    }
+
+    /// The item a history id stands for, when it's a file or folder.
+    public init?(fileID id: String) {
+        if id.hasPrefix(Self.filePrefix) {
+            self.init(path: String(id.dropFirst(Self.filePrefix.count)), isFolder: false)
+        } else if id.hasPrefix(Self.folderPrefix) {
+            self.init(path: String(id.dropFirst(Self.folderPrefix.count)), isFolder: true)
+        } else {
+            return nil
+        }
+    }
+
+    static let filePrefix = "file:"
+    static let folderPrefix = "folder:"
+
+    /// Where it is on disk: an app bundle, a file or a folder.
     public var url: URL? {
-        if case .app(let url) = kind { url } else { nil }
+        switch kind {
+        case .app(let url), .file(let url), .folder(let url): url
+        case .command: nil
+        }
+    }
+
+    public var isApp: Bool {
+        if case .app = kind { true } else { false }
     }
 }
 

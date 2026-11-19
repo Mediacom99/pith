@@ -1,16 +1,31 @@
 import AppKit
 
-/// One row: icon, title, and a dot under the icon when the app is running. Laid out with fixed frames (no Auto
-/// Layout) and reused by the table as rows change.
+/// One row: icon, title, an optional detail (a file's folder) after it, and a dot under the icon when the app is
+/// running. Laid out with fixed frames (no Auto Layout) and reused by the table as rows change.
 final class ResultCell: NSTableCellView {
     static let identifier = NSUserInterfaceItemIdentifier("ResultCell")
 
     let icon = IconView()
     private let runningDot = DotView()
+    private let detailLabel = NSTextField(labelWithString: "")
 
     var isRunning: Bool {
         get { !runningDot.isHidden }
         set { runningDot.isHidden = !newValue }
+    }
+
+    /// Shown after the title in the secondary color, cut from the start when it doesn't fit.
+    var detail: String {
+        get { detailLabel.stringValue }
+        set {
+            guard newValue != detailLabel.stringValue else { return }
+            detailLabel.stringValue = newValue
+            needsLayout = true
+        }
+    }
+
+    override var backgroundStyle: NSView.BackgroundStyle {
+        didSet { detailLabel.cell?.backgroundStyle = backgroundStyle }
     }
 
     init() {
@@ -34,10 +49,37 @@ final class ResultCell: NSTableCellView {
             height: titleHeight)
         title.autoresizingMask = [.width]
 
+        detailLabel.font = .systemFont(ofSize: 12)
+        detailLabel.textColor = .secondaryLabelColor
+        detailLabel.lineBreakMode = .byTruncatingHead
+        let detailHeight = ceil(detailLabel.intrinsicContentSize.height)
+        detailLabel.frame = NSRect(
+            x: 0, y: ((Layout.rowHeight - detailHeight) / 2).rounded(), width: 0, height: detailHeight)
+
         addSubview(icon)
         addSubview(runningDot)
         addSubview(title)
+        addSubview(detailLabel)
         textField = title
+    }
+
+    /// The title takes what it needs, up to two thirds of the row; the detail gets the rest.
+    override func layout() {
+        super.layout()
+        guard let title = textField else { return }
+        let end = bounds.width - 8
+        guard !detailLabel.stringValue.isEmpty else {
+            title.frame.size.width = end - title.frame.minX
+            detailLabel.isHidden = true
+            return
+        }
+        let available = end - title.frame.minX
+        let titleWidth = min(ceil(title.intrinsicContentSize.width), (available * 2 / 3).rounded())
+        title.frame.size.width = titleWidth
+        let detailX = title.frame.maxX + 10
+        detailLabel.frame.origin.x = detailX
+        detailLabel.frame.size.width = max(0, end - detailX)
+        detailLabel.isHidden = false
     }
 
     @available(*, unavailable)

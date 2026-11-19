@@ -33,6 +33,23 @@ public struct History: Sendable, Codable, Equatable {
         }
     }
 
+    /// Every remembered item id.
+    public var ids: some Collection<String> { entries.keys }
+
+    public mutating func remove(_ id: String) {
+        entries[id] = nil
+    }
+
+    /// The ranking boost of each file and folder in the history, by path, for the file index.
+    public func fileBoosts(now: Date = .now) -> [String: Int32] {
+        var boosts: [String: Int32] = [:]
+        for id in entries.keys {
+            guard let item = Item(fileID: id), let path = item.url?.path else { continue }
+            boosts[path] = Self.boost(frecency: frecency(of: id, now: now))
+        }
+        return boosts
+    }
+
     /// Item ids, most recently opened first.
     public func recent(limit: Int) -> [String] {
         entries.sorted { ($0.value.opens.last ?? 0) > ($1.value.opens.last ?? 0) }.prefix(limit).map(\.key)

@@ -29,6 +29,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let configStore = ConfigStore()
     private let history = HistoryStore()
     private let hotKeys = HotKeyCenter()
+    private let files = FileSearchEngine()
+    private var fileRules: FileRules?
     private var panel: LauncherPanel?
     private var launcherHotkey: (hotkey: Hotkey, id: HotKeyCenter.ID)?
     private var appsWatcher: DirectoryWatcher?
@@ -37,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Built now, so the hotkey only has to show it.
-        let launcher = LauncherViewController(history: history, running: RunningApps())
+        let launcher = LauncherViewController(history: history, running: RunningApps(), files: files)
         launcher.runCommand = { [weak self] in self?.run($0) }
         panel = LauncherPanel(launcher: launcher)
 
@@ -77,6 +79,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         panel.launcher.emptyState = config.emptyState
         panel.launcher.problems = problems
+
+        let rules = config.fileRules()
+        if rules != fileRules {
+            fileRules = rules
+            Task { [files] in await files.rebuild(rules) }
+        }
 
         if !hasAppliedConfig || previous.launchAtLogin != config.launchAtLogin {
             LoginItem.update(enabled: config.launchAtLogin)

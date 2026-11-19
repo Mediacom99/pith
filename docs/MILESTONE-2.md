@@ -23,11 +23,23 @@ Status: **done** (core library; the app uses it from step 2).
 
 ## 2. Search across apps and files
 
-Status: **todo**.
-- The file index has its own serial queue. Each search is spread over the cores and returns the top matches
-  asynchronously, so the main thread never waits; a newer keystroke makes older searches skip.
-- One ranked list with apps (decision 19), boosted by the history. Recently opened files show in `recent`.
-- File rows show the name and the folder path.
+Status: **in review**.
+- Each keystroke searches the apps synchronously and the files on the file engine's queue, then shows one list.
+  Apps get a +24 head start (decision 19), and the history boosts both.
+- The settings `folders`, `ignore` and `max_depth` (from step 4) set what's indexed; changing them rebuilds the
+  index.
+- File rows show the name, then the folder (`~/…`, cut from the start when long), with icons per type (folder, per
+  extension, an app's own) rendered on first sight off the main thread.
+- `recent` lists files and folders too; deleted ones are dropped from the history when it loads.
+- Opening a file uses its default app (`[open_with]` comes in step 5), and a folder opens in Finder.
+- ⌘K on a file offers Open and Reveal for now. Leaving ⌘K restores the results and selection without searching
+  again.
+- The table never rebuilds its cells: results reconfigure the cells on screen, and an empty list only hides them.
+  That took per-keystroke work from 3.8 ms to 1.5 ms (apps + 35.6k files, offscreen), and showing the panel from
+  1.7 ms to 0.3 ms.
+
+Covered by UI tests: merged results with folder detail, apps first on equal matches, files in `recent`, file actions.
+Waiting for Edoardo's run.
 
 ## 3. Live updates
 
@@ -37,8 +49,9 @@ subtree. No rescans of the whole tree.
 
 ## 4. Config
 
-Status: **todo**. `[launcher] folders`, `ignore` and `max_depth`; `[actions] terminal`; `[open_with]` (extension or type →
-app name, bundle id or path, decision 15). Problems show as rows, like the existing settings.
+Status: **in progress**. `folders`, `ignore`, `max_depth`, `terminal` and `[open_with]` are parsed, documented in
+the template and tested. What's left is resolving `terminal` and `[open_with]` app names to apps, with problems for
+unknown apps; that lands with the actions in step 5.
 
 ## 5. File and folder actions (features 12, 14)
 

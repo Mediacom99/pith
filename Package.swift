@@ -23,11 +23,14 @@ let package = Package(
             dependencies: ["LauncherCore"],
             swiftSettings: concurrency + [.defaultIsolation(MainActor.self)]
         ),
-        .testTarget(name: "LauncherCoreTests", dependencies: ["LauncherCore"], swiftSettings: concurrency),
+        // Helpers shared by the test targets: temporary folders on the real file system.
+        .target(name: "TestSupport", path: "Tests/TestSupport", swiftSettings: concurrency),
+        .testTarget(
+            name: "LauncherCoreTests", dependencies: ["LauncherCore", "TestSupport"], swiftSettings: concurrency),
         // AppKit layout and drawing, in panels that are never put on screen.
         .testTarget(
             name: "LauncherTests",
-            dependencies: ["Launcher"],
+            dependencies: ["Launcher", "TestSupport"],
             swiftSettings: concurrency + [.defaultIsolation(MainActor.self)]
         ),
     ]

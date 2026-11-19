@@ -17,7 +17,16 @@ final class HistoryStore {
     /// Called once at launch, before the hotkey is registered, so nothing can be recorded before it lands.
     func load() async {
         let file = self.file
-        history = await runInBackground(qos: .userInitiated) { Self.read(file) }
+        history = await runInBackground(qos: .userInitiated) {
+            var history = Self.read(file)
+            // Files and folders deleted since: forget them, so `recent` never lists what's gone.
+            for id in Array(history.ids) {
+                if let path = Item(fileID: id)?.url?.path, !FileManager.default.fileExists(atPath: path) {
+                    history.remove(id)
+                }
+            }
+            return history
+        }
     }
 
     func record(_ id: String) {
