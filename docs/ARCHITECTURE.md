@@ -15,18 +15,15 @@ supersede an earlier one.
 | 6 | 2026-11-19 | Indexes live in memory and search is fuzzy. Nothing touches disk or network while typing. | FEATURES §1. | Edoardo |
 | 7 | 2026-11-19 | Minimal dependencies: system frameworks first. A third-party library has to clearly beat a little code of our own. | Speed, size, nothing to keep updated. | Edoardo |
 | 8 | 2026-11-19 | Milestone 1 is the launcher. Clipboard and calculator come in later milestones. | Scope. | Edoardo |
+| 9 | 2026-11-19 | Speed and efficiency come before looks: a plain panel that is excellent on latency, memory, threads and energy. Styling comes later. The rules are in `AGENTS.md` (Performance). | It's a small app, so it has to be excellent at what it does. | Edoardo |
 
 ## Principles
 
-- **Work happens before the keystroke.** Scanning, folding and per-item bonuses are computed at index time. Per
-  keystroke we only compare bytes.
-- **Nothing in a hot path allocates per item.** The matcher reuses one scratch buffer; each search allocates only its
-  result arrays.
+- **Performance rules live in `AGENTS.md`.** That covers threads, idling, preparing ahead of time, hot paths, memory,
+  drawing and measuring.
 - **Pure logic is separate from AppKit.** `LauncherCore` never imports AppKit, and it's tested against the real file
   system, without mocks.
-- **The main actor is the default.** The app target is main-actor isolated. Scanning runs on a detached task, and
-  results come back to the main actor.
-- **Performance gets measured in Release** (`make bench`, `make app`).
+- **The main actor owns all state.** Workers compute and hand back values; nothing is shared, so nothing is locked.
 
 ## System overview
 
@@ -40,24 +37,28 @@ Sources/
     DirectoryWatcher.swift FSEvents → callback with the changed folders
   Launcher/                the AppKit app, main actor by default
     main.swift             NSApplication with the accessory policy
-    AppDelegate.swift      wiring: panel, ⌘P, index (re)builds
-    HotKeyCenter.swift     global hotkeys via Carbon RegisterEventHotKey
-    LauncherPanel.swift    the NSPanel: show/hide, collapse/expand, key routing, Layout constants
+    AppDelegate.swift      wiring: panel, ⌘P, index (re)builds; Log (incl. latency logging)
+    Background.swift       runInBackground: blocking work on a GCD worker, awaited from the main actor
+    HotKeyCenter.swift     global hotkeys via Carbon RegisterEventHotKey, with the press timestamp
+    LauncherPanel.swift    the NSPanel: show/hide, key routing, Layout constants
     LauncherViewController.swift  search field + NSTableView, keyboard commands, opening apps
-    ResultViews.swift      reusable cell and row views, icon cache
+    IconStore.swift        app icons pre-rendered to exact-size bitmaps, in parallel, off the main thread
+    ResultViews.swift      fixed-frame cell, bitmap IconView, row view
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement), copied in by `make app`
 ```
 
-**Startup.** `AppDelegate` builds the panel and its view hierarchy, registers ⌘P, then scans the app folders on a
-detached task. The resulting `AppIndex` is handed to the view controller. An FSEvents stream on the same folders
-triggers a rescan, unless the change is inside a bundle (app updates, caches). The newest rescan always wins.
+**Startup.** `AppDelegate` builds and draws the panel, registers ⌘P, then scans the app folders on a worker. The new
+`AppIndex` goes to the view controller, which has `IconStore` render the icons it doesn't have yet. An FSEvents stream
+on the app folders triggers a rescan, unless the change is inside a bundle (app updates, caches). The newest rescan
+always wins.
 
-**⌘P.** The Carbon handler runs on the main thread and toggles the panel. To show it, the panel is placed on the
-screen under the mouse pointer and made key without activating the app.
+**⌘P.** The Carbon handler runs on the main thread with the key press's timestamp. The panel is moved to the screen
+under the mouse pointer and made key without activating the app. The time from the key press to the panel being drawn
+goes to the `perf` log.
 
-**Typing.** Each keystroke runs `AppIndex.search` synchronously on the main thread. The view controller reloads the
-table and selects the first row. The panel grows to its full height when there are results and shrinks back to the
-search bar when there are none. Its top edge never moves.
+**Typing.** Each keystroke runs `AppIndex.search` synchronously on the main thread (microseconds). The table reloads
+only when the matches changed, and its rows show icons already rendered as bitmaps. The time from the keyDown to the
+results being drawn goes to the `perf` log.
 
 **Keys.** The field editor turns ↑ ↓ ⏎ ⎋ into commands (`moveUp:`, `insertNewline:` …), and the panel reroutes ⌃K and
 ⌃J into the same commands. One delegate method handles them all, so an input method that is composing text keeps its
@@ -65,6 +66,17 @@ keys. ⌘X/C/V/A/Z are routed by hand, because an agent app has no main menu to 
 
 **Opening.** ⏎ or a double click hides the panel and calls `NSWorkspace.openApplication`, which launches the app or
 brings it to the front if it's already running. Losing focus also hides the panel. Every hide empties the field.
+
+### Threads
+
+| Thread | Runs | Never |
+|---|---|---|
+| Main | Events, the hotkey handler, FSEvents callbacks (cheap filter), search, table updates, applying results | File I/O, icon rendering, waiting on anything |
+| GCD worker (`runInBackground`, `.utility`) | The app folder scan, then building the `AppIndex` (~15 ms) | Touching UI or shared state |
+| GCD workers (`concurrentPerform`, one per core, `.userInitiated`) | Rendering missing icons in parallel, each into its own slot | Touching UI or shared state |
+| Swift cooperative pool | Only awaiting; nothing blocks on it | Blocking calls |
+
+At idle, nothing is scheduled: no timers, no polling. Workers exist only while there is work.
 
 ### Matching and ranking
 
@@ -78,21 +90,34 @@ brings it to the front if it's already running. Losing focus also hides the pane
 - Apps match on their localized name and, when it differs, on their file name, so "calcu" finds Calcolatrice.
 - Ranking: best score, then shorter name, then alphabetical. Frequency and recency come in milestone step 2.
 
-### Measured (`make bench`, Release, this Mac)
+### Icons
 
-| Case | Result |
-|---|---|
-| Scan of the 3 app folders (113 apps) | ~12–15 ms, off the main thread |
-| Search over installed apps | ≤ 0.003 ms per keystroke |
-| Search over 100k synthetic names | 0.3–7 ms; 1–2 letter queries are the slow end |
+The first draw of an app icon costs ~5 ms on average and ~38 ms at worst (measured over 108 apps), because IconServices
+renders the layered icon on demand. Drawing it on the main thread while typing is what made the first build stutter.
+Now `IconStore` renders every app's icon once, right after indexing. It works on all cores, into a 56×56 px BGRA bitmap
+(28 pt at the screen's scale), and a row only sets that bitmap as its layer's contents. The 108 icons render in about
+10 ms when IconServices' cache is warm, and take ~1.4 MB in all. A row whose icon isn't ready yet shows none until the
+batch lands. The icons don't yet follow the dark or tinted icon style.
+
+### Measured (this Mac)
+
+| Case | Result | How |
+|---|---|---|
+| Scan of the 3 app folders (113 apps) | ~12–15 ms, on a worker | `make bench` |
+| Search over installed apps | ≤ 0.003 ms per keystroke | `make bench` |
+| Search over 100k synthetic names | 0.3–7 ms; 1–2 letter queries are the slow end | `make bench` |
+| ⌘P → panel drawn, keystroke → results drawn | to be measured on Edoardo's run | `make logs` |
+| Idle memory, CPU, threads | to be measured on Edoardo's run | `make stats` |
 
 ## Visual decisions
 
+Speed first and style later (decision 9), so this is the plain, fast version.
+
 | Element | Choice | By |
 |---|---|---|
-| Panel | 680 pt wide. A 56 pt search bar that grows to 8 rows × 40 pt (plus 6 pt insets) when there are results. The top edge stays fixed. | Claude |
-| Position | Centered on the screen under the mouse pointer, which is how "the active screen" is defined. The expanded panel is centered, and the bar is its top edge. | Claude |
-| Material | `NSGlassEffectView` (Liquid Glass) with a 20 pt corner radius. Light and dark follow the system. | Claude |
+| Panel | Fixed size, 680 × 389 pt: a 56 pt search bar plus 8 rows × 40 pt. It never resizes. | Claude |
+| Surface | An opaque window in the system window-background color, with square corners and the system shadow. No glass or blur, so the window server never blends or blurs what's behind. | Claude |
+| Position | Centered on the screen under the mouse pointer, which is how "the active screen" is defined. | Claude |
 | Type | Search field 22 pt regular with a magnifying glass symbol and a "Search" placeholder. Rows 15 pt with 28 pt icons. | Claude |
 | Selection | System inset table style in the accent color, always drawn emphasized (the focus stays in the search field). | Claude |
 | Motion | None: the panel appears and disappears without animation. | Claude |
@@ -106,8 +131,10 @@ No third-party dependencies.
 | Global hotkey | Carbon `RegisterEventHotKey` (system) | No dependency and no Accessibility permission. `KeyboardShortcuts` wraps the same API and adds a recorder UI we don't need, since config is TOML. |
 | Fuzzy matching | Our own, fzf v2-style (`FuzzyMatcher`, ~150 lines) | Tuned to our byte layout, with no per-item allocation. Swift fuzzy libraries allocate per candidate and score worse on word starts. |
 | File-system changes | FSEvents (system) | Coalesced, cheap, no polling. |
-| App launching, icons | `NSWorkspace` (system) | Launches or brings to front in one call. Icons are cached in `NSCache`. |
-| Logging | `os.Logger` (system) | |
+| App launching | `NSWorkspace` (system) | Launches or brings to front in one call. |
+| Icons | `NSWorkspace.icon(forFile:)` drawn into a CoreGraphics bitmap (system) | Rendered once off the main thread at the exact pixel size; no image library needed. |
+| Background work | GCD (`DispatchQueue.global`, `concurrentPerform`) behind `async` | Blocking work stays off both the main thread and Swift's cooperative pool. |
+| Logging | `os.Logger` (system) | Debug-level latency logs cost next to nothing unless streamed. |
 | Tests | Swift Testing (toolchain) | The current standard over XCTest. |
 | Formatting | swift-format (toolchain), configured in `.swift-format` | Ships with Swift, so nothing to install. |
 

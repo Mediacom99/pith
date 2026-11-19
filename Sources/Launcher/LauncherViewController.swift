@@ -4,30 +4,31 @@ import LauncherCore
 /// The search field and the result list.
 ///
 /// Searching runs synchronously on the main thread: the app index holds a few hundred entries and a search takes
-/// microseconds (`make bench`).
+/// microseconds (`make bench`). Everything is laid out with fixed frames, since the panel never changes size.
 final class LauncherViewController: NSViewController {
     var index = AppIndex.empty {
-        didSet { search() }
+        didSet {
+            icons.load(index.apps.map(\.url)) { [weak self] in self?.refreshVisibleIcons() }
+            show(index.search(searchField.stringValue, limit: Self.resultLimit))
+        }
     }
 
     private static let resultLimit = 50
 
     private let searchField = NSTextField()
-    private let separator = NSBox()
-    private let scrollView = NSScrollView()
     private let tableView = NSTableView()
-    private let icons = IconCache()
+    private let icons = IconStore()
     /// Indices into `index.apps`, best match first.
     private var results: [Int] = []
 
     private var panel: LauncherPanel? { viewIfLoaded?.window as? LauncherPanel }
 
     override func loadView() {
-        let size = NSRect(x: 0, y: 0, width: Layout.width, height: Layout.barHeight)
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: Layout.width, height: Layout.height))
+        let barMidY = Layout.height - Layout.barHeight / 2
 
-        let searchIcon = NSImageView(
-            image: NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil) ?? NSImage()
-        )
+        let searchIcon = NSImageView(frame: NSRect(x: 20, y: barMidY - 10, width: 20, height: 20))
+        searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
         searchIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 18, weight: .medium)
         searchIcon.contentTintColor = .secondaryLabelColor
 
@@ -39,7 +40,12 @@ final class LauncherViewController: NSViewController {
         searchField.cell?.isScrollable = true
         searchField.cell?.wraps = false
         searchField.delegate = self
+        let fieldHeight = ceil(searchField.intrinsicContentSize.height)
+        searchField.frame = NSRect(
+            x: 52, y: (barMidY - fieldHeight / 2).rounded(), width: Layout.width - 72, height: fieldHeight)
 
+        let separator = NSBox(
+            frame: NSRect(x: 0, y: Layout.height - Layout.barHeight - 1, width: Layout.width, height: 1))
         separator.boxType = .separator
 
         tableView.addTableColumn(NSTableColumn(identifier: NSUserInterfaceItemIdentifier("result")))
@@ -54,6 +60,8 @@ final class LauncherViewController: NSViewController {
         tableView.target = self
         tableView.doubleAction = #selector(openClickedRow)
 
+        let scrollView = NSScrollView(
+            frame: NSRect(x: 0, y: 0, width: Layout.width, height: Layout.height - Layout.barHeight - 1))
         scrollView.documentView = tableView
         scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = true
@@ -62,36 +70,10 @@ final class LauncherViewController: NSViewController {
         scrollView.contentInsets = NSEdgeInsets(
             top: Layout.resultsInset, left: 0, bottom: Layout.resultsInset, right: 0)
 
-        let content = NSView(frame: size)
-        content.autoresizingMask = [.width, .height]
         for subview in [searchIcon, searchField, separator, scrollView] {
-            subview.translatesAutoresizingMaskIntoConstraints = false
-            content.addSubview(subview)
+            root.addSubview(subview)
         }
-        // Gives way when the panel shrinks to the search bar.
-        let resultsBottom = scrollView.bottomAnchor.constraint(equalTo: content.bottomAnchor)
-        resultsBottom.priority = .defaultHigh
-        NSLayoutConstraint.activate([
-            searchIcon.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 20),
-            searchIcon.centerYAnchor.constraint(equalTo: content.topAnchor, constant: Layout.barHeight / 2),
-            searchField.leadingAnchor.constraint(equalTo: searchIcon.trailingAnchor, constant: 12),
-            searchField.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -20),
-            searchField.centerYAnchor.constraint(equalTo: searchIcon.centerYAnchor),
-            separator.topAnchor.constraint(equalTo: content.topAnchor, constant: Layout.barHeight),
-            separator.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            separator.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: separator.bottomAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            scrollView.heightAnchor.constraint(greaterThanOrEqualToConstant: 0),
-            resultsBottom,
-        ])
-
-        let glass = NSGlassEffectView(frame: size)
-        glass.cornerRadius = Layout.cornerRadius
-        glass.contentView = content
-        view = glass
-        showResults(false)
+        view = root
     }
 
     func focusSearchField() {
@@ -100,20 +82,20 @@ final class LauncherViewController: NSViewController {
 
     func reset() {
         searchField.stringValue = ""
-        search()
+        if !results.isEmpty { show([]) }
     }
 
-    private func search() {
-        results = index.search(searchField.stringValue, limit: Self.resultLimit)
+    private func show(_ found: [Int]) {
+        results = found
         tableView.reloadData()
-        if !results.isEmpty { select(row: 0) }
-        showResults(!results.isEmpty)
+        if !found.isEmpty { select(row: 0) }
     }
 
-    private func showResults(_ visible: Bool) {
-        separator.isHidden = !visible
-        scrollView.isHidden = !visible
-        panel?.setResultsVisible(visible)
+    private func refreshVisibleIcons() {
+        tableView.enumerateAvailableRowViews { rowView, row in
+            guard let cell = rowView.view(atColumn: 0) as? ResultCell, results.indices.contains(row) else { return }
+            cell.icon.image = icons.icon(for: index.apps[results[row]].url)
+        }
     }
 
     private func moveSelection(by offset: Int) {
@@ -148,7 +130,13 @@ final class LauncherViewController: NSViewController {
 
 extension LauncherViewController: NSTextFieldDelegate {
     func controlTextDidChange(_ notification: Notification) {
-        search()
+        let found = index.search(searchField.stringValue, limit: Self.resultLimit)
+        // Typing that doesn't change the matches leaves the list, and the selection, alone.
+        if found != results { show(found) }
+        if let keyDown = NSApp.currentEvent?.timestamp {
+            view.window?.displayIfNeeded()
+            Log.latency("keystroke → results drawn", since: keyDown)
+        }
     }
 
     /// All keyboard navigation goes through here: the field editor turns keys into commands (and leaves them to the
@@ -174,7 +162,7 @@ extension LauncherViewController: NSTableViewDataSource, NSTableViewDelegate {
         let cell = tableView.makeView(withIdentifier: ResultCell.identifier, owner: nil) as? ResultCell ?? ResultCell()
         let app = index.apps[results[row]]
         cell.textField?.stringValue = app.name
-        cell.imageView?.image = icons.icon(for: app.url)
+        cell.icon.image = icons.icon(for: app.url)
         return cell
     }
 

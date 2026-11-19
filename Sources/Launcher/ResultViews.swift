@@ -1,39 +1,61 @@
 import AppKit
 
-/// One result: icon and name. Reused by the table as rows scroll.
+/// One result: icon and name. Laid out with fixed frames (no Auto Layout) and reused by the table as rows change.
 final class ResultCell: NSTableCellView {
     static let identifier = NSUserInterfaceItemIdentifier("ResultCell")
 
+    let icon = IconView()
+
     init() {
-        super.init(frame: .zero)
+        // Any width: the table sizes the cell to the column and the title stretches with it.
+        let width: CGFloat = 600
+        super.init(frame: NSRect(x: 0, y: 0, width: width, height: Layout.rowHeight))
         identifier = Self.identifier
 
-        let icon = NSImageView()
-        icon.imageScaling = .scaleProportionallyUpOrDown
+        icon.frame = NSRect(
+            x: 8, y: ((Layout.rowHeight - Layout.iconSize) / 2).rounded(), width: Layout.iconSize,
+            height: Layout.iconSize)
+        icon.autoresizingMask = [.minYMargin, .maxYMargin]
+
         let title = NSTextField(labelWithString: "")
         title.font = .systemFont(ofSize: 15)
         title.lineBreakMode = .byTruncatingTail
-        title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let titleX = icon.frame.maxX + 10
+        let titleHeight = ceil(title.intrinsicContentSize.height)
+        title.frame = NSRect(
+            x: titleX, y: ((Layout.rowHeight - titleHeight) / 2).rounded(), width: width - titleX - 8,
+            height: titleHeight)
+        title.autoresizingMask = [.width, .minYMargin, .maxYMargin]
 
-        for subview in [icon, title] {
-            subview.translatesAutoresizingMaskIntoConstraints = false
-            addSubview(subview)
-        }
-        NSLayoutConstraint.activate([
-            icon.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            icon.centerYAnchor.constraint(equalTo: centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: Layout.iconSize),
-            icon.heightAnchor.constraint(equalToConstant: Layout.iconSize),
-            title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
-            title.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -8),
-            title.centerYAnchor.constraint(equalTo: centerYAnchor),
-        ])
-        imageView = icon
+        addSubview(icon)
+        addSubview(title)
         textField = title
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not used") }
+}
+
+/// Shows a ready-made bitmap as its layer's contents: no drawing, no scaling.
+final class IconView: NSView {
+    var image: CGImage? {
+        didSet { if image !== oldValue { needsDisplay = true } }
+    }
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layerContentsRedrawPolicy = .onSetNeedsDisplay
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.contents = image
+    }
 }
 
 /// Draws the selection in the accent color although the search field, not the table, has the focus.
@@ -51,18 +73,5 @@ final class ResultRowView: NSTableRowView {
     override var isEmphasized: Bool {
         get { true }
         set {}
-    }
-}
-
-/// App icons, loaded the first time a row shows them and kept in an `NSCache` (FEATURES.md §10).
-final class IconCache {
-    private let cache = NSCache<NSURL, NSImage>()
-
-    func icon(for url: URL) -> NSImage {
-        if let icon = cache.object(forKey: url as NSURL) { return icon }
-        let icon = NSWorkspace.shared.icon(forFile: url.path)
-        icon.size = NSSize(width: Layout.iconSize, height: Layout.iconSize)
-        cache.setObject(icon, forKey: url as NSURL)
-        return icon
     }
 }

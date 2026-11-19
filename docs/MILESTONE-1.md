@@ -7,19 +7,28 @@ Status values: **done**, **in review** (built and tested, waiting for Edoardo), 
 
 ## 1. Scaffold: panel, hotkey, app index, fuzzy search
 
-Status: **in review**. Built, 21 unit tests and lint pass, `make bench` measured. It hasn't been run on screen yet:
-Edoardo's first `make run` checks the glass look, focus, and that apps come to the front when opened from a
-non-active app.
+Status: **in review**. On Edoardo's first run the panel worked but icons stuttered: each one rendered on the main
+thread the first time it was shown (~5 ms each, up to ~38 ms). Since then:
+
+- icons are pre-rendered off the main thread;
+- the panel is plain, opaque and fixed-size;
+- rows use fixed frames;
+- the table reloads only when the matches change;
+- ⌘P and keystroke latencies are logged.
+
+The 21 tests and lint pass. Still to do: the second run, with `make logs` and `make stats` to measure on screen, and
+confirming that an opened app comes to the front.
 
 - Swift Package with `LauncherCore` (logic) and `Launcher` (AppKit). `make app` builds an ad-hoc signed `.app` with
   `LSUIElement`.
-- A pre-built, non-activating, borderless `NSPanel` with Liquid Glass, centered on the screen under the mouse. It's a
-  search bar that grows when there are results.
+- A pre-built, pre-drawn, non-activating, opaque `NSPanel`, centered on the screen under the mouse.
 - ⌘P registered through Carbon toggles the panel. It hides on ⎋, on losing focus, and after opening an app.
 - In-memory app index of `/Applications`, `/System/Applications` and `~/Applications`, up to 3 folders deep. It
-  matches on localized names and file names, and FSEvents triggers a rescan.
+  matches on localized names and file names, and FSEvents triggers a rescan. App icons are rendered once, in parallel,
+  on workers.
 - fzf-style fuzzy search. ↑/↓ and ⌃K/⌃J move, ⏎ (or a double click) opens.
-- Not yet: Finder isn't indexed (it lives in `/System/Library/CoreServices`).
+- Not yet: Finder isn't indexed (it lives in `/System/Library/CoreServices`), and icons ignore the dark or tinted icon
+  style.
 
 ## 2. Ranking learns from picks
 

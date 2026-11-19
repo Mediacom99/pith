@@ -8,21 +8,19 @@ enum Layout {
     static let visibleRows: CGFloat = 8
     static let resultsInset: CGFloat = 6
     static let iconSize: CGFloat = 28
-    static let cornerRadius: CGFloat = 20
-    static let expandedHeight = barHeight + 1 + visibleRows * rowHeight + 2 * resultsInset
+    static let height = barHeight + 1 + visibleRows * rowHeight + 2 * resultsInset
 }
 
-/// The launcher window: built once at launch, then only shown and hidden.
+/// The launcher window: built and drawn once at launch, then only moved, shown and hidden.
 ///
-/// Non-activating, so the app you were in stays frontmost while you type (FEATURES.md §2). It sits centered on the
-/// screen under the mouse pointer and is only as tall as the search bar until there are results; the search bar
-/// never moves.
+/// Non-activating, so the app you were in stays frontmost while you type (FEATURES.md §2). Opaque and fixed-size, so
+/// the window server never blends, blurs or resizes it.
 final class LauncherPanel: NSPanel {
     let launcher = LauncherViewController()
 
     init() {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: Layout.width, height: Layout.barHeight),
+            contentRect: NSRect(x: 0, y: 0, width: Layout.width, height: Layout.height),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -33,11 +31,12 @@ final class LauncherPanel: NSPanel {
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
         animationBehavior = .none
-        isOpaque = false
-        backgroundColor = .clear
+        isOpaque = true
+        backgroundColor = .windowBackgroundColor
         hasShadow = true
         contentViewController = launcher
-        setContentSize(NSSize(width: Layout.width, height: Layout.barHeight))
+        setContentSize(NSSize(width: Layout.width, height: Layout.height))
+        displayIfNeeded()
     }
 
     @available(*, unavailable)
@@ -46,23 +45,26 @@ final class LauncherPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
-    func toggle() {
-        isVisible ? dismiss() : present()
+    /// `pressedAt` is the hotkey's timestamp, in seconds since boot, for the latency log.
+    func toggle(pressedAt: TimeInterval) {
+        if isVisible {
+            dismiss()
+        } else {
+            present(pressedAt: pressedAt)
+        }
     }
 
-    func present() {
+    /// Centers the panel on the screen under the mouse pointer and gives it the keyboard, without activating the app.
+    private func present(pressedAt: TimeInterval) {
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
         guard let area = screen?.visibleFrame else { return }
-        // Center the expanded panel; the search bar is its top edge.
-        let top = (area.midY + Layout.expandedHeight / 2).rounded()
-        let height = frame.height
-        setFrame(
-            NSRect(x: (area.midX - Layout.width / 2).rounded(), y: top - height, width: Layout.width, height: height),
-            display: false
-        )
+        setFrameOrigin(
+            NSPoint(x: (area.midX - Layout.width / 2).rounded(), y: (area.midY - Layout.height / 2).rounded()))
         makeKeyAndOrderFront(nil)
         launcher.focusSearchField()
+        displayIfNeeded()
+        Log.latency("⌘P → panel drawn", since: pressedAt)
     }
 
     /// Hides the panel and empties it for next time.
@@ -76,13 +78,6 @@ final class LauncherPanel: NSPanel {
     override func resignKey() {
         super.resignKey()
         dismiss()
-    }
-
-    /// Grows to show results or shrinks back to the search bar, keeping the top edge in place.
-    func setResultsVisible(_ visible: Bool) {
-        let height = visible ? Layout.expandedHeight : Layout.barHeight
-        guard frame.height != height else { return }
-        setFrame(NSRect(x: frame.minX, y: frame.maxY - height, width: frame.width, height: height), display: true)
     }
 
     /// ⌃K and ⌃J move the selection like ↑ and ↓: send them down the same path.

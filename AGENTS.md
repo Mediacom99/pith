@@ -42,6 +42,27 @@ Read these before doing anything:
 - Be mindful of memory usage and allocations in hot paths.
 - Simple code with a clear objective is the best code.
 
+## Performance
+
+It's a small app, so it has to be excellent: fast, and light on memory, threads and energy. The `FEATURES.md` §1 targets are requirements: ⌘P → visible within one frame, keystroke → results in under 5 ms, ~0% idle CPU, under 50 MB idle memory.
+
+- **Threads:**
+  - The main thread handles events, searches in-memory data and shows ready-made content. Nothing on it may block or wait: no file I/O, no icon or thumbnail rendering, no synchronous IPC.
+  - Blocking work (file system, IconServices, launching apps) runs on GCD workers through `runInBackground`. Results come back to the main actor, which owns all state, so there are no locks.
+  - Never block Swift's cooperative pool: no blocking calls inside `Task.detached` or other async code.
+  - Spread independent CPU work over the cores with `DispatchQueue.concurrentPerform`, never one thread per item.
+  - When newer work supersedes an in-flight job (a newer index, a newer query), drop the old result instead of applying it.
+- **Idle means idle:** no timers, polling or busy-waiting. React to events (hotkey, FSEvents, notifications).
+- **Prepare ahead of time:** windows are built at launch, search keys at index time, and icons are rendered once at their exact pixel size. Showing something means displaying what's already prepared.
+- **Hot paths** (per keystroke × per item) don't allocate, block or log above debug level. Reuse buffers, and skip work whose result didn't change: no table reload when the matches are the same.
+- **Memory:** keep what's displayed at display size (icon bitmaps at exact pixels, never full-size images). Keep only what the index needs, and prune caches when the index changes.
+- **Drawing:** fixed frames, not Auto Layout, in views that change per keystroke. Opaque windows, no animations, no blur.
+- **Measure, don't guess:**
+  - `make bench` for algorithms (Release).
+  - `make logs` for live ⌘P and keystroke latencies.
+  - `make stats` for the running app's memory, CPU and threads.
+  - A performance change states its numbers in its step's status line.
+
 ## Commands
 
 Everything goes through the `Makefile`; `make` lists the targets. Add a target there instead of documenting a raw command here. `make lint test` passes before every commit.
@@ -57,6 +78,5 @@ Everything goes through the `Makefile`; `make` lists the targets. Add a target t
 
 - Tests run against real dependencies where practical. Don't mock the database. Scanner and watcher tests use the real file system.
 - Tests use Swift Testing (`import Testing`), not XCTest.
-- Swift 6 language mode with strict concurrency. Keep slow work (scanning, I/O) off the main actor.
-- Hot paths (per keystroke × per item) don't allocate: precompute at index time and reuse buffers. Check with `make bench` (Release).
+- Swift 6 language mode with strict concurrency; the app target is main-actor by default. Threading follows the Performance rules above.
 - swift-format (`.swift-format`) owns the style: run `make format`.
