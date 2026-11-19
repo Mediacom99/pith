@@ -15,41 +15,63 @@ latency work continues in step 9.
 
 ## 2. Launcher commands and Finder (features 9, 17)
 
-Status: **todo**. The index holds apps and launcher commands: Open Config, Reload Config, Quit Launcher. Finder is
-indexed, and the launcher leaves itself out.
+Status: **in review**. Search finds the commands Open Config, Reload Config and Quit Launcher, shown with SF Symbol
+icons. Finder is indexed from `/System/Library/CoreServices`, and the launcher leaves itself out of the index. Covered
+by tests (commands searchable, Finder found, ids resolved). Waiting for Edoardo's run.
 
 ## 3. Config file (feature 16)
 
-Status: **todo**. `~/.config/launcher/config.toml`, created with commented defaults on first use and reloaded on save.
-It sets the launcher hotkey, the empty state (`recent`, `running` or `none`) and launch at login. A config error shows
-up as a row in the launcher, and ⏎ on that row opens the file.
+Status: **in review**.
+- `~/.config/launcher/config.toml` is created with commented defaults on first launch and reloaded on save (FSEvents
+  on its folder, parsed on a worker).
+- It covers `[hotkeys] launcher`, `[launcher] empty_state` and `launch_at_login`.
+- A wrong or unknown setting keeps its default and shows as "Config problem, line N: …" at the top of the empty state;
+  ⏎ opens the file.
+- A changed hotkey is swapped in at runtime. If the new one is taken, the old one stays, with a problem row.
+- Config, TOML and hotkey parsing are covered by tests, including every error message.
+
+Waiting for Edoardo's run.
 
 ## 4. Running apps (feature 7)
 
-Status: **todo**. A running indicator on app rows. Apps are tracked in most-recently-used order for the `running`
-empty state.
+Status: **in review**. Running apps show a Dock-style dot under their icon, kept current from NSWorkspace launch,
+activation and quit notifications. Their ids match the index (tested against the real running apps). Waiting for
+Edoardo's run.
 
 ## 5. Learned ranking and the empty state (feature 6, decisions 11–13)
 
-Status: **todo**. A history of what you open, kept on disk off the main thread, adds a frequency and recency boost to
-the match score. Before you type, the launcher shows recent items, running apps, or nothing.
+Status: **in review**.
+- Every open is saved to `~/Library/Application Support/launcher/history.json`, atomically, on a serial worker.
+  Quitting waits for pending saves.
+- The history's frecency boosts the match score by up to +48.
+- Before you type, the launcher shows `recent` (up to 8 items, newest first; the default), `running` (most recently
+  used first, starting on the previous app) or `none`.
+
+Covered by history and panel tests. Waiting for Edoardo's run.
 
 ## 6. ⌘K actions (feature 8)
 
-Status: **todo**. ⌘K on an app lists Open, Reveal in Finder, and Quit and Force Quit for running apps. Typing filters
-the list, ⏎ runs an action, and ⎋ goes back to the results.
+Status: **in review**. ⌘K on an app lists Open and Reveal in Finder, plus Quit and Force Quit when it's running.
+Typing filters the actions, ⏎ runs one, and ⎋ or ⌘K returns to the search and the selection you had. Reveal runs on a
+worker. Covered by tests. Waiting for Edoardo's run.
 
 ## 7. Icons follow the icon style (feature 10)
 
-Status: **todo**. Icons render under the current appearance and re-render when the light/dark appearance or the
-system icon style (Default, Dark, Clear, Tinted) changes.
+Status: **in review**. Icons and symbols render under the app's appearance. All of them re-render on a light/dark
+switch and on AppKit's private icon-style notification. Under the Default style, light and dark renders are identical
+(measured). Untested on screen: switching to Dark, Clear or Tinted in System Settings › Appearance should update the
+launcher's icons within a moment.
 
 ## 8. Launch at login (feature 18, decision 14)
 
-Status: **todo**. `SMAppService`, on by default, registered only by a copy running from an Applications folder.
-`make install` puts the app in `~/Applications`.
+Status: **in review**. `SMAppService.mainApp` registers or unregisters on a worker when `launch_at_login` changes,
+and only for a copy in `/Applications` or `~/Applications`. `make install` copies the app to `~/Applications` and
+launches it; `make stop` stops either copy. Not run yet: the first `make install` registers the login item, and macOS
+shows its "login item added" notification.
 
 ## 9. Performance pass
 
-Status: **todo**. Measure ⌘P → visible, keystroke → results, idle CPU, idle memory and threads against `FEATURES.md`
-§1, and fix whatever is over: the 39 ms first ⌘P, and keystrokes still over 5 ms.
+Status: **in progress**. Each latency is now logged in three phases: delivery (key press → our code), update and
+draw. In-process work per keystroke is ~1.6 ms (UIBenchmark) and searches take microseconds. Next: an on-screen run
+with `make logs` and `make stats` to measure ⌘P → drawn (39 ms on the first ⌘P last time) and keystroke → drawn
+against the 5 ms target, now that text services are off. Then fix whatever phase is over.

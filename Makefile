@@ -4,9 +4,12 @@ APP_NAME := Launcher
 CONFIG   ?= release
 APP      := .build/$(APP_NAME).app
 BINARY   := $(APP)/Contents/MacOS/$(APP_NAME)
+INSTALLED := $(HOME)/Applications/$(APP_NAME).app
+# Matches both the dev copy and the installed one.
+PROCESS  := $(APP_NAME).app/Contents/MacOS/$(APP_NAME)
 
 .DEFAULT_GOAL := help
-.PHONY: help build app run stop logs stats test bench lint format clean
+.PHONY: help build app run install stop logs stats test bench lint format clean
 
 help: ## List the targets
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z]+:.*## / { printf "  make %-7s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -21,17 +24,24 @@ app: build ## Assemble .build/Launcher.app and sign it ad hoc
 	cp .build/$(CONFIG)/$(APP_NAME) $(BINARY)
 	codesign --force --sign - $(APP)
 
-run: app stop ## Build and (re)launch the app; it takes ⌘P system-wide
+run: app stop ## Build and launch the dev copy; it takes ⌘P system-wide
 	open $(APP)
 
-stop: ## Quit the running app
-	@pkill -f "$(CURDIR)/$(BINARY)" || true
+install: app stop ## Build, copy to ~/Applications and launch: the copy that starts at login
+	mkdir -p "$(HOME)/Applications"
+	rm -rf "$(INSTALLED)"
+	cp -R $(APP) "$(INSTALLED)"
+	open "$(INSTALLED)"
+
+stop: ## Quit the running app, dev or installed copy, and wait until it's gone
+	@pkill -f "$(PROCESS)" || true
+	@while pgrep -f "$(PROCESS)" > /dev/null; do sleep 0.1; done
 
 logs: ## Stream the app's logs, including ⌘P and keystroke latencies
 	log stream --level debug --predicate 'subsystem == "dev.edoardo.launcher"'
 
 stats: ## Memory footprint, CPU and thread count of the running app
-	@pid=$$(pgrep -f "$(CURDIR)/$(BINARY)") || { echo "Launcher isn't running"; exit 1; }; \
+	@pid=$$(pgrep -f "$(PROCESS)" | head -1); [ -n "$$pid" ] || { echo "Launcher isn't running"; exit 1; }; \
 	footprint $$pid | sed -n 2p | sed 's/.*Footprint/footprint/'; \
 	echo "cpu $$(ps -o %cpu= -p $$pid | tr -d ' ')%  threads $$(($$(ps -M -p $$pid | wc -l) - 1))"
 

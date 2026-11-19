@@ -11,11 +11,21 @@ public enum AppScanner {
         ]
     }
 
-    /// Every `.app` under `roots`, at most `maxDepth` folders down, never looking inside a bundle.
-    /// Missing roots and unreadable folders are skipped.
-    public static func scan(_ roots: [URL], maxDepth: Int = 3) -> [AppItem] {
+    /// Apps outside those folders that belong in the index anyway.
+    public static let defaultExtras = [URL(filePath: "/System/Library/CoreServices/Finder.app")]
+
+    /// Every `.app` under `roots`, at most `maxDepth` folders down and never inside a bundle, plus the `extras` that
+    /// exist. Missing roots and unreadable folders are skipped. Each item's id is its bundle path with symlinks
+    /// resolved, so an app reachable twice is listed once.
+    public static func scan(_ roots: [URL], extras: [URL] = [], maxDepth: Int = 3) -> [Item] {
         var seen = Set<String>()
-        var apps: [AppItem] = []
+        var apps: [Item] = []
+        func add(_ url: URL) {
+            let id = url.resolvingSymlinksInPath().path
+            guard seen.insert(id).inserted else { return }
+            apps.append(Item(name: displayName(of: url), appAt: url, id: id))
+        }
+
         for root in roots {
             guard
                 let walker = FileManager.default.enumerator(
@@ -29,13 +39,14 @@ public enum AppScanner {
                 if url.lastPathComponent.hasPrefix(".") {
                     walker.skipDescendants()
                 } else if url.pathExtension == "app" {
-                    // The same bundle can be reachable twice through a symlink.
-                    guard seen.insert(url.resolvingSymlinksInPath().path).inserted else { continue }
-                    apps.append(AppItem(name: displayName(of: url), url: url))
+                    add(url)
                 } else if walker.level >= maxDepth {
                     walker.skipDescendants()
                 }
             }
+        }
+        for url in extras where FileManager.default.fileExists(atPath: url.path) {
+            add(url)
         }
         return apps
     }

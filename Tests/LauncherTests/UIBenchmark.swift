@@ -12,7 +12,8 @@ import Testing
     ]
 
     @Test func keystrokes() {
-        let panel = makePanel(apps: AppScanner.scan(AppScanner.defaultRoots))
+        let items = AppScanner.scan(AppScanner.defaultRoots, extras: AppScanner.defaultExtras)
+        let panel = makePanel(items: items + Command.allCases.map(Item.init(command:)))
         let bitmap = panel.contentView!.bitmapImageRepForCachingDisplay(in: panel.contentView!.bounds)!
         let clock = ContinuousClock()
         var update = Duration.zero

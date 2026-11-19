@@ -1,24 +1,22 @@
 import Carbon.HIToolbox
+import LauncherCore
 
 /// System-wide hotkeys through Carbon's `RegisterEventHotKey`: no dependency and no Accessibility permission.
 /// A registered key is taken from every app (⌘P no longer prints anywhere), as FEATURES.md §3 asks.
 final class HotKeyCenter {
-    struct Shortcut {
-        /// A virtual key code, such as `kVK_ANSI_P`.
-        var keyCode: UInt32
-        /// Carbon modifier flags, such as `cmdKey | shiftKey`.
-        var modifiers: UInt32
-    }
+    typealias ID = UInt32
 
     private static let signature: OSType = 0x4C4E_4348  // "LNCH"
 
-    private var actions: [UInt32: (_ pressedAt: TimeInterval) -> Void] = [:]
-    private var hotKeys: [EventHotKeyRef] = []
+    private var actions: [ID: (_ pressedAt: TimeInterval) -> Void] = [:]
+    private var hotKeys: [ID: EventHotKeyRef] = [:]
+    private var nextID: ID = 1
     private var eventHandler: EventHandlerRef?
 
-    /// Calls `action` on the main thread whenever `shortcut` is pressed, with the press time in seconds since boot
-    /// (the clock of `NSEvent.timestamp`). False if the system refused the shortcut.
-    func register(_ shortcut: Shortcut, action: @escaping (_ pressedAt: TimeInterval) -> Void) -> Bool {
+    /// Calls `action` on the main thread whenever `hotkey` is pressed, with the press time in seconds since boot (the
+    /// clock of `NSEvent.timestamp`). Nil if the system refused the shortcut, for instance because another app holds
+    /// it.
+    func register(_ hotkey: Hotkey, action: @escaping (_ pressedAt: TimeInterval) -> Void) -> ID? {
         if eventHandler == nil {
             var pressed = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
             let status = InstallEventHandler(
@@ -29,30 +27,36 @@ final class HotKeyCenter {
                 Unmanaged.passUnretained(self).toOpaque(),
                 &eventHandler
             )
-            guard status == noErr else { return false }
+            guard status == noErr else { return nil }
         }
-        let id = UInt32(actions.count + 1)
-        var hotKey: EventHotKeyRef?
+        let id = nextID
+        var hotKeyRef: EventHotKeyRef?
         let status = RegisterEventHotKey(
-            shortcut.keyCode,
-            shortcut.modifiers,
+            hotkey.keyCode,
+            hotkey.modifiers,
             EventHotKeyID(signature: Self.signature, id: id),
             GetEventDispatcherTarget(),
             0,
-            &hotKey
+            &hotKeyRef
         )
-        guard status == noErr, let hotKey else { return false }
-        hotKeys.append(hotKey)
+        guard status == noErr, let hotKeyRef else { return nil }
+        nextID += 1
+        hotKeys[id] = hotKeyRef
         actions[id] = action
-        return true
+        return id
     }
 
-    fileprivate func fire(_ id: UInt32, pressedAt: TimeInterval) {
+    func unregister(_ id: ID) {
+        if let hotKeyRef = hotKeys.removeValue(forKey: id) { UnregisterEventHotKey(hotKeyRef) }
+        actions[id] = nil
+    }
+
+    fileprivate func fire(_ id: ID, pressedAt: TimeInterval) {
         actions[id]?(pressedAt)
     }
 
     isolated deinit {
-        for hotKey in hotKeys { UnregisterEventHotKey(hotKey) }
+        for hotKeyRef in hotKeys.values { UnregisterEventHotKey(hotKeyRef) }
         if let eventHandler { RemoveEventHandler(eventHandler) }
     }
 }

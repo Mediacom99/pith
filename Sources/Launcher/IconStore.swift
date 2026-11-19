@@ -1,52 +1,131 @@
 import AppKit
 
-/// App icons as bitmaps at their exact on-screen pixel size, rendered once, in parallel, off the main thread.
+/// Row icons as bitmaps at their exact on-screen pixel size, rendered off the main thread: app icons in parallel, and
+/// the SF Symbols used by commands and actions.
 ///
 /// Drawing an app icon for the first time costs ~5 ms (up to ~40 ms), so it must never happen on the main thread
 /// while you type. Rows only display ready bitmaps; until a batch lands, a row shows no icon. 113 apps take ~1.4 MB.
+/// Everything is re-rendered when the light/dark appearance or the system icon style (Default, Dark, Clear, Tinted)
+/// changes.
 final class IconStore {
-    private var icons: [URL: CGImage] = [:]
+    /// Posted by AppKit when the icon style changes. Private, found in AppKit; if it ever stops being posted, icons
+    /// still update on the next appearance change.
+    private static let iconStyleChanged = Notification.Name(
+        "NSWorkspaceIconAppearanceConfigurationDidChangeNotification")
+
+    private var apps: [URL: CGImage] = [:]
+    private var symbols: [String: CGImage] = [:]
     private var wanted: Set<URL> = []
     private var rendering: Set<URL> = []
+    private var symbolsRequested = false
+    /// Bumped on every appearance or icon style change; renders started before it are dropped.
+    private var style = 0
+    private var appearanceObservation: NSKeyValueObservation?
+    private var iconStyleObservers: [any NSObjectProtocol] = []
 
-    func icon(for url: URL) -> CGImage? {
-        icons[url]
+    /// Called on the main thread when new bitmaps are ready.
+    var onChange: (() -> Void)?
+
+    init() {
+        appearanceObservation = NSApp.observe(\.effectiveAppearance) { [weak self] _, _ in
+            Task { @MainActor in self?.restyle() }
+        }
+        // Which center AppKit posts it on isn't documented: listen on both.
+        iconStyleObservers = [NSWorkspace.shared.notificationCenter, NotificationCenter.default].map { center in
+            center.addObserver(forName: Self.iconStyleChanged, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.restyle() }
+            }
+        }
     }
 
-    /// Keeps icons for `urls` only and renders the missing ones; `completion` runs once they're in.
-    func load(_ urls: [URL], completion: @escaping () -> Void) {
-        wanted = Set(urls)
-        icons = icons.filter { wanted.contains($0.key) }
-        let missing = urls.filter { icons[$0] == nil && !rendering.contains($0) }
-        guard !missing.isEmpty else { return }
-        rendering.formUnion(missing)
+    func icon(for url: URL) -> CGImage? {
+        apps[url]
+    }
+
+    func symbol(_ name: String) -> CGImage? {
+        symbols[name]
+    }
+
+    /// Keeps icons for `urls` only and renders the missing ones (and the symbols, the first time).
+    func load(_ urls: Set<URL>) {
+        wanted = urls
+        apps = apps.filter { urls.contains($0.key) }
+        let missing = urls.filter { apps[$0] == nil && !rendering.contains($0) }
+        render(Array(missing), symbols: symbolsRequested ? [] : Symbols.all)
+        symbolsRequested = true
+    }
+
+    private func restyle() {
+        style += 1
+        rendering = []
+        Log.perf.debug("Appearance or icon style changed: re-rendering \(self.wanted.count) icons")
+        render(Array(wanted), symbols: Symbols.all)
+    }
+
+    private func render(_ urls: [URL], symbols names: [String]) {
+        guard !urls.isEmpty || !names.isEmpty else { return }
+        rendering.formUnion(urls)
+        let style = self.style
         let pixels = Int(Layout.iconSize * (NSScreen.screens.map(\.backingScaleFactor).max() ?? 2))
+        let appearance = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) ?? .aqua
         Task {
-            let images = await runInBackground(qos: .userInitiated) { Self.render(missing, pixels: pixels) }
-            rendering.subtract(missing)
-            for (url, image) in zip(missing, images) where wanted.contains(url) {
-                icons[url] = image
+            let (icons, glyphs) = await runInBackground(qos: .userInitiated) {
+                (
+                    Self.renderApps(urls, pixels: pixels, appearance: appearance),
+                    names.map { Self.renderSymbol($0, pixels: pixels, appearance: appearance) }
+                )
             }
-            completion()
+            guard style == self.style else { return }
+            rendering.subtract(urls)
+            for (url, icon) in zip(urls, icons) where wanted.contains(url) {
+                apps[url] = icon
+            }
+            for (name, glyph) in zip(names, glyphs) {
+                symbols[name] = glyph
+            }
+            onChange?()
         }
     }
 
     /// One icon per core at a time: each is independent, and IconServices renders them in parallel.
-    private nonisolated static func render(_ urls: [URL], pixels: Int) -> [CGImage?] {
+    private nonisolated static func renderApps(_ urls: [URL], pixels: Int, appearance: NSAppearance.Name) -> [CGImage?]
+    {
         var images = [CGImage?](repeating: nil, count: urls.count)
         images.withUnsafeMutableBufferPointer { buffer in
             // Each iteration writes only its own slot, so sharing the buffer across threads is safe.
             nonisolated(unsafe) let slots = buffer
             DispatchQueue.concurrentPerform(iterations: urls.count) { index in
-                slots[index] = renderIcon(atPath: urls[index].path, pixels: pixels)
+                let icon = NSWorkspace.shared.icon(forFile: urls[index].path)
+                slots[index] = bitmap(pixels: pixels, appearance: appearance) { icon.draw(in: $0) }
             }
         }
         return images
     }
 
-    private nonisolated static func renderIcon(atPath path: String, pixels: Int) -> CGImage? {
-        let icon = NSWorkspace.shared.icon(forFile: path)
-        // BGRA, premultiplied: the layout the compositor uses, so displaying it needs no conversion.
+    /// A symbol in the secondary label color, centered.
+    private nonisolated static func renderSymbol(_ name: String, pixels: Int, appearance: NSAppearance.Name) -> CGImage?
+    {
+        let configuration = NSImage.SymbolConfiguration(pointSize: CGFloat(pixels) * 0.5, weight: .regular)
+        guard
+            let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+                .withSymbolConfiguration(configuration)
+        else { return nil }
+        return bitmap(pixels: pixels, appearance: appearance) { canvas in
+            let size = symbol.size
+            symbol.draw(
+                in: NSRect(
+                    x: (canvas.width - size.width) / 2, y: (canvas.height - size.height) / 2, width: size.width,
+                    height: size.height))
+            NSColor.secondaryLabelColor.set()
+            canvas.fill(using: .sourceAtop)
+        }
+    }
+
+    /// Draws into a fresh BGRA bitmap (the layout the compositor uses, so displaying it needs no conversion), under
+    /// the given appearance. The current graphics context and appearance are per thread, so this is safe on a worker.
+    private nonisolated static func bitmap(
+        pixels: Int, appearance: NSAppearance.Name, draw: (NSRect) -> Void
+    ) -> CGImage? {
         guard
             let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
             let context = CGContext(
@@ -59,10 +138,14 @@ final class IconStore {
                 bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
             )
         else { return nil }
-        // The current graphics context is per thread, so this is safe on a worker.
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
-        icon.draw(in: NSRect(x: 0, y: 0, width: pixels, height: pixels))
+        let canvas = NSRect(x: 0, y: 0, width: pixels, height: pixels)
+        if let appearance = NSAppearance(named: appearance) {
+            appearance.performAsCurrentDrawingAppearance { draw(canvas) }
+        } else {
+            draw(canvas)
+        }
         NSGraphicsContext.restoreGraphicsState()
         return context.makeImage()
     }

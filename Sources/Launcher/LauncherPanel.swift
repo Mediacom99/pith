@@ -16,9 +16,10 @@ enum Layout {
 /// Non-activating, so the app you were in stays frontmost while you type (FEATURES.md §2). Opaque, so the window server
 /// never blends or blurs it. It's only the search bar until there are results, and resizes only when that changes.
 final class LauncherPanel: NSPanel {
-    let launcher = LauncherViewController()
+    let launcher: LauncherViewController
 
-    init() {
+    init(launcher: LauncherViewController) {
+        self.launcher = launcher
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: Layout.width, height: Layout.barHeight),
             styleMask: [.borderless, .nonactivatingPanel],
@@ -86,6 +87,7 @@ final class LauncherPanel: NSPanel {
     /// The expanded panel would be centered; the search bar is its top edge and stays there.
     private func present(pressedAt: TimeInterval) {
         let handled = ProcessInfo.processInfo.systemUptime
+        launcher.prepareToShow()
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
         guard let area = screen?.visibleFrame else { return }
@@ -141,6 +143,10 @@ final class LauncherPanel: NSPanel {
     /// An agent app has no main menu, which is what normally delivers the editing shortcuts.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        if modifiers == .command, event.charactersIgnoringModifiers == "k" {
+            launcher.toggleActions()
+            return true
+        }
         let action: Selector? =
             switch (modifiers, event.charactersIgnoringModifiers ?? "") {
             case (.command, "x"): #selector(NSText.cut(_:))

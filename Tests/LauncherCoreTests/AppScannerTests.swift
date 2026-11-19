@@ -22,12 +22,24 @@ struct TemporaryDirectory: ~Copyable {
 }
 
 struct AppScannerTests {
+    @Test func includesExtrasLikeFinder() {
+        let apps = AppScanner.scan([], extras: AppScanner.defaultExtras + [URL(filePath: "/nonexistent.app")])
+        #expect(apps.map(\.name) == ["Finder"])
+    }
+
+    @Test func idsAreResolvedPaths() throws {
+        let root = try TemporaryDirectory()
+        try root.makeFolder("Real/Tool.app")
+        let apps = AppScanner.scan([root.url])
+        #expect(apps.first?.id == root.url.appending(path: "Real/Tool.app").resolvingSymlinksInPath().path)
+    }
+
     @Test func findsTheSystemApps() {
         let apps = AppScanner.scan([URL(filePath: "/System/Applications")])
-        let files = Set(apps.map(\.url.lastPathComponent))
+        let files = Set(apps.compactMap(\.url?.lastPathComponent))
         #expect(files.contains("Calculator.app"))
         #expect(files.contains("Terminal.app"), "subfolders such as Utilities are scanned")
-        #expect(!apps.contains { $0.url.path.contains(".app/") }, "never looks inside a bundle")
+        #expect(!apps.contains { $0.id.contains(".app/") }, "never looks inside a bundle")
         #expect(apps.allSatisfy { !$0.name.isEmpty && !$0.name.hasSuffix(".app") })
     }
 
@@ -39,7 +51,7 @@ struct AppScannerTests {
         try root.makeFolder(".Hidden.app")
 
         let apps = AppScanner.scan([root.url], maxDepth: 3)
-        #expect(Set(apps.map(\.url.lastPathComponent)) == ["Top.app", "Three.app"])
+        #expect(Set(apps.compactMap(\.url?.lastPathComponent)) == ["Top.app", "Three.app"])
         #expect(Set(apps.map(\.name)) == ["Top", "Three"])
     }
 

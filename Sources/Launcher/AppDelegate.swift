@@ -1,9 +1,8 @@
 import AppKit
-import Carbon.HIToolbox
 import LauncherCore
 import os
 
-enum Log {
+nonisolated enum Log {
     private static let subsystem = Bundle.main.bundleIdentifier ?? "launcher"
     static let app = Logger(subsystem: subsystem, category: "app")
     /// Latencies, at debug level: next to free unless someone is streaming them (`make logs`).
@@ -24,27 +23,72 @@ enum Log {
     }
 }
 
-/// Wires the pieces together: builds the panel up front, registers ⌘P, keeps the app index fresh.
+/// Wires the pieces together: builds the panel up front, applies the config (hotkey, empty state, login item), runs
+/// the launcher's commands and keeps the index fresh.
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var panel: LauncherPanel?
+    private let configStore = ConfigStore()
+    private let history = HistoryStore()
     private let hotKeys = HotKeyCenter()
-    private var watcher: DirectoryWatcher?
+    private var panel: LauncherPanel?
+    private var launcherHotkey: (hotkey: Hotkey, id: HotKeyCenter.ID)?
+    private var appsWatcher: DirectoryWatcher?
     private var indexGeneration = 0
+    private var hasAppliedConfig = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Built now, so ⌘P only has to show it.
-        let panel = LauncherPanel()
-        self.panel = panel
+        // Built now, so the hotkey only has to show it.
+        let launcher = LauncherViewController(history: history, running: RunningApps())
+        launcher.runCommand = { [weak self] in self?.run($0) }
+        panel = LauncherPanel(launcher: launcher)
 
-        let launcherShortcut = HotKeyCenter.Shortcut(keyCode: UInt32(kVK_ANSI_P), modifiers: UInt32(cmdKey))
-        if !hotKeys.register(launcherShortcut, action: { panel.toggle(pressedAt: $0) }) {
-            Log.app.error("Couldn't register ⌘P: another app already holds it")
+        configStore.onChange = { [weak self] previous in self?.apply(previous: previous) }
+        Task {
+            // The history is in before the config registers the hotkey, so nothing is opened before it loads.
+            await history.load()
+            await configStore.start()
         }
 
         rebuildIndex()
-        watcher = DirectoryWatcher(paths: AppScanner.defaultRoots.map(\.path), queue: .main) { [weak self] paths in
+        appsWatcher = DirectoryWatcher(paths: AppScanner.defaultRoots.map(\.path), queue: .main) { [weak self] paths in
             guard paths.contains(where: AppScanner.affectsIndex) else { return }
             Task { @MainActor in self?.rebuildIndex() }
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        history.flush()
+    }
+
+    private func apply(previous: Config) {
+        guard let panel else { return }
+        let config = configStore.config
+        var problems = configStore.problems
+
+        if launcherHotkey?.hotkey != config.launcherHotkey {
+            if let id = hotKeys.register(
+                config.launcherHotkey, action: { [weak panel] in panel?.toggle(pressedAt: $0) })
+            {
+                if let old = launcherHotkey { hotKeys.unregister(old.id) }
+                launcherHotkey = (config.launcherHotkey, id)
+            } else {
+                let fallback = launcherHotkey.map { ", still using \($0.hotkey)" } ?? ""
+                problems.append("hotkeys.launcher \(config.launcherHotkey) is taken by another app\(fallback)")
+            }
+        }
+        panel.launcher.emptyState = config.emptyState
+        panel.launcher.problems = problems
+
+        if !hasAppliedConfig || previous.launchAtLogin != config.launchAtLogin {
+            LoginItem.update(enabled: config.launchAtLogin)
+        }
+        hasAppliedConfig = true
+    }
+
+    private func run(_ command: Command) {
+        switch command {
+        case .openConfig: configStore.open()
+        case .reloadConfig: configStore.reload()
+        case .quit: NSApp.terminate(nil)
         }
     }
 
@@ -54,7 +98,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let generation = indexGeneration
         Task {
             let index = await runInBackground(qos: .utility) {
-                AppIndex(apps: AppScanner.scan(AppScanner.defaultRoots))
+                let launcher = Bundle.main.bundleURL.resolvingSymlinksInPath().path
+                let apps = AppScanner.scan(AppScanner.defaultRoots, extras: AppScanner.defaultExtras)
+                    .filter { $0.id != launcher }
+                return SearchIndex(items: apps + Command.allCases.map(Item.init(command:)))
             }
             // A newer rescan started meanwhile: its result wins.
             guard generation == indexGeneration else { return }

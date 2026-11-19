@@ -1,10 +1,17 @@
 import AppKit
 
-/// One result: icon and name. Laid out with fixed frames (no Auto Layout) and reused by the table as rows change.
+/// One row: icon, title, and a dot under the icon when the app is running. Laid out with fixed frames (no Auto
+/// Layout) and reused by the table as rows change.
 final class ResultCell: NSTableCellView {
     static let identifier = NSUserInterfaceItemIdentifier("ResultCell")
 
     let icon = IconView()
+    private let runningDot = DotView()
+
+    var isRunning: Bool {
+        get { !runningDot.isHidden }
+        set { runningDot.isHidden = !newValue }
+    }
 
     init() {
         // Any width: the table sizes the cell to the column and the title stretches with it.
@@ -12,10 +19,10 @@ final class ResultCell: NSTableCellView {
         super.init(frame: NSRect(x: 0, y: 0, width: width, height: Layout.rowHeight))
         identifier = Self.identifier
 
-        icon.frame = NSRect(
-            x: 8, y: ((Layout.rowHeight - Layout.iconSize) / 2).rounded(), width: Layout.iconSize,
-            height: Layout.iconSize)
-        icon.autoresizingMask = [.minYMargin, .maxYMargin]
+        let iconY = ((Layout.rowHeight - Layout.iconSize) / 2).rounded()
+        icon.frame = NSRect(x: 8, y: iconY, width: Layout.iconSize, height: Layout.iconSize)
+        runningDot.frame = NSRect(x: icon.frame.midX - 2, y: iconY - 5, width: 4, height: 4)
+        runningDot.isHidden = true
 
         let title = NSTextField(labelWithString: "")
         title.font = .systemFont(ofSize: 15)
@@ -25,9 +32,10 @@ final class ResultCell: NSTableCellView {
         title.frame = NSRect(
             x: titleX, y: ((Layout.rowHeight - titleHeight) / 2).rounded(), width: width - titleX - 8,
             height: titleHeight)
-        title.autoresizingMask = [.width, .minYMargin, .maxYMargin]
+        title.autoresizingMask = [.width]
 
         addSubview(icon)
+        addSubview(runningDot)
         addSubview(title)
         textField = title
     }
@@ -55,6 +63,24 @@ final class IconView: NSView {
 
     override func updateLayer() {
         layer?.contents = image
+    }
+}
+
+/// A small filled circle in the secondary label color, like the Dock's running indicator.
+final class DotView: NSView {
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.cornerRadius = bounds.width / 2
+        layer?.backgroundColor = NSColor.secondaryLabelColor.cgColor
     }
 }
 

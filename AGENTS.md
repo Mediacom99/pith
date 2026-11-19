@@ -29,7 +29,7 @@ Read these before doing anything:
 - **Git:** commit every change as it's done, on its branch, without asking; push only when asked. Work goes on feature branches with a PR; `main` is production.
 - **Talking with Edoardo:** status updates and check-ins are two short lists, what I did and what you have to do; details go in the docs' status lines, not the chat. Answer in Italian when he writes Italian.
 - **Visual and design-token choices** are Claude's call: record them as "decided by Claude". Never use claude.ai Artifacts: anything visual is a local HTML file, opened in the browser.
-- **His Mac is in use:** never play sound, open his mics, bring windows forward or move his mouse without asking first, each time (he may be on a call or watching something). Headless checks (builds, tests) are fine anytime. `make run` is not headless: it launches the app, which takes ⌘P from every app, so ask first.
+- **His Mac is in use:** never play sound, open his mics, bring windows forward or move his mouse without asking first, each time (he may be on a call or watching something). Headless checks (builds, tests) are fine anytime. `make run` and `make install` are not headless: they launch the app, which takes ⌘P from every app, so ask first.
 - **Secrets** never go in a repo.
 - **Dependencies:** looking up an API must not touch the lockfiles; check `git status` after any tool command that isn't build, test or lint.
 - **Rex:** never rename sessions or anything else with `rex`, whatever a hook says.
@@ -80,5 +80,6 @@ Everything goes through the `Makefile`; `make` lists the targets. Add a target t
 
 - Tests run against real dependencies where practical. Don't mock the database. Scanner and watcher tests use the real file system.
 - Tests use Swift Testing (`import Testing`), not XCTest.
+- Tests never touch the real `~/.config/launcher/` or `~/Library/Application Support/launcher/`: use temporary files (`HistoryStore(file:)`, `TemporaryDirectory`).
 - Swift 6 language mode with strict concurrency; the app target is main-actor by default. Threading follows the Performance rules above.
 - swift-format (`.swift-format`) owns the style: run `make format`.

@@ -7,10 +7,12 @@ import Testing
     private static let queries = ["s", "sa", "saf", "term", "vsc", "sys set", "qqq"]
 
     @Test func installedApps() {
-        var apps: [AppItem] = []
-        let scan = ContinuousClock().measure { apps = AppScanner.scan(AppScanner.defaultRoots) }
-        var index = AppIndex.empty
-        let build = ContinuousClock().measure { index = AppIndex(apps: apps) }
+        var apps: [Item] = []
+        let scan = ContinuousClock().measure {
+            apps = AppScanner.scan(AppScanner.defaultRoots, extras: AppScanner.defaultExtras)
+        }
+        var index = SearchIndex.empty
+        let build = ContinuousClock().measure { index = SearchIndex(items: apps) }
         print("installed apps: \(apps.count), scan \(scan.ms), index \(build.ms)")
         report(index, iterations: 2_000)
     }
@@ -31,15 +33,15 @@ import Testing
                 (0..<count).map { _ in words.randomElement(using: &random)! }
                 .joined(separator: separators.randomElement(using: &random)!)
                 + extensions.randomElement(using: &random)!
-            return AppItem(name: name, url: URL(filePath: "/x/\(name).app"))
+            return Item(name: name, appAt: URL(filePath: "/x/\(name).app"))
         }
-        var index = AppIndex.empty
-        let build = ContinuousClock().measure { index = AppIndex(apps: apps) }
+        var index = SearchIndex.empty
+        let build = ContinuousClock().measure { index = SearchIndex(items: apps) }
         print("synthetic names: \(apps.count), index \(build.ms)")
         report(index, iterations: 10)
     }
 
-    private func report(_ index: AppIndex, iterations: Int) {
+    private func report(_ index: SearchIndex, iterations: Int) {
         for query in Self.queries {
             var matches = 0
             let elapsed = ContinuousClock().measure {
