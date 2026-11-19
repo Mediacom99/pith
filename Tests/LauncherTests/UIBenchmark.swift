@@ -43,6 +43,28 @@ import Testing
     }
 }
 
+extension UIBenchmark {
+    /// What ⌘P does in-process before the window server: sync running apps, fill the empty state, lay out, draw.
+    @Test(arguments: [Config.EmptyState.recent, .running, .none])
+    func show(emptyState: Config.EmptyState) {
+        let items = AppScanner.scan(AppScanner.defaultRoots, extras: AppScanner.defaultExtras)
+        let panel = makePanel(items: items, opened: items.prefix(8).map(\.id), emptyState: emptyState)
+        let clock = ContinuousClock()
+        var total = Duration.zero
+        var rows = 0
+        let rounds = 50
+        for round in 0...rounds {
+            let start = clock.now
+            panel.launcher.prepareToShow()
+            panel.displayIfNeeded()
+            if round > 0 { total += clock.now - start }
+            rows = panel.launcher.rows.count
+            panel.launcher.reset()
+        }
+        print("show (\(emptyState), \(rows) rows): \((total / rounds).ms)")
+    }
+}
+
 extension Duration {
     fileprivate var ms: String {
         let (seconds, attoseconds) = components

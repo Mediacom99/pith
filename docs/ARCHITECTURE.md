@@ -23,6 +23,7 @@ supersede an earlier one.
 | 14 | 2026-11-19 | Launch at login is on by default, but only a copy running from an Applications folder registers itself. Dev builds in `.build` never do. | No stray login items from dev builds. | Edoardo |
 | 15 | 2026-11-19 | Which app opens each file type is set in config.toml under `[open_with]` (extension or type → app). It applies only to files opened from the launcher; macOS defaults stay untouched. It ships with file search (features 11–15, a later milestone). | The launcher shouldn't change system settings. | Edoardo |
 | 16 | 2026-11-19 | Links get the same treatment: `[open_links]` maps URL schemes (`https`, `mailto`…) to apps, for links the launcher opens, such as the clipboard's Open URL. | Consistency with decision 15. | Edoardo |
+| 17 | 2026-11-19 | The `running` empty state continues past the open apps with every other app, alphabetically (no duplicates, no commands), so scrolling down browses all apps. | Requested. | Edoardo |
 
 ## Principles
 
@@ -88,8 +89,8 @@ pointer and made key without activating the app. The time from the key press to 
 `perf` log.
 
 **Empty state.** `recent` lists the latest opens from the history that are still in the index, up to 8. `running`
-lists open apps in most-recently-used order, including apps outside the indexed folders. As with ⌘Tab, the first one
-is the app you were in and the second is selected. `none` lists nothing.
+lists open apps in most-recently-used order, including apps outside the indexed folders, then every other indexed
+app alphabetically. As with ⌘Tab, the first one is the app you were in and the second is selected. `none` lists nothing.
 
 **Typing.** Each keystroke runs `SearchIndex.search` synchronously on the main thread (microseconds). The match score
 is boosted by the history: frecency, counting opens weighted by age (Firefox-style buckets), turns into up to +48
@@ -159,6 +160,7 @@ identical.
 | Search over installed apps | ≤ 0.003 ms per keystroke | `make bench` |
 | Search over 100k synthetic names | 0.3–7 ms; 1–2 letter queries are the slow end | `make bench` |
 | Keystroke work in-process (search + reload + render, offscreen panel, 114 apps + commands, with boosts) | ~1.6 ms | `make bench` (UIBenchmark) |
+| ⌘P work in-process (sync running apps, fill the empty state, lay out, draw; offscreen) | 1.6 ms recent (8 rows), 1.7 ms running (114 rows), 0.2 ms none | `make bench` (UIBenchmark) |
 | ⌘P → panel drawn, on screen | 5–8 ms; 39 ms the first time after launch | `make logs` |
 | Keystroke → results drawn, on screen | 4–32 ms, typically 6–13 ms, before text services were switched off | `make logs` |
 | Idle | 24 MB footprint, 0% CPU, 6 threads | `make stats` |

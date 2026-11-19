@@ -113,12 +113,18 @@ struct LauncherPanelTests {
         #expect(panel.frame.height == Layout.barHeight)
     }
 
-    @Test func runningListsOpenAppsAndStartsOnThePreviousOne() {
-        let panel = makePanel(items: apps, emptyState: .running)
+    @Test func runningListsOpenAppsThenAllOthersAlphabetically() {
+        let commands = Command.allCases.map(Item.init(command:))
+        let panel = makePanel(items: apps + commands, emptyState: .running)
         panel.launcher.prepareToShow()
+        let running = RunningApps()
         let rows = panel.launcher.rows
-        #expect(!rows.isEmpty, "Finder at least is always running")
-        #expect(panel.launcher.tableView.selectedRow == (rows.count > 1 ? 1 : 0))
+        #expect(!running.order.isEmpty, "Finder at least is always running")
+        #expect(rows.count == running.order.count + apps.count, "every open app, then every other app, no commands")
+        #expect(
+            Array(names(rows).suffix(apps.count)) == ["Gadget Pro", "Gizmo", "Hollow Thing", "Sprocket", "Widget"],
+            "the made-up apps aren't running, so they come after, alphabetically")
+        #expect(panel.launcher.tableView.selectedRow == (running.order.count > 1 ? 1 : 0))
     }
 
     @Test func problemsComeFirst() {

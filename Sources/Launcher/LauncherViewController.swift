@@ -174,10 +174,13 @@ final class LauncherViewController: NSViewController {
                 index.position(of: id).map { index.items[$0] }
             }
         case .running:
-            items = running.order.compactMap(runningItem)
+            // Open apps first, then every other app alphabetically (the index is sorted by name).
+            let open = running.order.compactMap(runningItem)
+            let others = index.items.filter { $0.url != nil && !running.isRunning($0.id) }
+            items = open + others
         }
         // Like ⌘Tab, the running list starts on the previous app: the first one is the app you're in.
-        let skip = emptyState == .running && items.count > 1 ? 1 : 0
+        let skip = emptyState == .running && running.order.count > 1 ? 1 : 0
         return (notices + items.map(Row.item), notices.count + skip)
     }
 

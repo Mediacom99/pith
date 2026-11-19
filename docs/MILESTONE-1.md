@@ -46,8 +46,10 @@ Status: **in review**.
 - Every open is saved to `~/Library/Application Support/launcher/history.json`, atomically, on a serial worker.
   Quitting waits for pending saves.
 - The history's frecency boosts the match score by up to +48.
-- Before you type, the launcher shows `recent` (up to 8 items, newest first; the default), `running` (most recently
-  used first, starting on the previous app) or `none`.
+- Before you type, the launcher shows `recent` (up to 8 items, newest first; the default), `running` or `none`.
+  `running` lists open apps most recently used first, starting on the previous app, then all other apps
+  alphabetically (decision 17).
+- Filling it costs ~1.7 ms in-process, even with all 114 apps.
 
 Covered by history and panel tests. Waiting for Edoardo's run.
 
