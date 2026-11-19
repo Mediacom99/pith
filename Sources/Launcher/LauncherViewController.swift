@@ -1,5 +1,6 @@
 import AppKit
 import LauncherCore
+import Quartz
 
 /// One line in the list.
 enum Row: Equatable {
@@ -353,11 +354,73 @@ final class LauncherViewController: NSViewController {
     private func select(row: Int) {
         tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         tableView.scrollRowToVisible(row)
+        previewSelectionChanged()
     }
 
     private func setQuery(_ query: String) {
         searchField.stringValue = query
         searchField.currentEditor()?.selectedRange = NSRange(location: query.utf16.count, length: 0)
+    }
+
+    // MARK: Quick Look
+
+    /// The selected file or folder, which Quick Look previews (FEATURES.md §4.2).
+    var previewURL: URL? {
+        let row = tableView.selectedRow
+        guard sublist == nil, rows.indices.contains(row), case .item(let item) = rows[row] else { return nil }
+        switch item.kind {
+        case .file(let url), .folder(let url): return url
+        case .app, .command: return nil
+        }
+    }
+
+    private var quickLook: QLPreviewPanel? {
+        QLPreviewPanel.sharedPreviewPanelExists() ? QLPreviewPanel.shared() : nil
+    }
+
+    var isPreviewing: Bool { quickLook?.isVisible == true }
+
+    /// Shows or hides the preview of the selected file (⌘Y, or Space with an empty field: decision 20). The keyboard
+    /// stays with the launcher, so ↑/↓ move through the results and the preview follows.
+    func togglePreview() {
+        if isPreviewing {
+            closePreview()
+            return
+        }
+        guard previewURL != nil, let preview = QLPreviewPanel.shared(), let window = view.window else { return }
+        preview.level = NSWindow.Level(rawValue: window.level.rawValue + 1)
+        preview.updateController()
+        preview.orderFront(nil)
+        preview.reloadData()
+    }
+
+    func closePreview() {
+        quickLook?.orderOut(nil)
+    }
+
+    private func previewSelectionChanged() {
+        guard isPreviewing else { return }
+        if previewURL == nil { closePreview() } else { quickLook?.reloadData() }
+    }
+
+    // Quick Look's controller hooks, declared nonisolated on NSObject; AppKit calls them on the main thread.
+
+    nonisolated override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool {
+        true
+    }
+
+    nonisolated override func beginPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        MainActor.assumeIsolated {
+            panel.dataSource = self
+            panel.delegate = self
+        }
+    }
+
+    nonisolated override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
+        MainActor.assumeIsolated {
+            panel.dataSource = nil
+            panel.delegate = nil
+        }
     }
 
     // MARK: ⌘K
@@ -556,7 +619,13 @@ extension LauncherViewController: NSTextFieldDelegate {
         case #selector(NSResponder.moveDown(_:)): moveSelection(by: 1)
         case #selector(NSResponder.insertNewline(_:)): activate(row: tableView.selectedRow)
         case #selector(NSResponder.cancelOperation(_:)):
-            if sublist != nil { goBack() } else { panel?.dismiss() }
+            if isPreviewing {
+                closePreview()
+            } else if sublist != nil {
+                goBack()
+            } else {
+                panel?.dismiss()
+            }
         default: return false
         }
         return true
@@ -582,4 +651,29 @@ extension LauncherViewController: NSTableViewDataSource, NSTableViewDelegate {
 /// A view whose y axis grows downward, so subviews with default autoresizing stay pinned to the top.
 final class FlippedView: NSView {
     override var isFlipped: Bool { true }
+}
+
+extension LauncherViewController: QLPreviewPanelDataSource, QLPreviewPanelDelegate {
+    func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int {
+        previewURL == nil ? 0 : 1
+    }
+
+    func previewPanel(_ panel: QLPreviewPanel!, previewItemAt index: Int) -> (any QLPreviewItem)! {
+        previewURL.map { $0 as NSURL }
+    }
+
+    /// Keys pressed while the preview has the focus (after a click on it): ↑/↓ keep moving through the results.
+    func previewPanel(_ panel: QLPreviewPanel!, handle event: NSEvent!) -> Bool {
+        guard event.type == .keyDown else { return false }
+        switch event.specialKey {
+        case .downArrow?:
+            moveSelection(by: 1)
+            return true
+        case .upArrow?:
+            moveSelection(by: -1)
+            return true
+        default:
+            return false
+        }
+    }
 }

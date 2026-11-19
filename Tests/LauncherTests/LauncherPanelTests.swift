@@ -268,6 +268,21 @@ struct LauncherPanelTests {
         #expect(panel.launcher.searchField.stringValue == "letter")
     }
 
+    @Test func previewsFilesAndFoldersOnly() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFile("Gizmo manual.pdf")
+        let files = FileSearchEngine()
+        await files.rebuild(FileRules(roots: [folder.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        let panel = makePanel(items: apps, files: files)
+
+        await type("gizmo", in: panel)
+        #expect(panel.launcher.previewURL == nil, "the app Gizmo is selected")
+        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        #expect(panel.launcher.previewURL?.lastPathComponent == "Gizmo manual.pdf")
+        panel.launcher.toggleActions()
+        #expect(panel.launcher.previewURL == nil, "not from the actions list")
+    }
+
     @Test func everySymbolExists() {
         for name in Symbols.all {
             #expect(NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil, "\(name)")

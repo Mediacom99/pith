@@ -81,8 +81,15 @@ Status: **in review**.
 
 ## 6. Quick Look (feature 13)
 
-Status: **todo**. ⌘Y, or Space with an empty field (decision 20), toggles a Quick Look preview of the selected file.
-↑/↓ keep moving through the results while it's open.
+Status: **in review**.
+- ⌘Y, or Space with an empty search field (decision 20), toggles a Quick Look preview of the selected file or
+  folder; the preview sits one level above the launcher.
+- The keyboard stays with the launcher: ↑/↓ move through the results and the preview follows; a row that isn't a
+  file closes it. After a click into the preview, ↑/↓ are forwarded back.
+- ⎋ closes the preview before anything else. Dismissing the launcher closes it, and focus moving into the preview
+  doesn't dismiss the launcher.
+- Tested: which rows can be previewed. Not tested on screen, since a test would have to show the panel: that's for
+  Edoardo's run.
 
 ## 7. Zip (feature 15)
 

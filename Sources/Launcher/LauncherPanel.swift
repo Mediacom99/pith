@@ -100,9 +100,10 @@ final class LauncherPanel: NSPanel {
         Log.latency("⌘P → panel drawn", event: pressedAt, handled: handled, updated: updated)
     }
 
-    /// Hides the panel and empties it for next time.
+    /// Hides the panel (and its Quick Look preview) and empties it for next time.
     func dismiss() {
         guard isVisible else { return }
+        launcher.closePreview()
         orderOut(nil)
         launcher.reset()
     }
@@ -114,14 +115,24 @@ final class LauncherPanel: NSPanel {
         setFrame(NSRect(x: frame.minX, y: frame.maxY - height, width: frame.width, height: height), display: false)
     }
 
-    /// Clicking elsewhere, or opening an app, closes the launcher.
+    /// Clicking elsewhere, or opening an app, closes the launcher; clicking into its Quick Look preview doesn't.
     override func resignKey() {
         super.resignKey()
+        if launcher.isPreviewing { return }
         dismiss()
     }
 
-    /// ⌃K and ⌃J move the selection like ↑ and ↓: send them down the same path.
+    /// ⌃K and ⌃J move the selection like ↑ and ↓: send them down the same path. Space with an empty search field
+    /// previews the selected file (decision 20).
     override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown, event.characters == " ",
+            event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty,
+            launcher.searchField.stringValue.isEmpty, launcher.previewURL != nil,
+            (firstResponder as? NSTextView)?.hasMarkedText() != true
+        {
+            launcher.togglePreview()
+            return
+        }
         if event.type == .keyDown,
             event.modifierFlags.intersection([.command, .option, .control, .shift]) == .control,
             let editor = firstResponder as? NSTextView, !editor.hasMarkedText()
@@ -145,6 +156,10 @@ final class LauncherPanel: NSPanel {
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
         if modifiers == .command, event.charactersIgnoringModifiers == "k" {
             launcher.toggleActions()
+            return true
+        }
+        if modifiers == .command, event.charactersIgnoringModifiers == "y" {
+            launcher.togglePreview()
             return true
         }
         let action: Selector? =
