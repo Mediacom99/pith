@@ -16,6 +16,11 @@ supersede an earlier one.
 | 7 | 2026-11-19 | Minimal dependencies: system frameworks first. A third-party library has to clearly beat a little code of our own. | Speed, size, nothing to keep updated. | Edoardo |
 | 8 | 2026-11-19 | Milestone 1 is the launcher. Clipboard and calculator come in later milestones. | Scope. | Edoardo |
 | 9 | 2026-11-19 | Speed and efficiency come before looks: a plain panel that is excellent on latency, memory, threads and energy. Styling comes later. The rules are in `AGENTS.md` (Performance). | It's a small app, so it has to be excellent at what it does. | Edoardo |
+| 10 | 2026-11-19 | Milestone 1 holds features 6, 7, 8, 9, 10, 16, 17 and 18 (as numbered in the chat): learned ranking, running indicator, ⌘K app actions, Finder, icon style, config file, launcher commands, launch at login. It also holds a configurable empty state. Files and folders move to a later milestone. | Scope. | Edoardo |
+| 11 | 2026-11-19 | What the launcher shows before you type is set in the config: `recent`, `running` or `none`. This supersedes FEATURES §4 "Empty state: nothing". | Opening on something useful. | Edoardo |
+| 12 | 2026-11-19 | `recent` lists the items you opened from the launcher, newest first, and ⏎ opens one again. It shares its history with the learned ranking. `recent` is the default. | Recommended option. | Edoardo |
+| 13 | 2026-11-19 | `running` lists open apps, most recently used first (like ⌘Tab). | Recommended option; ⌘P ⏎ switches back. | Edoardo |
+| 14 | 2026-11-19 | Launch at login is on by default, but only a copy running from an Applications folder registers itself. Dev builds in `.build` never do. | No stray login items from dev builds. | Edoardo |
 
 ## Principles
 

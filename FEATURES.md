@@ -57,7 +57,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 ## 4. Launcher (root search)
 
-- **Empty state:** nothing, just the search field.
+- **Empty state:** configurable (`[launcher] empty_state`): `recent` (default; what you opened last, newest first), `running` (open apps, most recently used first) or `none` (just the search field).
 - **Sources:** applications and files/folders from configured folders.
 - **Matching:** fuzzy.
 - **Ranking:** match quality, boosted by frequency + recency of what you pick. Learns over time.
@@ -187,6 +187,8 @@ launcher  = "cmd+p"
 clipboard = "cmd+shift+v"
 
 [launcher]
+empty_state = "recent"   # recent | running | none
+launch_at_login = true
 folders = ["~/Desktop", "~/Documents", "~/Downloads", "~/dev"]
 ignore  = [".git", "node_modules", ".build", "*.photoslibrary"]
 max_depth = 6
