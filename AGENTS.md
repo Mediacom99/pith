@@ -26,7 +26,7 @@ Read these before doing anything:
   - Check in with Edoardo after each step.
   - Keep each step's status line up to date.
   - Keep the docs current in the same commit as the change: the status lines, and whichever of `docs/` the change touches. Write what's true now; history goes to git, not the docs.
-- **Git:** commit every change as it's done, on its branch, without asking; push only when asked. Work goes on feature branches with a PR; `main` is production.
+- **Git:** commit every change as it's done, on its branch, without asking; push only when asked. The remote is the private GitHub repo `Mediacom99/launcher`. Work goes on feature branches with a PR into `staging`; `staging` goes to `main` (production) when Edoardo says so.
 - **Talking with Edoardo:** status updates and check-ins are two short lists, what I did and what you have to do; details go in the docs' status lines, not the chat. Answer in Italian when he writes Italian.
 - **Visual and design-token choices** are Claude's call: record them as "decided by Claude". Never use claude.ai Artifacts: anything visual is a local HTML file, opened in the browser.
 - **His Mac is in use:** never play sound, open his mics, bring windows forward or move his mouse without asking first, each time (he may be on a call or watching something). Headless checks (builds, tests) are fine anytime. `make run` and `make install` are not headless: they launch the app, which takes ⌘P from every app, so ask first.
