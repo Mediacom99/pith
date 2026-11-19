@@ -8,19 +8,19 @@ enum Layout {
     static let visibleRows: CGFloat = 8
     static let resultsInset: CGFloat = 6
     static let iconSize: CGFloat = 28
-    static let height = barHeight + 1 + visibleRows * rowHeight + 2 * resultsInset
+    static let expandedHeight = barHeight + 1 + visibleRows * rowHeight + 2 * resultsInset
 }
 
 /// The launcher window: built and drawn once at launch, then only moved, shown and hidden.
 ///
-/// Non-activating, so the app you were in stays frontmost while you type (FEATURES.md §2). Opaque and fixed-size, so
-/// the window server never blends, blurs or resizes it.
+/// Non-activating, so the app you were in stays frontmost while you type (FEATURES.md §2). Opaque, so the window server
+/// never blends or blurs it. It's only the search bar until there are results, and resizes only when that changes.
 final class LauncherPanel: NSPanel {
     let launcher = LauncherViewController()
 
     init() {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: Layout.width, height: Layout.height),
+            contentRect: NSRect(x: 0, y: 0, width: Layout.width, height: Layout.barHeight),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -35,12 +35,40 @@ final class LauncherPanel: NSPanel {
         backgroundColor = .windowBackgroundColor
         hasShadow = true
         contentViewController = launcher
-        setContentSize(NSSize(width: Layout.width, height: Layout.height))
+        setContentSize(NSSize(width: Layout.width, height: Layout.barHeight))
         displayIfNeeded()
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not used") }
+
+    /// The search field's editor, with every text service that would run on each keystroke switched off: none of
+    /// them belong in a search box.
+    private let searchEditor: NSTextView = {
+        let editor = NSTextView()
+        editor.isFieldEditor = true
+        editor.isRichText = false
+        editor.importsGraphics = false
+        editor.allowsUndo = true
+        editor.inlinePredictionType = .no
+        editor.writingToolsBehavior = .none
+        editor.mathExpressionCompletionType = .no
+        editor.isAutomaticTextCompletionEnabled = false
+        editor.isContinuousSpellCheckingEnabled = false
+        editor.isGrammarCheckingEnabled = false
+        editor.isAutomaticSpellingCorrectionEnabled = false
+        editor.isAutomaticTextReplacementEnabled = false
+        editor.isAutomaticQuoteSubstitutionEnabled = false
+        editor.isAutomaticDashSubstitutionEnabled = false
+        editor.isAutomaticLinkDetectionEnabled = false
+        editor.isAutomaticDataDetectionEnabled = false
+        editor.smartInsertDeleteEnabled = false
+        return editor
+    }()
+
+    override func fieldEditor(_ createFlag: Bool, for object: Any?) -> NSText? {
+        (object as? NSTextField) === launcher.searchField ? searchEditor : super.fieldEditor(createFlag, for: object)
+    }
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
@@ -54,17 +82,20 @@ final class LauncherPanel: NSPanel {
         }
     }
 
-    /// Centers the panel on the screen under the mouse pointer and gives it the keyboard, without activating the app.
+    /// Puts the panel on the screen under the mouse pointer and gives it the keyboard, without activating the app.
+    /// The expanded panel would be centered; the search bar is its top edge and stays there.
     private func present(pressedAt: TimeInterval) {
+        let handled = ProcessInfo.processInfo.systemUptime
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
         guard let area = screen?.visibleFrame else { return }
-        setFrameOrigin(
-            NSPoint(x: (area.midX - Layout.width / 2).rounded(), y: (area.midY - Layout.height / 2).rounded()))
+        let top = (area.midY + Layout.expandedHeight / 2).rounded()
+        setFrameOrigin(NSPoint(x: (area.midX - Layout.width / 2).rounded(), y: top - frame.height))
         makeKeyAndOrderFront(nil)
         launcher.focusSearchField()
+        let updated = ProcessInfo.processInfo.systemUptime
         displayIfNeeded()
-        Log.latency("⌘P → panel drawn", since: pressedAt)
+        Log.latency("⌘P → panel drawn", event: pressedAt, handled: handled, updated: updated)
     }
 
     /// Hides the panel and empties it for next time.
@@ -72,6 +103,13 @@ final class LauncherPanel: NSPanel {
         guard isVisible else { return }
         orderOut(nil)
         launcher.reset()
+    }
+
+    /// Grows to show results, or shrinks back to the search bar, keeping the top edge in place.
+    func setResultsVisible(_ visible: Bool) {
+        let height = visible ? Layout.expandedHeight : Layout.barHeight
+        guard frame.height != height else { return }
+        setFrame(NSRect(x: frame.minX, y: frame.maxY - height, width: frame.width, height: height), display: false)
     }
 
     /// Clicking elsewhere, or opening an app, closes the launcher.

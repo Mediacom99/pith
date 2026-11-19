@@ -71,7 +71,9 @@ Everything goes through the `Makefile`; `make` lists the targets. Add a target t
 
 - `Sources/LauncherCore/`: pure logic, such as scanning, the in-memory index, fuzzy matching and FSEvents. It never imports AppKit.
 - `Sources/Launcher/`: the AppKit app (panel, hotkey, views), main-actor isolated by default.
-- `Tests/LauncherCoreTests/`: unit tests. The `Benchmark` suite runs only through `make bench`.
+- `Tests/LauncherCoreTests/`: unit tests for the core.
+- `Tests/LauncherTests/`: AppKit layout tests and the UI benchmark, in real panels that are never put on screen.
+- Suites named `…Benchmark` run only through `make bench`.
 - `Support/Info.plist`: bundle metadata (bundle ID, `LSUIElement`), copied into the `.app` by `make app`.
 
 ## Conventions

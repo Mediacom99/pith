@@ -40,7 +40,7 @@ Sources/
     AppDelegate.swift      wiring: panel, ⌘P, index (re)builds; Log (incl. latency logging)
     Background.swift       runInBackground: blocking work on a GCD worker, awaited from the main actor
     HotKeyCenter.swift     global hotkeys via Carbon RegisterEventHotKey, with the press timestamp
-    LauncherPanel.swift    the NSPanel: show/hide, key routing, Layout constants
+    LauncherPanel.swift    the NSPanel: show/hide, collapse/expand, key routing, the search field's editor, Layout
     LauncherViewController.swift  search field + NSTableView, keyboard commands, opening apps
     IconStore.swift        app icons pre-rendered to exact-size bitmaps, in parallel, off the main thread
     ResultViews.swift      fixed-frame cell, bitmap IconView, row view
@@ -57,8 +57,11 @@ under the mouse pointer and made key without activating the app. The time from t
 goes to the `perf` log.
 
 **Typing.** Each keystroke runs `AppIndex.search` synchronously on the main thread (microseconds). The table reloads
-only when the matches changed, and its rows show icons already rendered as bitmaps. The time from the keyDown to the
-results being drawn goes to the `perf` log.
+only when the matches changed, and its rows show icons already rendered as bitmaps. The panel is just the search bar
+while there are no results and grows downward when there are, so it resizes only on that change. The search field
+has its own field editor with inline predictions, Writing Tools, autocompletion, spell and grammar checking,
+substitutions and data detection switched off: they all run on every keystroke and none belong in a search box.
+The keystroke latency goes to the `perf` log, split into delivery (key press → our handler), update and draw.
 
 **Keys.** The field editor turns ↑ ↓ ⏎ ⎋ into commands (`moveUp:`, `insertNewline:` …), and the panel reroutes ⌃K and
 ⌃J into the same commands. One delegate method handles them all, so an input method that is composing text keeps its
@@ -106,8 +109,10 @@ batch lands. The icons don't yet follow the dark or tinted icon style.
 | Scan of the 3 app folders (113 apps) | ~12–15 ms, on a worker | `make bench` |
 | Search over installed apps | ≤ 0.003 ms per keystroke | `make bench` |
 | Search over 100k synthetic names | 0.3–7 ms; 1–2 letter queries are the slow end | `make bench` |
-| ⌘P → panel drawn, keystroke → results drawn | to be measured on Edoardo's run | `make logs` |
-| Idle memory, CPU, threads | to be measured on Edoardo's run | `make stats` |
+| Keystroke work in-process (search + reload + render, offscreen panel, 113 apps) | ~1.5 ms | `make bench` (UIBenchmark) |
+| ⌘P → panel drawn, on screen | 5–8 ms; 39 ms the first time after launch | `make logs` |
+| Keystroke → results drawn, on screen | 4–32 ms, typically 6–13 ms, before text services were switched off | `make logs` |
+| Idle | 24 MB footprint, 0% CPU, 6 threads | `make stats` |
 
 ## Visual decisions
 
@@ -115,9 +120,9 @@ Speed first and style later (decision 9), so this is the plain, fast version.
 
 | Element | Choice | By |
 |---|---|---|
-| Panel | Fixed size, 680 × 389 pt: a 56 pt search bar plus 8 rows × 40 pt. It never resizes. | Claude |
+| Panel | 680 pt wide. Only the 56 pt search bar when there are no results (FEATURES §4); 389 pt, with 8 rows × 40 pt, when there are. The top edge stays fixed. | Claude |
 | Surface | An opaque window in the system window-background color, with square corners and the system shadow. No glass or blur, so the window server never blends or blurs what's behind. | Claude |
-| Position | Centered on the screen under the mouse pointer, which is how "the active screen" is defined. | Claude |
+| Position | On the screen under the mouse pointer, which is how "the active screen" is defined. The expanded panel would be centered, and the search bar is its top edge. | Claude |
 | Type | Search field 22 pt regular with a magnifying glass symbol and a "Search" placeholder. Rows 15 pt with 28 pt icons. | Claude |
 | Selection | System inset table style in the accent color, always drawn emphasized (the focus stays in the search field). | Claude |
 | Motion | None: the panel appears and disappears without animation. | Claude |

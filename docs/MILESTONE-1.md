@@ -7,21 +7,25 @@ Status values: **done**, **in review** (built and tested, waiting for Edoardo), 
 
 ## 1. Scaffold: panel, hotkey, app index, fuzzy search
 
-Status: **in review**. On Edoardo's first run the panel worked but icons stuttered: each one rendered on the main
-thread the first time it was shown (~5 ms each, up to ~38 ms). Since then:
+Status: **in review**. The second run on screen measured:
+- idle: 24 MB, 0% CPU, 6 threads;
+- ⌘P → drawn: 5–8 ms (39 ms the first time);
+- keystroke → drawn: 6–13 ms typically, 32 ms at worst, against a target under 5 ms.
 
-- icons are pre-rendered off the main thread;
-- the panel is plain, opaque and fixed-size;
-- rows use fixed frames;
-- the table reloads only when the matches change;
-- ⌘P and keystroke latencies are logged.
+The in-process work is ~1.5 ms (UIBenchmark), so the rest goes to text-field processing and drawing on screen. Since
+that run:
+- the search field's editor runs no text services (predictions, spell checking, Writing Tools…);
+- the keystroke and ⌘P logs are split into delivery, update and draw;
+- names use the whole row (the column was stuck at 100 pt);
+- the panel is back to only the search bar when there are no results.
 
-The 21 tests and lint pass. Still to do: the second run, with `make logs` and `make stats` to measure on screen, and
-confirming that an opened app comes to the front.
+The 26 tests and lint pass. Next: the third run with `make logs`, to see which phase is left over 5 ms, and confirming
+that an opened app comes to the front.
 
 - Swift Package with `LauncherCore` (logic) and `Launcher` (AppKit). `make app` builds an ad-hoc signed `.app` with
   `LSUIElement`.
-- A pre-built, pre-drawn, non-activating, opaque `NSPanel`, centered on the screen under the mouse.
+- A pre-built, pre-drawn, non-activating, opaque `NSPanel` on the screen under the mouse. It's only the search bar
+  until there are results.
 - ⌘P registered through Carbon toggles the panel. It hides on ⎋, on losing focus, and after opening an app.
 - In-memory app index of `/Applications`, `/System/Applications` and `~/Applications`, up to 3 folders deep. It
   matches on localized names and file names, and FSEvents triggers a rescan. App icons are rendered once, in parallel,

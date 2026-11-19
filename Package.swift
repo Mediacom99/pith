@@ -24,5 +24,11 @@ let package = Package(
             swiftSettings: concurrency + [.defaultIsolation(MainActor.self)]
         ),
         .testTarget(name: "LauncherCoreTests", dependencies: ["LauncherCore"], swiftSettings: concurrency),
+        // AppKit layout and drawing, in panels that are never put on screen.
+        .testTarget(
+            name: "LauncherTests",
+            dependencies: ["Launcher"],
+            swiftSettings: concurrency + [.defaultIsolation(MainActor.self)]
+        ),
     ]
 )
