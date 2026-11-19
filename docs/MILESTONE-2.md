@@ -107,11 +107,19 @@ Status: **in review**.
 
 ## 8. Performance pass
 
-Status: **in progress**, waiting for an on-screen run of this build.
-- The last run (milestone 1 build) measured ⌘P → drawn at 28–49 ms, nearly all "update", and keystrokes at 4–18 ms:
-  delivery 1.4–11, update 0.1–6.5, draw 0.5–9.
-- That build rebuilt the table's cells on every update and every show. Fixing it took the offscreen cost from
-  3.8 ms to 1.5 ms per keystroke (with 35.6k files) and from 1.7 ms to 0.3 ms per show.
-- Slow deliveries are mostly keys waiting behind the previous keystroke's drawing, so they should shrink too.
-- Next: `make logs` and `make stats` on this build, then fix whatever phase is still over target (FEATURES §1: ⌘P
-  within a frame, keystrokes under 5 ms).
+Status: **in progress**. This build measured on screen (with apps and 35.6k files):
+- **⌘P → drawn: ~27 ms**, nearly all "update". Our part, filling the empty state and the rows, takes 0.3 ms
+  offscreen, so the rest is the window server.
+  - Likely cause: the panel is resized on almost every show. It collapses when hidden and grows for the empty state,
+    so ordering it in reallocates its surface.
+  - Next: keep the window at its expanded size while hidden (only the content collapses), or pre-size it, and
+    measure again.
+- **Keystroke → drawn: typically 7–10 ms** (spikes to ~25 ms). Delivery is 2–4 ms (spikes to 17), update 4–6 ms,
+  draw 0–2 ms.
+  - The update is 1.7 ms offscreen. The difference is the file results landing in a second main-thread turn, after
+    AppKit has finished drawing the keystroke itself.
+  - Next: time search versus waiting inside "update", and try showing the apps' results synchronously in the same
+    turn, with the files merged right after.
+- **Idle memory, CPU and threads:** not taken yet. Run `make stats` on the next run.
+
+The baseline before this milestone (milestone 1 build): ⌘P 28–49 ms, keystrokes 4–18 ms.

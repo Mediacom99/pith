@@ -12,8 +12,9 @@ func makePanel(
     files: FileSearchEngine = FileSearchEngine()
 ) -> LauncherPanel {
     _ = NSApplication.shared
+    // One shared scratch file: tests read the history from memory, so its contents don't matter, and nothing piles up.
     let history = HistoryStore(
-        file: FileManager.default.temporaryDirectory.appending(path: "LauncherTests-\(UUID().uuidString).json"))
+        file: FileManager.default.temporaryDirectory.appending(path: "LauncherTests-history.json"))
     for id in opened { history.record(id) }
     let launcher = LauncherViewController(history: history, running: RunningApps(), files: files)
     launcher.emptyState = emptyState
