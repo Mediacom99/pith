@@ -31,7 +31,7 @@ Status: **done**.
 
 ## 3. Critique and audit
 
-Status: **in review** (the critique and the audit are done; the audit's fade bug waits for Edoardo: now or step 5).
+Status: **in progress** (the critique and the audit are done and the audit's fade bug is fixed; the re-audit is next).
 - `/impeccable critique` and `/impeccable audit`, run on the snapshots and the code.
 - Critique: 25/40 (Acceptable). It's saved in `.impeccable/critique/`, which isn't committed. Its five priority issues:
   - **P1:** symbols never change on the selection, and light mode draws them black instead of grey. A selected
@@ -60,6 +60,9 @@ Status: **in review** (the critique and the audit are done; the audit's fade bug
     opacity over ~200 ms. It happens on a backspace to a broader query, on ⌘K from a shorter list and on ⎋ back to a
     longer one, but not on ⌘P, where the list was hidden. It breaks "no animation", and the latency log calls the
     rows drawn while they're still transparent.
+    **Fixed:** rows are added and removed with no animation (`insertRows`/`removeRows`), and
+    `rowsAddedToAListOnScreenShowAtOnce` covers it. `make bench`, same session, before → after: keystroke update
+    2.01–2.07 → 1.94–1.97 ms, ⌘P with the recent list 0.50–0.51 → 0.42–0.45 ms.
   - **P1:** in dark mode the selection is 2.66:1 against the panel, under the 3:1 of decision 27, and it's the only
     cue: selected and unselected titles are both white. A lighter fill alone can't fix it (#0A84FF is 4.6:1 against
     the panel, but white text on it only 3.7:1), so it needs a second cue. Step 4.

@@ -297,10 +297,17 @@ final class LauncherViewController: NSViewController {
                 tableView.reloadData()
             } else {
                 // reloadData would build fresh cells for every visible row (the old ones are still attached when it
-                // asks), so the cells already there get their new rows. Only rows added at the end get new views.
+                // asks), so the cells already there get their new rows. Only rows added at the end get new views,
+                // configured as they're built and shown at once: noteNumberOfRowsChanged would fade them in over
+                // ~200 ms.
+                let old = tableRows.count
                 tableRows = rows
-                tableView.noteNumberOfRowsChanged()
                 refreshVisibleRows()
+                if rows.count > old {
+                    tableView.insertRows(at: IndexSet(old..<rows.count), withAnimation: [])
+                } else if rows.count < old {
+                    tableView.removeRows(at: IndexSet(rows.count..<old), withAnimation: [])
+                }
             }
             select(row: min(selection, rows.count - 1))
         }

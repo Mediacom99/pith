@@ -38,7 +38,7 @@ import Testing
     ]
 
     /// Names too long for a row, to see where they're cut: the selected file deep in its folders, a folder, a long
-    /// file name, then short ones to compare. Eight, so its seven ⌘K actions shrink the list rather than grow it.
+    /// file name, then short ones to compare.
     private static let longNames: [Item] = [
         file(
             "Documents/Acme/Finance/Reports/2026/Q3/Board Meetings/Archive/"

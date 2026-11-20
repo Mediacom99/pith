@@ -84,6 +84,29 @@ struct LauncherPanelTests {
         #expect(panel.frame.maxY == top)
     }
 
+    /// NSTableView fades rows added to a list on screen in over ~200 ms; the list must change in one frame.
+    @Test func rowsAddedToAListOnScreenShowAtOnce() async {
+        let panel = makePanel(items: apps)
+        func transparentRows() -> [Int] {
+            var rows: [Int] = []
+            panel.launcher.tableView.enumerateAvailableRowViews { view, row in
+                if view.alphaValue < 1 { rows.append(row) }
+            }
+            return rows
+        }
+        await type("giz", in: panel)
+        panel.displayIfNeeded()
+
+        await type("g", in: panel)
+        #expect(panel.launcher.rows.count == 4, "Gizmo, Gadget Pro, Widget, Hollow Thing")
+        #expect(transparentRows().isEmpty, "a broader query")
+
+        panel.launcher.toggleActions()
+        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        panel.layoutIfNeeded()
+        #expect(transparentRows().isEmpty, "⎋ from two actions back to four results")
+    }
+
     @Test func namesUseTheWholeRow() async throws {
         let panel = makePanel(items: apps)
         await type("giz", in: panel)
