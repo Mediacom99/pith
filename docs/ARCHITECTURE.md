@@ -78,7 +78,9 @@ Sources/
     LauncherViewController.swift  rows, merged app + file search, empty state, ⌘K sublists, keyboard, opening
     Actions.swift          ⌘K actions per kind, the SF Symbols rows use, AppResolver (config app names, Open With…)
     IconStore.swift        app, symbol and file-type icons as exact-size bitmaps rendered off the main thread
-    ResultViews.swift      fixed-frame cell (title, folder detail, running dot), bitmap IconView, row view (selection)
+    ResultViews.swift      one-line cell (name, folder, "running", ↩), the tile (StageView) and its keys, bitmap IconView,
+                           row view (the quiet selection)
+    Palette.swift          the few colors the system doesn't have: quiet gray, fills, edge, red and orange
     ZipNotifier.swift      Zip in the background, a notification when done, reveal on click
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement), copied in by `make app`
 ```

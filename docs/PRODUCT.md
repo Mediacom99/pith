@@ -88,7 +88,7 @@ rates. Settings are a text file, not a settings window.
 ## Brand Commitments
 
 Nothing is binding yet. The name is a temporary codename, and there is no app icon or logo. The app's copy today is
-short and literal ("Config problem, line 3: …", "Actions for Safari").
+short and literal ("Config problem, line 3: …", "Filter actions", "Open in Preview").
 
 ## Evidence on Hand
 

@@ -34,9 +34,9 @@ Waiting for Edoardo's run.
 
 ## 4. Running apps (feature 7)
 
-Status: **in review**. Running apps show a Dock-style dot under their icon. The source of truth is
-`NSWorkspace.runningApplications`: it's re-read on every launch or quit notification and before every show, so a
-missed notification can't leave a stale dot. Activation notifications set the order. Ids match the index (tested
+Status: **in review**. Running apps show "running" after their name (a Dock-style dot under the icon before the
+Stage design, decision 29). The source of truth is `NSWorkspace.runningApplications`: it's re-read on every launch or
+quit notification and before every show, so a missed notification can't leave a stale indicator. Activation notifications set the order. Ids match the index (tested
 against the real running apps). On Edoardo's first run, dots stayed after an app quit; fixed, waiting for his next
 run.
 

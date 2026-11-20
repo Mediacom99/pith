@@ -101,7 +101,7 @@ Status: **done**: Edoardo picked Stage (decision 29).
 
 ## 5. The launcher in the new design
 
-Status: **in review**: Stage is built, reviewed and documented; waiting for Edoardo on the tile icons' memory.
+Status: **done**. Stage is built, reviewed, documented and installed.
 - Built: the 52 pt bar, the tile (what ⏎ acts on, with its keys), 8 compact rows of 32 pt with the folder after the
   name, the quiet selection ending in ↩, ⌘K and Open With… keeping the item on the tile, Force Quit in red, config
   problems in orange, and 14 pt corners with a 1 pt edge. The values are in the Visual decisions table, and the system
@@ -117,8 +117,8 @@ Status: **in review**: Stage is built, reviewed and documented; waiting for Edoa
 - On screen (`make logs`): ⌘P → drawn 23 ms (one sample; ~27 ms on the milestone 2 build), so the clear window and its
   corners cost nothing measurable and stay (decision 29). Keystrokes 7–12 ms, as before.
 - Memory: 39 MB 25 s after launch, against 30 MB for the milestone 2 build measured the same way. 5.9 MB of it is the
-  tile's 96 px icons, one per app, each in its own 48 KB block. Under the 50 MB target; whether to trim it is
-  Edoardo's call.
+  tile's 96 px icons, one per app, each in its own 48 KB block. Under the 50 MB target, so Edoardo kept them
+  rendered ahead of time: rendering on demand would save ~5 MB but could show a result's big icon a frame late.
 - Impeccable's finish review: three fixes (the Force Quit row's ↩ in red, the problem tile's copy, the reason for the
   fixed height), then "ship". `docs/DESIGN.md` and `.impeccable/design.json` were written from the build.
 - Tests: `theTileShowsWhatReturnActsOn`, `onlyTheSelectedRowEndsInReturn`, `saysWhenAnItemWasLastOpened`,
