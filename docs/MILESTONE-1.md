@@ -15,14 +15,14 @@ latency work continues in step 9.
 
 ## 2. Launcher commands and Finder (features 9, 17)
 
-Status: **in review**. Search finds the commands Open Config, Reload Config and Quit Launcher, shown with SF Symbol
+Status: **in review**. Search finds the commands Open Config, Reload Config and Quit Pith, shown with SF Symbol
 icons. Finder is indexed from `/System/Library/CoreServices`, and the launcher leaves itself out of the index. Covered
 by tests (commands searchable, Finder found, ids resolved). Waiting for Edoardo's run.
 
 ## 3. Config file (feature 16)
 
 Status: **in review**.
-- `~/.config/launcher/config.toml` is created with commented defaults on first launch and reloaded on save (FSEvents
+- `~/.config/pith/config.toml` is created with commented defaults on first launch and reloaded on save (FSEvents
   on its folder, parsed on a worker).
 - It covers `[hotkeys] launcher`, `[launcher] empty_state` and `launch_at_login`.
 - A wrong or unknown setting keeps its default and shows as "Config problem, line N: …" at the top of the empty state;
@@ -43,7 +43,7 @@ run.
 ## 5. Learned ranking and the empty state (feature 6, decisions 11–13)
 
 Status: **in review**.
-- Every open is saved to `~/Library/Application Support/launcher/history.json`, atomically, on a serial worker.
+- Every open is saved to `~/Library/Application Support/pith/history.json`, atomically, on a serial worker.
   Quitting waits for pending saves.
 - The history's frecency boosts the match score by up to +48.
 - Before you type, the launcher shows `recent` (up to 8 items, newest first; the default), `running` or `none`.

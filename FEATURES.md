@@ -1,6 +1,6 @@
-# launcher — Features
+# Pith — Features
 
-> **`launcher` is a temporary codename — rename to a cool name later.** It is used for the bundle ID (`dev.<you>.launcher`) and config path (`~/.config/launcher/`), so renaming is a find-and-replace.
+> The app is called **Pith** (decision 30): bundle ID `dev.edoardo.pith`, config in `~/.config/pith/`.
 
 A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppKit. No AI, no extensions, no account, no telemetry. Opens in one frame.
 
@@ -173,13 +173,13 @@ Since there is no menu bar icon, these are searchable commands:
 - **Reload config** (also automatic on save)
 - **Pause / resume clipboard recording**
 - **Clear clipboard history** (keeps pinned)
-- **Quit launcher**
+- **Quit Pith**
 
 ---
 
 ## 8. Configuration
 
-Single file, no settings window: `~/.config/launcher/config.toml`. Reloaded automatically on save.
+Single file, no settings window: `~/.config/pith/config.toml`. Reloaded automatically on save.
 
 ```toml
 [hotkeys]
@@ -236,7 +236,7 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 
 ## 11. Open questions
 
-- [ ] **Pick a cool final name** (replace the `launcher` codename everywhere)
+- [x] **Pick a final name:** Pith (decision 30)
 - [ ] Clipboard hotkey (default `⌘⇧V`)
 - [ ] Clipboard privacy: skip password managers? ignore-app list? pause hotkey?
 - [ ] Default size cap / max age values

@@ -1,10 +1,10 @@
 import AppKit
 import LauncherCore
 
-/// `~/.config/launcher/config.toml` (FEATURES.md §8): created with commented defaults when missing, read and parsed
+/// `~/.config/pith/config.toml` (FEATURES.md §8): created with commented defaults when missing, read and parsed
 /// on a worker, and reloaded whenever something in its folder changes.
 final class ConfigStore {
-    nonisolated static let file = URL.homeDirectory.appending(path: ".config/launcher/config.toml")
+    nonisolated static let file = URL.homeDirectory.appending(path: ".config/pith/config.toml")
 
     private(set) var config = Config()
     /// What's wrong in the file, with line numbers. Wrong settings keep their defaults.

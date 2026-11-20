@@ -1,4 +1,4 @@
-# launcher
+# Pith
 
 **A keyboard-only launcher for macOS that opens in one keystroke and stays out of the way.**
 
@@ -17,7 +17,7 @@ need on ⌘K. Native AppKit, always resident, no dependencies, no account, no te
   </picture>
 </p>
 
-> `launcher` is a codename. It's in active development, and I use it every day.
+> Pith: the essential part, and nothing else. It's in active development, and I use it every day.
 
 ## Why
 
@@ -41,7 +41,7 @@ justify a subscription.
     <td width="50%" valign="top">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/snapshots/search-dark.png">
-        <img src="docs/snapshots/search-light.png" alt="Typing “te”: TextEdit on the tile with Open ↩ and Actions ⌘K, then Image Capture, Stickies and Quit Launcher.">
+        <img src="docs/snapshots/search-light.png" alt="Typing “te”: TextEdit on the tile with Open ↩ and Actions ⌘K, then Image Capture, Stickies and Quit Pith.">
       </picture>
       <p align="center"><sub><b>Type a few letters, press ⏎</b></sub></p>
     </td>
@@ -117,7 +117,7 @@ Then press ⌘P. The launcher takes ⌘P from every app, including Print; you ca
 
 ## Configuration
 
-Settings live in `~/.config/launcher/config.toml`. It's created with commented defaults on first launch, and saved
+Settings live in `~/.config/pith/config.toml`. It's created with commented defaults on first launch, and saved
 changes apply right away. A mistake shows up as a row at the top of the launcher, and ⏎ on it opens the file.
 
 ```toml

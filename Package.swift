@@ -9,10 +9,11 @@ let concurrency: [SwiftSetting] = [
 ]
 
 let package = Package(
-    name: "Launcher",
+    name: "Pith",
     platforms: [.macOS(.v26)],
     products: [
-        .executable(name: "Launcher", targets: ["Launcher"])
+        // The app is Pith (decision 30); its modules keep the names of what they are: a launcher.
+        .executable(name: "Pith", targets: ["Launcher"])
     ],
     targets: [
         // Pure logic: app scanning, the in-memory index, fuzzy matching, FSEvents. No AppKit.

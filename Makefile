@@ -1,6 +1,6 @@
 # Every command goes through here; `make` lists the targets.
 
-APP_NAME := Launcher
+APP_NAME := Pith
 CONFIG   ?= release
 APP      := .build/$(APP_NAME).app
 BINARY   := $(APP)/Contents/MacOS/$(APP_NAME)
@@ -17,7 +17,7 @@ help: ## List the targets
 build: ## Compile (CONFIG=release by default, CONFIG=debug for a debug build)
 	swift build -c $(CONFIG)
 
-app: build ## Assemble .build/Launcher.app and sign it ad hoc
+app: build ## Assemble .build/Pith.app and sign it ad hoc
 	rm -rf $(APP)
 	mkdir -p $(APP)/Contents/MacOS
 	cp Support/Info.plist $(APP)/Contents/Info.plist
@@ -41,10 +41,10 @@ stop: ## Quit the running app, dev or installed copy, and wait until it's gone
 	@while pgrep -f "$(PROCESS)" > /dev/null; do sleep 0.1; done
 
 logs: ## Stream the app's logs, including ⌘P and keystroke latencies
-	log stream --level debug --predicate 'subsystem == "dev.edoardo.launcher"'
+	log stream --level debug --predicate 'subsystem == "dev.edoardo.pith"'
 
 stats: ## Memory footprint, CPU and thread count of the running app
-	@pid=$$(pgrep -f "$(PROCESS)" | head -1); [ -n "$$pid" ] || { echo "Launcher isn't running"; exit 1; }; \
+	@pid=$$(pgrep -f "$(PROCESS)" | head -1); [ -n "$$pid" ] || { echo "Pith isn't running"; exit 1; }; \
 	footprint $$pid | sed -n 2p | sed 's/.*Footprint/footprint/'; \
 	echo "cpu $$(ps -o %cpu= -p $$pid | tr -d ' ')%  threads $$(($$(ps -M -p $$pid | wc -l) - 1))"
 

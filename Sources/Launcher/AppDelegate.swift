@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 import os
 
 nonisolated enum Log {
-    private static let subsystem = Bundle.main.bundleIdentifier ?? "launcher"
+    private static let subsystem = Bundle.main.bundleIdentifier ?? "pith"
     static let app = Logger(subsystem: subsystem, category: "app")
     /// Latencies, at debug level: next to free unless someone is streaming them (`make logs`).
     static let perf = Logger(subsystem: subsystem, category: "perf")

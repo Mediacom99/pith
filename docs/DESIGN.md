@@ -1,5 +1,5 @@
 ---
-name: launcher
+name: Pith
 description: A keyboard-only macOS launcher panel in the Stage direction - what Return acts on is always on the tile.
 colors:
   window-background-light: "#FFFFFF"
@@ -237,7 +237,7 @@ What ⏎ acts on, always visible when there are results.
 - **Shape:** 92 pt high, 10 pt corners, Tile Fill, no border.
 - **Content:** a 48 pt icon; the name (Tile Name); the folder (Detail); the kind with when it was last opened ("PDF document · opened today at 14:05", "Application · running") (Detail). Lines that are empty are left out and the rest re-centered.
 - **Commands:** their SF Symbol at 48 pt in quiet gray, "Launcher command" as the folder line, and "Run" as the only key.
-- **Config problem:** the orange triangle, "Config problem, line 3" as the name, "Unknown setting "theme"" as the folder line, `~/.config/launcher/config.toml` as the kind line, and "Open Config" as the only key.
+- **Config problem:** the orange triangle, "Config problem, line 3" as the name, "Unknown setting "theme"" as the folder line, `~/.config/pith/config.toml` as the kind line, and "Open Config" as the only key.
 - **⌘K and Open With…:** the item stays; the first key becomes the selected action ("Reveal in Finder") or "Open in Preview", and the second becomes "Back ⎋".
 
 ### Keys
@@ -256,7 +256,7 @@ What ⏎ acts on, always visible when there are results.
 ### Icons and Symbols
 - **Apps and files:** the system's own icons, following the system icon style (Default, Dark, Clear, Tinted), rendered once at the exact pixel size: 20 pt in rows, 48 pt on the tile.
 - **SF Symbols,** regular weight, drawn at 62 % of the icon box in quiet gray:
-  - Commands: `gearshape` (Open Config), `arrow.clockwise` (Reload Config), `power` (Quit Launcher).
+  - Commands: `gearshape` (Open Config), `arrow.clockwise` (Reload Config), `power` (Quit Pith).
   - Actions: `arrow.up.forward.app` (Open, Open in Finder), `folder` (Reveal in Finder), `link` (Copy Path), `square.grid.2x2` (Open With…), `terminal` (Open in Terminal), `doc.on.doc` (Copy File, Copy Folder), `doc.zipper` (Zip), `trash` (Move to Trash), `xmark.circle` (Quit), `xmark.octagon` (Force Quit).
   - Problems: `exclamationmark.triangle`, in Warning Orange.
   - Search: `magnifyingglass`, 16 pt, quiet gray.

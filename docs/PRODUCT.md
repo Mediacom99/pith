@@ -58,7 +58,7 @@ rates. Settings are a text file, not a settings window.
 - It's used glance-and-go: a few letters, a look at the top rows, ⏎. It closes on ⏎, on ⎋, or when it loses focus,
   and every close empties the field.
 - Light and dark follow the system, and app icons follow the system icon style (Default, Dark, Clear, Tinted).
-- Configuration is `~/.config/launcher/config.toml`, reloaded on save. A bad setting shows up as a problem row at
+- Configuration is `~/.config/pith/config.toml`, reloaded on save. A bad setting shows up as a problem row at
   the top of the empty state, and ⏎ on it opens the file.
 
 ## Capabilities and Constraints
@@ -83,11 +83,11 @@ rates. Settings are a text file, not a settings window.
 - **Out of scope:** themes and a settings window (`FEATURES.md` §9). Behavior is configurable, but the look isn't
   themable.
 - **Terms:** panel, search bar, rows, empty state, ⌘K actions, commands, config problems, clipboard mode.
-- **Undecided:** the final name (`launcher` is a codename), a public release, the clipboard hotkey, clipboard privacy.
+- **Undecided:** a public release, the clipboard hotkey, clipboard privacy.
 
 ## Brand Commitments
 
-Nothing is binding yet. The name is a temporary codename, and there is no app icon or logo. The app's copy today is
+The name is Pith (decision 30): the essential part and nothing else. There is no app icon or logo yet. The app's copy today is
 short and literal ("Config problem, line 3: …", "Filter actions", "Open in Preview").
 
 ## Evidence on Hand

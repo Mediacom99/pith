@@ -39,7 +39,7 @@ final class LauncherViewController: NSViewController {
     var emptyState = Config.EmptyState.recent
     /// Shown at the top of the empty state until they're fixed.
     var problems: [String] = []
-    /// Runs a launcher command (Open Config, Quit Launcher…).
+    /// Runs a launcher command (Open Config, Quit Pith…).
     var runCommand: (Command) -> Void = { _ in }
     /// `[open_with]`, resolved: extension or type → app.
     var openWithApps: [String: URL] = [:]

@@ -36,6 +36,7 @@ supersede an earlier one.
 | 27 | 2026-11-20 | Audience: Edoardo first, others later. Nothing may block a public release, but first run and other setups aren't designed for yet. Accessibility bar: WCAG AA contrast in light and dark, plus full keyboard use; no VoiceOver work for now. Both are in `docs/PRODUCT.md`. | His answers to `/impeccable init`. | Edoardo |
 | 28 | 2026-11-20 | Force Quit asks for a second ⏎: the first turns its row into "Press ⏎ again to force quit <app>", and ⎋, typing or moving the selection puts it back. Quit, a file's Move to Trash and the other actions still run on one ⏎. | Critique finding: Force Quit sits one row under Quit, and a stray ↓ lost unsaved work. A second ⏎ in the row keeps it keyboard-only, with no dialog. | Edoardo |
 | 29 | 2026-11-20 | The visual direction is Stage: a tile under the search bar shows what ⏎ will act on (the selected item, the calculator's answer, the clipboard preview) with the keys for ⏎ and ⌘K, over a compact list. Quiet low-opacity fills like Raycast's and no accent-colored selection; color only for meaning (red for Force Quit, orange for a config problem). The selected row ends in ↩, so it doesn't rely on its fill (decision 27). 14 pt rounded corners if step 5 measures them free; otherwise Edoardo decides. The direction contract is in `.impeccable/surfaces/`. | Edoardo picked it from four mockups (Native Tahoe, rofi-dense, Raycast-like, Stage). He turned down the solid blue selection and the impeccable roll's direction (Tokyo rail signage), and asked for an original one. | Edoardo |
+| 30 | 2026-11-21 | The app is called Pith: `Pith.app`, bundle ID `dev.edoardo.pith`, config in `~/.config/pith/`, history in `~/Library/Application Support/pith/`, logs under `dev.edoardo.pith`. The Swift modules keep their names (`Launcher`, `LauncherCore`): a launcher is what they are. | Edoardo liked it from Claude's list ("weird, I like it"): the essential part and nothing else. A web search found no Mac app or launcher called Pith; no trademark search yet. | Edoardo |
 
 ## Principles
 
@@ -69,7 +70,7 @@ Sources/
     main.swift             NSApplication with the accessory policy
     AppDelegate.swift      wiring: panel, config → hotkey/empty state/login item, commands, index (re)builds; Log
     Background.swift       runInBackground: blocking work on a GCD worker, awaited from the main actor
-    ConfigStore.swift      ~/.config/launcher/config.toml: create, read and parse on a worker, reload on change, open
+    ConfigStore.swift      ~/.config/pith/config.toml: create, read and parse on a worker, reload on change, open
     HistoryStore.swift     the History, loaded and saved as JSON on workers
     RunningApps.swift      open apps in MRU order: runningApplications re-read on launch/quit and on show
     LoginItem.swift        SMAppService registration, for a copy in an Applications folder only
@@ -89,8 +90,8 @@ Files the app keeps:
 
 | File | What | Written |
 |---|---|---|
-| `~/.config/launcher/config.toml` | Settings (FEATURES §8) | Created with commented defaults on first launch; then only by you |
-| `~/Library/Application Support/launcher/history.json` | What you opened and when (≤ 200 items × 10 times); deleted files are dropped | After every open or deletion, on a serial worker, atomically |
+| `~/.config/pith/config.toml` | Settings (FEATURES §8) | Created with commented defaults on first launch; then only by you |
+| `~/Library/Application Support/pith/history.json` | What you opened and when (≤ 200 items × 10 times); deleted files are dropped | After every open or deletion, on a serial worker, atomically |
 
 **Startup.** `AppDelegate` builds and draws the panel, loads the history, then the config, and registers the
 configured hotkey. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus

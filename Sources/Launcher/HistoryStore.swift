@@ -3,7 +3,7 @@ import LauncherCore
 
 /// The history of what was opened, loaded at launch and saved after every open. Disk work happens on workers.
 final class HistoryStore {
-    nonisolated static let defaultFile = URL.applicationSupportDirectory.appending(path: "launcher/history.json")
+    nonisolated static let defaultFile = URL.applicationSupportDirectory.appending(path: "pith/history.json")
 
     private(set) var history = History()
     private let file: URL

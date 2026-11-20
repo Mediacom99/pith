@@ -51,7 +51,7 @@ struct SearchIndexTests {
 
     @Test func findsCommands() {
         let index = SearchIndex(items: Command.allCases.map(Item.init(command:)) + [app("Safari")])
-        #expect(names(index, "quit") == ["Quit Launcher"])
+        #expect(names(index, "quit") == ["Quit Pith"])
         #expect(names(index, "config") == ["Open Config", "Reload Config"])
     }
 
@@ -65,7 +65,7 @@ struct SearchIndexTests {
 
     @Test func findsItemsById() {
         let index = SearchIndex(items: [app("Safari"), Item(command: .quit)])
-        #expect(index.position(of: "command:quit").map { index.items[$0].name } == "Quit Launcher")
+        #expect(index.position(of: "command:quit").map { index.items[$0].name } == "Quit Pith")
         #expect(index.position(of: "/Applications/Safari.app").map { index.items[$0].name } == "Safari")
         #expect(index.position(of: "/nope") == nil)
     }
