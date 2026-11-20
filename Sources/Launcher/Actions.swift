@@ -75,6 +75,13 @@ nonisolated enum Symbols {
     }
 
     static let all = Command.allCases.map(command) + Action.allCases.map(\.symbol) + [problem]
+
+    /// Every symbol in the colors and sizes the panel shows it: all in the rows, quiet; a problem's in orange and Force
+    /// Quit's in red too; on the tile, the commands' and a problem's.
+    static let rendered: [(name: String, tint: SymbolTint, size: IconSize)] =
+        all.map { ($0, .quiet, .row) }
+        + [(problem, .warning, .row), (Action.forceQuit.symbol, .danger, .row), (problem, .warning, .tile)]
+        + Command.allCases.map { (command($0), .quiet, .tile) }
 }
 
 /// Turns the apps named in config.toml into app bundles, and picks the app `[open_with]` sets for a file. Asks

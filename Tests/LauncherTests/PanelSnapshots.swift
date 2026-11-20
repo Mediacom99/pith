@@ -90,8 +90,10 @@ import Testing
         press(#selector(NSResponder.insertNewline(_:)), in: confirm)
         try await snapshot(confirm, "force-quit-\(suffix)")
 
+        // The problem selected, so the tile shows it.
         let problem = try await panel(emptyState: .recent, problems: ["line 3: unknown setting theme"])
         problem.launcher.prepareToShow()
+        press(#selector(NSResponder.moveUp(_:)), in: problem)
         try await snapshot(problem, "problem-\(suffix)")
 
         // The rows' cuts, then the ⌘K placeholder with the long name in it.
@@ -105,18 +107,21 @@ import Testing
         try await snapshot(longActions, "long-actions-\(suffix)")
     }
 
-    /// Like `makePanel`, with `recent` as the history: each open a moment after the last, so their order is fixed.
+    /// Like `makePanel`, with `recent` as the history at a fixed time: the newest opened at 14:05 on the day the clock
+    /// says, each older one 7 minutes before, so the tile's "opened today at 14:05" never changes.
     private func panel(
         emptyState: Config.EmptyState, problems: [String] = [], recent: [Item] = Self.recent
     ) async throws -> LauncherPanel {
         _ = NSApplication.shared
+        let now = try #require(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 14, minute: 30)))
         let history = HistoryStore(
             file: FileManager.default.temporaryDirectory.appending(path: "LauncherSnapshots-history.json"))
-        for item in recent.reversed() {
-            history.record(item.id)
-            try await Task.sleep(for: .milliseconds(1))
+        for (age, item) in recent.enumerated().reversed() {
+            history.record(item.id, at: now.addingTimeInterval(TimeInterval(-25 - 7 * age) * 60))
         }
         let launcher = LauncherViewController(history: history, running: RunningApps(), files: FileSearchEngine())
+        launcher.now = { now }
         launcher.emptyState = emptyState
         launcher.problems = problems
         let panel = LauncherPanel(launcher: launcher)
@@ -146,10 +151,10 @@ import Testing
         try png.write(to: Self.folder.appending(path: "\(name).png"))
     }
 
-    /// Every row on screen has its icon (and there are rows, if the list isn't empty).
+    /// Every row on screen has its icon, and so does the tile (and there are rows, if the list isn't empty).
     private func iconsReady(_ panel: LauncherPanel) -> Bool {
         var cells = 0
-        var ready = true
+        var ready = panel.launcher.stage.isHidden || panel.launcher.stage.icon.image != nil
         panel.launcher.tableView.enumerateAvailableRowViews { rowView, _ in
             cells += 1
             if (rowView.view(atColumn: 0) as? ResultCell)?.icon.image == nil { ready = false }

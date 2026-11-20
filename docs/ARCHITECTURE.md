@@ -166,11 +166,13 @@ At idle, nothing is scheduled: no timers, no polling. Workers exist only while t
 
 The first draw of an app icon costs ~5 ms on average and ~38 ms at worst (measured over 108 apps), because IconServices
 renders the layered icon on demand. Drawing it on the main thread while typing is what made the first build stutter.
-Now `IconStore` renders every app's icon once, right after indexing. It works on all cores, into a 56×56 px BGRA bitmap
-(28 pt at the screen's scale), and a row only sets that bitmap as its layer's contents. The 108 icons render in about
-10 ms when IconServices' cache is warm, and take ~1.4 MB in all. A row whose icon isn't ready yet shows none until the
-batch lands. Commands, actions and problems use SF Symbols, rendered the same way twice: in the secondary label color,
-and in white for the selected row.
+Now `IconStore` renders every app's icon once, right after indexing. It works on all cores, into BGRA bitmaps at the two
+sizes the panel shows: 40×40 px for the rows and 96×96 px for the tile (20 pt and 48 pt at the screen's scale). A row or
+the tile only sets the bitmap as its layer's contents. 111 apps take ~4.8 MB in all: 0.7 MB for the rows and 4.1 MB for
+the tile (the single 28 pt size before Stage took ~1.4 MB). A row whose icon isn't ready yet shows none until the batch
+lands. File icons are rendered by type on first request, with the type's name ("PDF document") for the tile.
+Commands, actions and problems use SF Symbols, rendered the same way: in the quiet gray, a problem's in orange and
+Force Quit's in red too, and at tile size for the commands and problems.
 
 Rendering happens under the app's current appearance (light or dark). Everything is re-rendered when that changes
 (KVO on `NSApp.effectiveAppearance`) or when the system icon style changes (Default, Dark, Clear, Tinted). For the
@@ -188,8 +190,8 @@ identical.
 | Scan of the home folder with the default rules (35,627 entries) | 130–150 ms on a worker (warm cache) | `make bench` |
 | File index memory | 4.4 MB for the home folder; 16 MB for 100k files | `make bench` (`FileIndex.memoryBytes`) |
 | File search | 0.1–0.3 ms for one word, 0.2–0.4 ms for two or three (35k entries); up to 0.7 ms at 100k; round trip from the main thread 0.1–0.2 ms | `make bench` |
-| Keystroke work in-process (apps + 35.6k files, merge, update the rows, render; offscreen) | ~1.7 ms | `make bench` (UIBenchmark) |
-| ⌘P work in-process (sync running apps, fill the empty state, lay out, draw; offscreen) | 0.3 ms recent (8 rows), 0.4 ms running (114 rows), 0.1 ms none | `make bench` (UIBenchmark) |
+| Keystroke work in-process (apps + 35.6k files, merge, update the rows and the tile, render; offscreen) | ~2.0 ms (1.9 ms before Stage, same session) | `make bench` (UIBenchmark) |
+| ⌘P work in-process (sync running apps, fill the empty state, lay out, draw; offscreen) | 0.4–0.5 ms recent (8 rows), 0.45 ms running (111 rows), 0.2 ms none | `make bench` (UIBenchmark) |
 | FSEvents → file searchable | about 0.5–1 s (0.5 s coalescing) | tests |
 | ⌘P → panel drawn, on screen (milestone 2 build) | ~27 ms, almost all "update", against 0.3 ms of our own work offscreen | `make logs` |
 | Keystroke → results drawn, on screen (milestone 2 build, apps + 35.6k files) | typically 7–10 ms: delivery 2–4, update 4–6, draw 0–2 | `make logs` |
@@ -197,21 +199,23 @@ identical.
 
 ## Visual decisions
 
-The plain, fast version from decision 9, which the design pass starts from (decisions 24–25). Every state, light and
-dark, is in `docs/snapshots/` (`make snapshots`).
+Stage, the direction Edoardo picked (decision 29); the values are Claude's (decision 25). Every state, light and dark,
+is in `docs/snapshots/` (`make snapshots`).
 
 | Element | Choice | By |
 |---|---|---|
-| Panel | 680 pt wide. Only the 56 pt search bar when there are no results (FEATURES §4); 421 pt when there are: 8 rows × 44 pt, with 6 pt above and below them, so the 8th row ends inside the panel. The top edge stays fixed. | Claude |
-| Surface | An opaque window in the system window-background color, with square corners and the system shadow. No glass or blur, so the window server never blends or blurs what's behind. | Claude |
+| Panel | 680 pt wide. Only the 52 pt search bar when there are no results (FEATURES §4); 423 pt when there are: the bar, the tile with an 8 pt margin around it, 8 rows of 32 pt and 6 pt under them. The top edge stays fixed. | Claude |
+| Surface | The window background color in a rectangle with 14 pt continuous corners and a 1 pt edge (black 12 % light, white 14 % dark), with the system shadow. The window itself is clear so the corners can be round; the fill, corners and edge are layer properties, so the compositor draws them and growing or shrinking repaints nothing. No glass or blur. | Claude |
 | Position | On the screen under the mouse pointer, which is how "the active screen" is defined. The expanded panel would be centered, and the search bar is its top edge. | Claude |
-| Grid | The bar and the rows share one: icons start 22 pt from the panel's side (12 pt inside the selection), and the magnifying glass is centered on their column. Titles and the query start at 62 pt, 12 pt after the icons, and stop 12 pt inside the selection. | Claude |
-| Type | Search field 22 pt regular with a magnifying glass symbol and a "Search" placeholder. Rows 15 pt with 28 pt icons; names cut in the middle. | Claude |
-| Selection | A rounded rectangle (8 pt corners) inset 10 pt from the panel's sides, in the emphasized selection color (the accent), always drawn emphasized (the focus stays in the search field). Drawn by our row view on a plain table, so no table style adds padding. Scrollers are always overlay, so a list that scrolls is as wide as one that doesn't. | Claude |
-| Running indicator | A 4 pt dot in the secondary label color under the icon, like the Dock; white on the selected row. | Claude |
-| File rows | Two lines: the name (15 pt), and under it the full folder path (`~/…`, 11 pt, secondary color), both full width and cut in the middle only when too long, so the start and the extension stay visible. Other rows are one centered line. Icons by type: one for folders, one per extension, an app's own. | Edoardo's suggestion |
-| Commands, actions, problems | SF Symbols in the secondary label color in place of an icon, white on the selected row: gearshape, arrow.clockwise, power for commands; arrow.up.forward.app, folder, link, square.grid.2x2, terminal, doc.on.doc, trash, xmark.circle, xmark.octagon for actions; exclamationmark.triangle for problems. A problem row reads "Config problem, line N: …". | Claude |
-| ⌘K | Sublists replace the list in place: "Actions for <item>", then "Open <file> with…". ⎋ steps back one level as it was; ⌘K goes back to the search. | Claude |
+| Grid | The bar and the rows share one: icons start 18 pt from the panel's side (10 pt inside the selection), and the magnifying glass is centered on their column. Names and the query start at 48 pt. | Claude |
+| Type | Search field 20 pt with a "Search" placeholder ("Filter actions", "Filter apps" in ⌘K). Rows 14 pt with 20 pt icons, the folder after the name at 12 pt. The tile: name 19 pt semibold, folder and kind 12 pt. Names and folders cut in the middle. | Claude |
+| Tile | Under the bar, 92 pt, 10 pt corners, a faint fill (black 3.5 % light, white 4.5 % dark). It shows what ⏎ acts on: a 48 pt icon, the name, the folder, and the kind with when it was last opened ("PDF document · opened today at 14:05") or "running". In ⌘K and Open With… the item stays on it. On the right, two keys as words with key caps: what ⏎ does in bold (Open, the selected action, Open in Preview, Open Config, Run), then "Actions ⌘K", or "Back ⎋" one level down. | Claude |
+| Selection | A quiet rounded rectangle (7 pt corners, black 7 % light, white 10 % dark), inset 8 pt from the panel's sides, drawn by our row view on a plain table. The fill alone is 1.2:1 and 1.4:1, so the selected row also ends in ↩ (9.4:1 light, 8.4:1 dark) and the tile names the item (decision 27). Scrollers are always overlay. | Claude |
+| Quiet gray | Folders, kinds, "running", the second key and symbols: #666666 light, #A1A1A1 dark, opaque. 4.9:1 and 4.75:1 on the selection, its darkest background. | Claude |
+| Color for meaning | Force Quit waiting for its second ⏎: red text and symbol (#D70015 light, #FF6961 dark) on a faint red row, and the tile's key in red. A config problem: its symbol in orange (#C93400 light, #FF9F0A dark; the system orange is 2.2:1 on white). No accent color anywhere. | Claude |
+| Running indicator | "running" after the name, in the quiet gray; on the tile, "Application · running". | Claude |
+| Commands, actions, problems | SF Symbols in the quiet gray in place of an icon: gearshape, arrow.clockwise, power for commands; arrow.up.forward.app, folder, link, square.grid.2x2, terminal, doc.on.doc, doc.zipper, trash, xmark.circle, xmark.octagon for actions; exclamationmark.triangle for problems. A problem row reads "Config problem, line N: …". | Claude |
+| ⌘K | Sublists replace the list in place; the item stays on the tile. ⎋ steps back one level as it was; ⌘K goes back to the search. | Claude |
 | Motion | None: the panel appears and disappears without animation. | Claude |
 
 ## Libraries

@@ -107,15 +107,71 @@ struct LauncherPanelTests {
         #expect(transparentRows().isEmpty, "⎋ from two actions back to four results")
     }
 
-    @Test func namesUseTheWholeRow() async throws {
+    @Test func rowsSpanThePanelAndNamesAreWhole() async throws {
         let panel = makePanel(items: apps)
         await type("giz", in: panel)
         let cell = try #require(
             panel.launcher.tableView.view(atColumn: 0, row: 0, makeIfNecessary: false) as? ResultCell)
+        cell.layoutSubtreeIfNeeded()
         let title = try #require(cell.textField)
         #expect(title.stringValue == "Gizmo")
         #expect(cell.frame.width > Layout.width - 60, "the column spans the table")
-        #expect(title.frame.width > Layout.width - 120, "the title spans the cell")
+        let needed = try #require(title.cell).cellSize.width
+        #expect(title.frame.width >= needed, "the name isn't cut")
+    }
+
+    /// The tile shows what ⏎ acts on, and follows the selection; in ⌘K the item stays and the keys change.
+    @Test func theTileShowsWhatReturnActsOn() async {
+        let panel = makePanel(items: apps)
+        let stage = panel.launcher.stage
+        await type("g", in: panel)
+        #expect(!stage.isHidden)
+        #expect(stage.content.name == names(panel)[0])
+        #expect(stage.content.primary == "Open")
+        #expect(stage.content.secondary == StageView.Key(words: "Actions", caps: ["⌘", "K"]))
+
+        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        let second = names(panel)[1]
+        #expect(stage.content.name == second)
+
+        panel.launcher.toggleActions()
+        #expect(stage.content.name == second, "⌘K keeps the item on the tile")
+        #expect(stage.content.primary == "Open")
+        #expect(stage.content.secondary == StageView.Key(words: "Back", caps: ["⎋"]))
+        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        #expect(stage.content.primary == "Reveal in Finder", "the selected action is what ⏎ does")
+
+        await type("gqqq", in: panel)
+        #expect(stage.isHidden, "no rows, no tile")
+    }
+
+    /// The selection's fill is quiet, so the selected row also ends in ↩, and no other row does (decision 29).
+    @Test func onlyTheSelectedRowEndsInReturn() async {
+        let panel = makePanel(items: apps)
+        func marked() -> [Int] {
+            var rows: [Int] = []
+            panel.launcher.tableView.enumerateAvailableRowViews { view, row in
+                if (view.view(atColumn: 0) as? ResultCell)?.isSelected == true { rows.append(row) }
+            }
+            return rows
+        }
+        await type("g", in: panel)
+        #expect(marked() == [0])
+        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        #expect(marked() == [2])
+    }
+
+    @Test func saysWhenAnItemWasLastOpened() throws {
+        let calendar = Calendar.current
+        let now = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 15)))
+        func daysBefore(_ days: Int) throws -> Date {
+            try #require(calendar.date(byAdding: .day, value: -days, to: now))
+        }
+        #expect(LauncherViewController.opened(now.addingTimeInterval(-3600), now: now).hasPrefix("opened today at "))
+        #expect(LauncherViewController.opened(try daysBefore(1), now: now) == "opened yesterday")
+        #expect(LauncherViewController.opened(try daysBefore(3), now: now) == "opened Tuesday")
+        #expect(LauncherViewController.opened(try daysBefore(10), now: now) == "opened Nov 10")
     }
 
     @Test func searchFieldHasNoTextServices() throws {
@@ -198,7 +254,7 @@ struct LauncherPanelTests {
         panel.launcher.toggleActions()
         #expect(names(panel) == ["Open", "Reveal in Finder"], "not running: no Quit")
         #expect(panel.launcher.searchField.stringValue.isEmpty)
-        #expect(panel.launcher.searchField.placeholderString?.hasPrefix("Actions for ") == true)
+        #expect(panel.launcher.searchField.placeholderString == "Filter actions")
 
         await type("rev", in: panel)
         #expect(names(panel) == ["Reveal in Finder"])
@@ -228,6 +284,8 @@ struct LauncherPanelTests {
         press(#selector(NSResponder.insertNewline(_:)), in: panel)
         #expect(quits.isEmpty)
         #expect(title() == "Press ⏎ again to force quit Finder")
+        #expect(panel.launcher.stage.content.isDanger)
+        #expect(panel.launcher.stage.content.secondary?.words == "Cancel")
 
         press(#selector(NSResponder.cancelOperation(_:)), in: panel)
         #expect(panel.launcher.sublist != nil, "⎋ cancels the confirmation, not the actions")
@@ -252,7 +310,7 @@ struct LauncherPanelTests {
 
         let eighth = table.convert(table.rect(ofRow: 7), to: root)
         #expect(
-            eighth.maxY == Layout.expandedHeight - Layout.resultsInset,
+            eighth.maxY == Layout.expandedHeight - Layout.listBottomInset,
             "the 8th row ends where the panel's inset starts")
         #expect(table.rect(ofRow: 0).width == Layout.width, "a scrolling list keeps its full width")
 
@@ -288,8 +346,8 @@ struct LauncherPanelTests {
         let title = try #require(cell.textField)
         let detail = try #require(cell.subviews.compactMap { $0 as? NSTextField }.first { $0 !== title })
         #expect(cell.detail.hasSuffix("/Reports"))
-        #expect(detail.frame.maxY <= title.frame.minY, "the folder sits under the name")
-        #expect(title.frame.width > Layout.width - 120 && detail.frame.width == title.frame.width, "both full width")
+        #expect(detail.frame.minX > title.frame.maxX, "the folder follows the name")
+        #expect(abs(detail.frame.midY - title.frame.midY) < 3, "on the same line")
 
         await type("quarterly", in: panel)
         #expect(
@@ -347,7 +405,9 @@ struct LauncherPanelTests {
 
         #expect(await eventually { if case .openWith? = panel.launcher.sublist { true } else { false } })
         #expect(names(panel).contains("TextEdit"), "\(names(panel))")
-        #expect(panel.launcher.searchField.placeholderString == "Open letter.txt with…")
+        #expect(panel.launcher.searchField.placeholderString == "Filter apps")
+        #expect(panel.launcher.stage.content.name == "letter.txt", "the file stays on the tile")
+        #expect(panel.launcher.stage.content.primary.hasPrefix("Open in "))
 
         press(#selector(NSResponder.cancelOperation(_:)), in: panel)
         #expect(names(panel) == ["Open With…"], "back to the actions, still filtered")

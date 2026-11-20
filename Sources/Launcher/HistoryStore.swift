@@ -29,8 +29,8 @@ final class HistoryStore {
         }
     }
 
-    func record(_ id: String) {
-        history.record(id)
+    func record(_ id: String, at date: Date = .now) {
+        history.record(id, at: date)
         let snapshot = history
         let file = self.file
         writer.async { Self.write(snapshot, to: file) }
