@@ -204,7 +204,7 @@ is in `docs/snapshots/` (`make snapshots`).
 
 | Element | Choice | By |
 |---|---|---|
-| Panel | 680 pt wide. Only the 52 pt search bar when there are no results (FEATURES §4); 423 pt when there are: the bar, the tile with an 8 pt margin around it, 8 rows of 32 pt and 6 pt under them. The top edge stays fixed. | Claude |
+| Panel | 680 pt wide. Only the 52 pt search bar when there are no results (FEATURES §4); 423 pt when there are: the bar, the tile with an 8 pt margin around it, 8 rows of 32 pt and 6 pt under them. The top edge stays fixed. It keeps that height with fewer rows (FEATURES §2: a fixed size), so the panel doesn't jump while you type and the tile, keys and rows never move. | Claude |
 | Surface | The window background color in a rectangle with 14 pt continuous corners and a 1 pt edge (black 12 % light, white 14 % dark), with the system shadow. The window itself is clear so the corners can be round; the fill, corners and edge are layer properties, so the compositor draws them and growing or shrinking repaints nothing. No glass or blur. | Claude |
 | Position | On the screen under the mouse pointer, which is how "the active screen" is defined. The expanded panel would be centered, and the search bar is its top edge. | Claude |
 | Grid | The bar and the rows share one: icons start 18 pt from the panel's side (10 pt inside the selection), and the magnifying glass is centered on their column. Names and the query start at 48 pt. | Claude |
@@ -214,7 +214,7 @@ is in `docs/snapshots/` (`make snapshots`).
 | Quiet gray | Folders, kinds, "running", the second key and symbols: #666666 light, #A1A1A1 dark, opaque. 4.9:1 and 4.75:1 on the selection, its darkest background. | Claude |
 | Color for meaning | Force Quit waiting for its second ⏎: red text and symbol (#D70015 light, #FF6961 dark) on a faint red row, and the tile's key in red. A config problem: its symbol in orange (#C93400 light, #FF9F0A dark; the system orange is 2.2:1 on white). No accent color anywhere. | Claude |
 | Running indicator | "running" after the name, in the quiet gray; on the tile, "Application · running". | Claude |
-| Commands, actions, problems | SF Symbols in the quiet gray in place of an icon: gearshape, arrow.clockwise, power for commands; arrow.up.forward.app, folder, link, square.grid.2x2, terminal, doc.on.doc, doc.zipper, trash, xmark.circle, xmark.octagon for actions; exclamationmark.triangle for problems. A problem row reads "Config problem, line N: …". | Claude |
+| Commands, actions, problems | SF Symbols in the quiet gray in place of an icon: gearshape, arrow.clockwise, power for commands; arrow.up.forward.app, folder, link, square.grid.2x2, terminal, doc.on.doc, doc.zipper, trash, xmark.circle, xmark.octagon for actions; exclamationmark.triangle for problems. A problem row reads "Config problem, line N: …"; on the tile, "Config problem, line N" over the problem, capitalized unless it starts with a setting's name. | Claude |
 | ⌘K | Sublists replace the list in place; the item stays on the tile. ⎋ steps back one level as it was; ⌘K goes back to the search. | Claude |
 | Motion | None: the panel appears and disappears without animation. | Claude |
 

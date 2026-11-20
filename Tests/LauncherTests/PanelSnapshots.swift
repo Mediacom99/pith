@@ -91,7 +91,7 @@ import Testing
         try await snapshot(confirm, "force-quit-\(suffix)")
 
         // The problem selected, so the tile shows it.
-        let problem = try await panel(emptyState: .recent, problems: ["line 3: unknown setting theme"])
+        let problem = try await panel(emptyState: .recent, problems: ["line 3: unknown setting \"theme\""])
         problem.launcher.prepareToShow()
         press(#selector(NSResponder.moveUp(_:)), in: problem)
         try await snapshot(problem, "problem-\(suffix)")

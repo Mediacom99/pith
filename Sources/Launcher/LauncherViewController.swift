@@ -451,14 +451,27 @@ final class LauncherViewController: NSViewController {
             case .item(let item):
                 stage.content = stageContent(for: item)
             case .problem(let message):
+                let (title, detail) = Self.problemTile(message)
                 stage.content = StageView.Content(
-                    icon: icons.symbol(Symbols.problem, tint: .warning, size: .tile), name: "Config problem",
-                    place: message, kind: (ConfigStore.file.path as NSString).abbreviatingWithTildeInPath,
-                    primary: "Open Config")
+                    icon: icons.symbol(Symbols.problem, tint: .warning, size: .tile), name: title, place: detail,
+                    kind: (ConfigStore.file.path as NSString).abbreviatingWithTildeInPath, primary: "Open Config")
             case .action:
                 break
             }
         }
+    }
+
+    /// A config problem on the tile: "line 3: unknown setting "theme"" becomes "Config problem, line 3" over
+    /// "Unknown setting "theme"". A message that starts with a setting's name keeps its case.
+    static func problemTile(_ message: String) -> (title: String, detail: String) {
+        guard message.hasPrefix("line "), let colon = message.range(of: ": ") else {
+            return ("Config problem", message)
+        }
+        var detail = String(message[colon.upperBound...])
+        if let word = detail.split(separator: " ").first, word.allSatisfy(\.isLetter) {
+            detail = detail.prefix(1).uppercased() + detail.dropFirst()
+        }
+        return ("Config problem, \(message[..<colon.lowerBound])", detail)
     }
 
     /// An item on the tile: its icon, name, folder, kind, and when it was last opened (or that it's running).

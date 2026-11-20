@@ -54,7 +54,7 @@ struct ConfigTests {
             problems == [
                 "line 2: launcher.empty_state is \"everything\", expected \"recent\", \"running\" or \"none\"",
                 "line 3: launcher.launch_at_login should be true or false",
-                "line 4: unknown setting launcher.colour",
+                "line 4: unknown setting \"launcher.colour\"",
                 "line 6: hotkeys.launcher \"p\" isn't a shortcut like \"cmd+p\"",
             ])
     }

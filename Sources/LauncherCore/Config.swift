@@ -104,7 +104,7 @@ public struct Config: Sendable, Equatable {
                 case ("launcher.max_depth", _):
                     problem("launcher.max_depth should be a number")
                 default:
-                    problem("unknown setting \(name)")
+                    problem("unknown setting \"\(name)\"")
                 }
             }
         }

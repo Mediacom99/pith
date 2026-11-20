@@ -162,6 +162,14 @@ struct LauncherPanelTests {
         #expect(marked() == [2])
     }
 
+    @Test func theTileSplitsAProblemIntoTitleAndSentence() {
+        let unknown = LauncherViewController.problemTile("line 3: unknown setting \"theme\"")
+        #expect(unknown.title == "Config problem, line 3")
+        #expect(unknown.detail == "Unknown setting \"theme\"")
+        let named = LauncherViewController.problemTile("line 5: launcher.max_depth should be a number")
+        #expect(named.detail == "launcher.max_depth should be a number", "a setting's name keeps its case")
+    }
+
     @Test func saysWhenAnItemWasLastOpened() throws {
         let calendar = Calendar.current
         let now = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 15)))

@@ -58,6 +58,7 @@ final class ResultCell: NSTableCellView {
         didSet {
             guard isDanger != oldValue else { return }
             textField?.textColor = isDanger ? Palette.danger : .labelColor
+            mark.textColor = isDanger ? Palette.danger : .secondaryLabelColor
             superview?.needsDisplay = true
         }
     }
