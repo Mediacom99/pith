@@ -80,32 +80,37 @@ Status: **done**. The audit's fade bug is fixed, and the re-audit gives 16/20. W
 
 ## 4. Visual direction
 
-Status: **in review**: the four directions are drawn, waiting for Edoardo's pick.
-- Claude offers four directions as local HTML mockups, opened in the browser: Native Tahoe, rofi-dense,
-  Raycast-like, and one of Claude's own. Each one shows the launcher, the calculator row and the clipboard browser.
-- They're in `.impeccable/directions/index.html`, which isn't committed (impeccable's working material). Each shows
-  four states at real size, in light and dark: a search, ⌘K on a long name while filtering, the calculator's answer on
-  top of the results, and the clipboard. The icons are the system's, and the colors are Tahoe's, sampled from the
-  snapshots.
-- Claude's own is Stage, built from what the launcher does rather than from a reference: a tile above a compact list
-  holds the selected item (or the answer, or the clipboard preview) and the keys for ⏎ and ⌘K. Edoardo turned down
-  impeccable's roll (Tokyo rail signage) and asked for an original one instead. Stage shows ten states: the four
-  above plus the empty state, a file on the tile, Open With…, Force Quit's second ⏎, a config problem and an image in
-  the clipboard.
-- Edoardo's leaning so far: Raycast-like is the best of the three he named, and he wants Raycast's quiet,
-  low-opacity fills, not a solid accent-blue selection. Stage now uses them, with color only for Force Quit (red)
-  and a config problem (orange).
-- Each direction also answers the critique's two design findings and the audit's three open ones: where the ⌘K
-  context lives while you filter (cut in the middle), how the panel shows what ⏎ and ⌘K do, a dark selection with a
-  second cue at 3:1, and the corners and dark-mode edge.
-- Edoardo picks one (decision 25). The pick goes in the decision log.
-- `docs/DESIGN.md` records the resulting system: type, colors, spacing, rows, selection and symbols.
+Status: **done**: Edoardo picked Stage (decision 29).
+- Claude drew four directions as local HTML mockups: Native Tahoe, rofi-dense, Raycast-like, and Stage, Claude's own.
+  Each showed a search, ⌘K on a long name while filtering, the calculator's answer on top of the results and the
+  clipboard, at real size in light and dark, with the system's icons and Tahoe's colors sampled from the snapshots.
+- Each answered the critique's two design findings and the audit's three open ones: where the ⌘K context lives while
+  you filter, how the panel shows what ⏎ and ⌘K do, a dark selection with a second cue at 3:1, and the corners and
+  dark-mode edge.
+- Along the way Edoardo turned down impeccable's roll for the fourth (Tokyo rail signage) and asked for an original
+  one, and turned down the solid blue selection for Raycast's quiet, low-opacity fills.
+- Stage: a tile under the search bar shows what ⏎ will act on (the item, the calculator's answer, the clipboard
+  preview) with the keys for ⏎ and ⌘K, over a compact list. The selected row has a quiet fill and ends in ↩. Color
+  only for meaning: red for Force Quit, orange for a config problem.
+- The mockup stays in `.impeccable/directions/index.html` (not committed) as step 5's reference, with ten Stage states:
+  the four above plus the empty state, a file on the tile, Open With…, Force Quit's second ⏎, a config problem and an
+  image in the clipboard. It's deleted when step 5 is done.
+- The direction contract is in `.impeccable/surfaces/` (committed), for impeccable's later passes.
+- `docs/DESIGN.md` moves to step 5: impeccable writes it from the built panel, not from the mockup, so it describes
+  what's true.
 
 ## 5. The launcher in the new design
 
 Status: **todo**.
-- Apply the chosen direction to the built surfaces, and fix what step 3 found.
+- Apply Stage to the built surfaces: the search bar, the tile, the compact rows, the selection with ↩, ⌘K and
+  Open With… on the tile, Force Quit in red, config problems in orange. This also fixes the open findings from step 3:
+  the dark selection, the dark-mode edge, the ⌘K context and the ⏎/⌘K hints.
+- Measure the 14 pt corners: a titled panel with its title bar hidden, or a clear window with a rounded layer, against
+  today's opaque borderless window. If either costs ⌘P its frame, ask Edoardo.
 - Regenerate the snapshots, and state the `make bench` UI numbers here; they stay within the targets.
+- Impeccable's finish review checks the build against the direction contract, then `docs/DESIGN.md` records the system:
+  type, colors, spacing, rows, selection and symbols. The Visual decisions table in `docs/ARCHITECTURE.md` gets the
+  new values.
 
 ## 6. Briefs for the planned surfaces
 
