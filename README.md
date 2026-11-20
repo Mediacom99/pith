@@ -17,57 +17,79 @@ need on ⌘K. Native AppKit, always resident, no dependencies, no account, no te
   </picture>
 </p>
 
-> `launcher` is a codename. The app is in active development and used daily by its author in place of Raycast.
+> `launcher` is a codename. It's in active development, and I use it every day.
 
 ## Why
 
-Launchers have grown into platforms: extensions, stores, AI, accounts. This one does three things (open anything,
-browse the clipboard, calculate) and treats speed and size as the product:
+I used Raycast, and I think they did a great job. But all I ever needed was the launcher. I don't need most of the
+tools, I'm tired of AI being put into everything, and RAM isn't something I can hand out freely to my programs
+anymore.
 
-- **Instant.** The window is built at launch and the indexes live in memory. ⌘P only shows what's already prepared.
-- **Keyboard only.** Everything is reachable without the mouse. The row you want is usually the first.
-- **Small.** Native AppKit and Swift, zero third-party dependencies. When idle it uses no CPU.
-- **Private.** No account, no telemetry, no network. The planned calculator will fetch currency rates, and that's all.
-- **Native and quiet.** It follows the system's appearance and icon style, and is configured with a text file, not a
-  settings window.
+So this is a launcher for people who need a launcher. Not a whole app environment hidden behind one, built mostly to
+justify a subscription.
+
+- **Instant.** Built at launch, indexes in memory: ⌘P only shows what's ready.
+- **Keyboard only.** The row you want is usually the first.
+- **Small.** Native AppKit and Swift, zero dependencies, ~0 % CPU when idle.
+- **Private.** No account, no telemetry, no AI, no network (the planned calculator will fetch currency rates).
+- **Native.** It follows the system's appearance and is configured with a text file.
 
 ## Features
 
 <table>
   <tr>
-    <td width="50%">
+    <td width="50%" valign="top">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/snapshots/long-actions-dark.png">
-        <img src="docs/snapshots/long-actions-light.png" alt="⌘K on a file: the file stays on the tile while the list shows its actions: Open, Reveal in Finder, Copy Path, Open With…, Copy File, Zip, Move to Trash.">
+        <source media="(prefers-color-scheme: dark)" srcset="docs/snapshots/search-dark.png">
+        <img src="docs/snapshots/search-light.png" alt="Typing “te”: TextEdit on the tile with Open ↩ and Actions ⌘K, then Image Capture, Stickies and Quit Launcher.">
       </picture>
-      <p align="center"><sub>⌘K: the item stays on the tile while you pick an action</sub></p>
+      <p align="center"><sub><b>Type a few letters, press ⏎</b></sub></p>
     </td>
-    <td width="50%">
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/snapshots/actions-dark.png">
+        <img src="docs/snapshots/actions-light.png" alt="⌘K on a file: the file stays on the tile, the list shows its actions.">
+      </picture>
+      <p align="center"><sub><b>⌘K</b>: actions for what’s selected</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/snapshots/force-quit-dark.png">
-        <img src="docs/snapshots/force-quit-light.png" alt="Finder's actions with Force Quit waiting for a second Return, in red.">
+        <img src="docs/snapshots/force-quit-light.png" alt="Finder’s actions with Force Quit waiting for a second Return, in red.">
       </picture>
-      <p align="center"><sub>Force Quit asks for a second ⏎</sub></p>
+      <p align="center"><sub><b>Force Quit</b> asks for a second ⏎</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/snapshots/problem-dark.png">
+        <img src="docs/snapshots/problem-light.png" alt="A config problem at the top of the list, with Open Config ↩ on the tile.">
+      </picture>
+      <p align="center"><sub><b>Config mistakes</b> show up; ⏎ opens the file</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/snapshots/long-names-dark.png">
+        <img src="docs/snapshots/long-names-light.png" alt="Long file and folder names, each cut in the middle so the start and the extension stay visible.">
+      </picture>
+      <p align="center"><sub><b>Long names</b> are cut in the middle</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/snapshots/bar-dark.png">
+        <img src="docs/snapshots/bar-light.png" alt="The launcher as just its search bar, with nothing listed.">
+      </picture>
+      <p align="center"><sub>Or <b>just the search bar</b> until you type</sub></p>
     </td>
   </tr>
 </table>
 
-- **One list for everything:** apps, files and folders, ranked together. Matching is fuzzy and word by word, so
-  `acme deploy` finds `deploy.sh` under `Acme`. The ranking learns from what you open.
-- **The tile:** what ⏎ will act on is always shown large under the search bar: its name, where it is, what it is and
-  when you last opened it, with the keys for ⏎ and ⌘K beside it.
-- **⌘K actions** for each kind of result:
-  - apps: Open, Reveal in Finder, Quit, Force Quit;
-  - files: Open, Open With…, Reveal, Copy Path, Copy File, Zip, Move to Trash;
-  - folders: the same, plus Open in Terminal.
-- **Quick Look:** Space with an empty field, or ⌘Y.
-- **Zip** in the background with macOS's own `ditto`. A notification tells you when it's done, and clicking it reveals
-  the archive.
-- **Empty state of your choice:** what you opened recently, the running apps, or just the search bar.
-- **Live file index:** your folders are indexed in memory and kept current with FSEvents. `node_modules`, `.build`,
-  hidden files and `~/Library` are skipped.
-- **Launcher commands:** Open Config, Reload Config, Quit Launcher. There's no Dock or menu bar icon.
-- **Starts at login.** Light and dark mode follow the system.
+**Also:** Quick Look (Space or ⌘Y) · Zip in the background, with a notification · files indexed in memory and kept
+live with FSEvents · empty state of your choice (recent, running apps, or nothing) · starts at login · no Dock or menu
+bar icon.
 
 ### Keys
 
