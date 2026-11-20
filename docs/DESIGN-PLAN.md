@@ -16,8 +16,8 @@ Status values: **done**, **in review** (built and tested, waiting for Edoardo), 
 ## 1. Snapshots
 
 Status: **done**.
-- `make snapshots` draws the panel, off screen, into `docs/snapshots/`: the search bar, recent, search, ⌘K actions
-  and a config problem, each in light and dark.
+- `make snapshots` draws the panel, off screen, into `docs/snapshots/`: the search bar, recent, search, ⌘K actions,
+  the Force Quit confirmation, a config problem, and long names in the rows and in ⌘K, each in light and dark.
 - The files come out identical on every run, so git shows only real changes.
 
 ## 2. Product context
@@ -31,7 +31,7 @@ Status: **done**.
 
 ## 3. Critique and audit
 
-Status: **in progress** (the critique is done and its three bugs are fixed; the audit is next).
+Status: **in review** (the critique and the audit are done; the audit's fade bug waits for Edoardo: now or step 5).
 - `/impeccable critique` and `/impeccable audit`, run on the snapshots and the code.
 - Critique: 25/40 (Acceptable). It's saved in `.impeccable/critique/`, which isn't committed. Its five priority issues:
   - **P1:** symbols never change on the selection, and light mode draws them black instead of grey. A selected
@@ -54,7 +54,24 @@ Status: **in progress** (the critique is done and its three bugs are fixed; the 
   - Tests: `forceQuitWaitsForASecondReturn` (with quitting swapped out, so no real app is quit) and
     `eightRowsFitAndShareTheBarsGrid`. A new snapshot state shows the confirmation: `force-quit`.
 - Still open: a failed Move to Trash only goes to the log (step 7).
-- Add the snapshot states the review needs, such as `running`, Open with… and long names.
+- Audit: 15/20 (Good), from the code, the snapshots measured pixel by pixel, and headless tests. It's saved in
+  `.impeccable/audit/`, which isn't committed. Accessibility is scored against decision 27's bar.
+  - **P1:** new rows fade in when a list on screen grows. The table adds them transparent and brings them to full
+    opacity over ~200 ms. It happens on a backspace to a broader query, on ⌘K from a shorter list and on ⎋ back to a
+    longer one, but not on ⌘P, where the list was hidden. It breaks "no animation", and the latency log calls the
+    rows drawn while they're still transparent.
+  - **P1:** in dark mode the selection is 2.66:1 against the panel, under the 3:1 of decision 27, and it's the only
+    cue: selected and unselected titles are both white. A lighter fill alone can't fix it (#0A84FF is 4.6:1 against
+    the panel, but white text on it only 3.7:1), so it needs a second cue. Step 4.
+  - **P2:** the panel is square and has no edge in dark mode: its #1E1E1E runs to the border, the same color as dark
+    windows behind it. Rounded corners need a non-opaque window, so step 4 decides and step 5 measures.
+  - **P2:** a long ⌘K context is cut without an ellipsis ("Actions for Quarterly_Budget_Review_Final_Version_Approved"),
+    losing the end of the name. It gets cut in the middle when step 4 moves it out of the placeholder.
+  - **P3, outside the bar:** VoiceOver hears nothing as the selection moves, and the symbols ignore Increase Contrast.
+  - Everything else passes AA in light and dark. The lowest text is the detail line on the light selection (4.71:1);
+    the lowest symbol is 3.95:1 in light mode.
+- Snapshot states for the review: `long-names` and `long-actions` are added. `running` and Open with… aren't: they
+  use the same app rows as `recent`, and both would put the real apps on this Mac in the repo.
 
 ## 4. Visual direction
 

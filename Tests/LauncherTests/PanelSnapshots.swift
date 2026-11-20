@@ -37,6 +37,24 @@ import Testing
         app("Calendar"),
     ]
 
+    /// Names too long for a row, to see where they're cut: the selected file deep in its folders, a folder, a long
+    /// file name, then short ones to compare. Eight, so its seven ⌘K actions shrink the list rather than grow it.
+    private static let longNames: [Item] = [
+        file(
+            "Documents/Acme/Finance/Reports/2026/Q3/Board Meetings/Archive/"
+                + "Quarterly_Budget_Review_Final_Version_Approved_by_the_Board_v14_revised.pdf"),
+        Item(
+            path: NSHomeDirectory()
+                + "/Documents/Acme/Brand/Guidelines and Assets for the Spring Product Launch Campaign",
+            isFolder: true),
+        file("Desktop/Notes from the planning session about the onboarding flow and the new pricing page.txt"),
+        app("Finder"),
+        app("Calculator"),
+        file("Documents/Acme/Brand/Logo.png"),
+        app("TextEdit"),
+        app("Calendar"),
+    ]
+
     @Test(arguments: [NSAppearance.Name.aqua, .darkAqua])
     func states(appearance: NSAppearance.Name) async throws {
         _ = NSApplication.shared
@@ -75,14 +93,26 @@ import Testing
         let problem = try await panel(emptyState: .recent, problems: ["line 3: unknown setting theme"])
         problem.launcher.prepareToShow()
         try await snapshot(problem, "problem-\(suffix)")
+
+        // The rows' cuts, then the ⌘K placeholder with the long name in it.
+        let long = try await panel(emptyState: .recent, recent: Self.longNames)
+        long.launcher.prepareToShow()
+        try await snapshot(long, "long-names-\(suffix)")
+
+        let longActions = try await panel(emptyState: .recent, recent: Self.longNames)
+        longActions.launcher.prepareToShow()
+        longActions.launcher.toggleActions()
+        try await snapshot(longActions, "long-actions-\(suffix)")
     }
 
     /// Like `makePanel`, with `recent` as the history: each open a moment after the last, so their order is fixed.
-    private func panel(emptyState: Config.EmptyState, problems: [String] = []) async throws -> LauncherPanel {
+    private func panel(
+        emptyState: Config.EmptyState, problems: [String] = [], recent: [Item] = Self.recent
+    ) async throws -> LauncherPanel {
         _ = NSApplication.shared
         let history = HistoryStore(
             file: FileManager.default.temporaryDirectory.appending(path: "LauncherSnapshots-history.json"))
-        for item in Self.recent.reversed() {
+        for item in recent.reversed() {
             history.record(item.id)
             try await Task.sleep(for: .milliseconds(1))
         }
