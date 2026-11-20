@@ -9,7 +9,7 @@ Stack: Swift 6.4, AppKit, a Swift Package (no Xcode project), macOS 26+ on Apple
 Read these before doing anything:
 - `FEATURES.md`: the product spec, covering what the app does and the performance targets.
 - `docs/ARCHITECTURE.md`: the decision log (the source of truth), principles, system overview and the library picks.
-- `docs/MILESTONE-1.md`: the current plan: where we are and what's missing. Each item has a status line.
+- `docs/MILESTONE-*.md`: the plans, one per milestone: where we are and what's missing. Each step has a status line.
 
 ## How we work
 
