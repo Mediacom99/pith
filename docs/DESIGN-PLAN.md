@@ -80,11 +80,17 @@ Status: **done**. The audit's fade bug is fixed, and the re-audit gives 16/20. W
 
 ## 4. Visual direction
 
-Status: **todo**.
+Status: **in review**: the four directions are drawn, waiting for Edoardo's pick.
 - Claude offers four directions as local HTML mockups, opened in the browser: Native Tahoe, rofi-dense,
   Raycast-like, and one of Claude's own. Each one shows the launcher, the calculator row and the clipboard browser.
-- Each direction also answers the critique's two design findings: where the ⌘K context lives while you filter, and
-  how the panel shows what ⏎ and ⌘K do.
+- They're in `.impeccable/directions/index.html`, which isn't committed (impeccable's working material). Each shows
+  four states at real size, in light and dark: a search, ⌘K on a long name while filtering, the calculator's answer on
+  top of the results, and the clipboard. The icons are the system's, and the colors are Tahoe's, sampled from the
+  snapshots.
+- Claude's own is Wayfinding, after Tokyo's rail signage, drawn by impeccable's roll (`seed:47a00053a3e03fc9`).
+- Each direction also answers the critique's two design findings and the audit's three open ones: where the ⌘K
+  context lives while you filter (cut in the middle), how the panel shows what ⏎ and ⌘K do, a dark selection with a
+  second cue at 3:1, and the corners and dark-mode edge.
 - Edoardo picks one (decision 25). The pick goes in the decision log.
 - `docs/DESIGN.md` records the resulting system: type, colors, spacing, rows, selection and symbols.
 
