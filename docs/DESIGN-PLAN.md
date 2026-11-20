@@ -31,12 +31,17 @@ Status: **done**.
 
 ## 3. Critique and audit
 
-Status: **todo**.
+Status: **in progress** (the critique is done; the audit is next).
 - `/impeccable critique` and `/impeccable audit`, run on the snapshots and the code.
-- Three problems the snapshots already show:
-  - The 8th row is cut off.
-  - When the list scrolls, the scroller narrows the selection.
-  - The magnifying glass isn't aligned with the row icons.
+- Critique: 25/40 (Acceptable). It's saved in `.impeccable/critique/`, which isn't committed. Its five priority issues:
+  - **P1:** symbols never change on the selection, and light mode draws them black instead of grey. A selected
+    symbol in dark mode is 1.86:1, below the 3:1 of decision 27.
+  - **P1:** the 8th row is cut off. Eight 44 pt rows end at 425 pt in a 421 pt panel, because the inset style pads
+    16 pt above the first row. The bar and the list don't share a grid either: the magnifier is centered at 30 pt
+    against icons at 38 pt, and the query starts at 54 pt against titles at 64 pt.
+  - **P2:** Force Quit runs on one ⏎ with no confirmation, and a failed Move to Trash only goes to the log.
+  - **P2:** the ⌘K context ("Actions for …") is the placeholder, so it disappears as soon as you type a filter.
+  - **P2:** nothing on screen says what ⏎ does, that ⌘K exists, or that ⏎ on a problem opens the config.
 - Add the snapshot states the review needs, such as `running`, Open with… and long names.
 
 ## 4. Visual direction
