@@ -6,7 +6,7 @@ public struct TemporaryDirectory: ~Copyable {
 
     public init() throws {
         url = FileManager.default.temporaryDirectory
-            .appending(path: "LauncherTests-\(UUID().uuidString)")
+            .appending(path: "PithTests-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     }
 

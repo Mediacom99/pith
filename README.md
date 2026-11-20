@@ -107,8 +107,8 @@ bar icon.
 Requirements: macOS 26 Tahoe or later, Apple Silicon, and Xcode with Swift 6.4.
 
 ```sh
-git clone https://github.com/Mediacom99/launcher.git
-cd launcher
+git clone https://github.com/Mediacom99/pith.git
+cd pith
 make install    # builds, copies to ~/Applications and launches
 ```
 

@@ -116,7 +116,7 @@ import Testing
         let now = try #require(
             Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 14, minute: 30)))
         let history = HistoryStore(
-            file: FileManager.default.temporaryDirectory.appending(path: "LauncherSnapshots-history.json"))
+            file: FileManager.default.temporaryDirectory.appending(path: "PithSnapshots-history.json"))
         for (age, item) in recent.enumerated().reversed() {
             history.record(item.id, at: now.addingTimeInterval(TimeInterval(-25 - 7 * age) * 60))
         }
