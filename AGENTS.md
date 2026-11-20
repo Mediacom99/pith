@@ -29,7 +29,8 @@ Read these before doing anything:
 - **Git:** commit every change as it's done, on its branch, without asking; push only when asked. The remote is the private GitHub repo `Mediacom99/launcher`. Work goes on feature branches with a PR into `staging`; `staging` goes to `main` (production) when Edoardo says so.
 - **Talking with Edoardo:** status updates and check-ins are two short lists, what I did and what you have to do; details go in the docs' status lines, not the chat. Answer in Italian when he writes Italian.
 - **Design:**
-  - UI/UX work goes through the impeccable skill (`/impeccable …`, decision 24).
+  - UI/UX work goes through the impeccable skill (`/impeccable …`, decision 24). It reads `docs/PRODUCT.md` (product context) and `docs/DESIGN.md` (the design system, once there is one).
+  - The plan is `docs/DESIGN-PLAN.md`, one status line per step, alongside the milestone plans (decision 26).
   - The visual direction is Edoardo's call: offer options, he picks. Exact values (sizes, colors, spacing) are Claude's: record them as "Claude" in the Visual decisions table (decision 25).
   - Impeccable can't run the app: `make snapshots` draws the panel's states, light and dark, into `docs/snapshots/` without putting anything on screen. Regenerate and commit them with every visual change.
   - Never use claude.ai Artifacts: anything visual is a local HTML file, opened in the browser.
