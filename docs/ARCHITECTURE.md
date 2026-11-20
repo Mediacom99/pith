@@ -193,9 +193,10 @@ identical.
 | Keystroke work in-process (apps + 35.6k files, merge, update the rows and the tile, render; offscreen) | ~2.0 ms (1.9 ms before Stage, same session) | `make bench` (UIBenchmark) |
 | ⌘P work in-process (sync running apps, fill the empty state, lay out, draw; offscreen) | 0.4–0.5 ms recent (8 rows), 0.45 ms running (111 rows), 0.2 ms none | `make bench` (UIBenchmark) |
 | FSEvents → file searchable | about 0.5–1 s (0.5 s coalescing) | tests |
-| ⌘P → panel drawn, on screen (milestone 2 build) | ~27 ms, almost all "update", against 0.3 ms of our own work offscreen | `make logs` |
-| Keystroke → results drawn, on screen (milestone 2 build, apps + 35.6k files) | typically 7–10 ms: delivery 2–4, update 4–6, draw 0–2 | `make logs` |
-| Idle | 24 MB footprint, 0% CPU, 6 threads | `make stats` |
+| ⌘P → panel drawn, on screen | Stage build, clear window with round corners: 23 ms, almost all "update" (one sample); milestone 2 build: ~27 ms | `make logs` |
+| Keystroke → results drawn, on screen (apps + 35.6k files) | Stage build: typically 7–12 ms: delivery 2–3, update 4.7–6, draw 0–2; a few at 19–22 ms with 8–13 ms of delivery. Milestone 2 build: 7–10 ms | `make logs` |
+| Footprint 25 s after launch, untouched | Stage build 39 MB, the milestone 2 build 30 MB, measured the same way. 5.9 MB of the Stage build is the tile's 96 px icons: 123 bitmaps of 36 KB, each in its own 48 KB block | `make stats`, `footprint` |
+| Idle (milestone 2 build) | 24 MB footprint, 0% CPU, 6 threads | `make stats` |
 
 ## Visual decisions
 

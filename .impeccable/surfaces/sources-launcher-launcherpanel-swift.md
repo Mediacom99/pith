@@ -17,8 +17,6 @@ Chosen direction: Stage (decision 29). The memorable moment: whatever ⏎ will a
 the words for ⏎ and ⌘K beside it.
 
 Unresolved:
-- Rounded corners: 14 pt only if the titled-panel route, or a clear window with a rounded layer, keeps ⌘P within one
-  frame. Step 5 measures; if they cost anything, Edoardo decides.
 - The clipboard's in-panel text editor (design plan step 6).
 
 ## Direction contract
@@ -30,7 +28,7 @@ accent selection bar, with what ⏎ does hidden in a footer or nowhere.
 OWN-WORLD: System neutrals in light and dark, with quiet low-opacity fills (tile about 4 %, selection about 7–10 %)
 and no accent-colored fills. Color only for meaning: red for Force Quit, orange for a config problem. SF Pro, SF
 Symbols, the system's own icons. Keys are words beside small filled key caps. Corners: panel 14 pt, tile 10 pt,
-rows 7 pt; a 1 pt light edge in dark mode.
+rows 7 pt; a 1 pt edge (black 12 % light, white 14 % dark).
 
 STORY: You type a few letters, see on the tile what ⏎ will open, copy or paste and where it lives, and press ⏎. Or
 you press ⌘K: the item stays on the tile while the list becomes its actions, and you filter them.

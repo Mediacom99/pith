@@ -101,29 +101,29 @@ Status: **done**: Edoardo picked Stage (decision 29).
 
 ## 5. The launcher in the new design
 
-Status: **in progress**: Stage is built and tested; the corners' on-screen cost, the finish review and
-`docs/DESIGN.md` are left.
+Status: **in review**: Stage is built, reviewed and documented; waiting for Edoardo on the tile icons' memory.
 - Built: the 52 pt bar, the tile (what ⏎ acts on, with its keys), 8 compact rows of 32 pt with the folder after the
   name, the quiet selection ending in ↩, ⌘K and Open With… keeping the item on the tile, Force Quit in red, config
-  problems in orange, and 14 pt corners with a 1 pt edge. The values are in the Visual decisions table.
-- This also closes step 3's open findings: the dark selection (↩ at 8.4:1, the tile names the item), the dark-mode
+  problems in orange, and 14 pt corners with a 1 pt edge. The values are in the Visual decisions table, and the system
+  in `docs/DESIGN.md`.
+- This closes step 3's open findings: the dark selection (↩ at 8.4:1, and the tile names the item), the dark-mode
   edge, the ⌘K context (on the tile, cut in the middle) and the ⏎/⌘K hints (the tile's keys).
 - Contrast, measured on the snapshots: quiet text 4.75:1 at worst (the folder on the dark selection), ↩ 9.4:1 light
   and 8.4:1 dark, Force Quit's red 4.7:1 and 4.9:1, the problem's orange 4.9:1. The quiet gray is opaque: text fields
   drew the translucent version at #272727 instead of #666666.
-- `make bench`, same session, before → after: keystroke update 1.89 → 2.00–2.07 ms; ⌘P with the recent list 0.38 →
-  0.39–0.50 ms. Drawing the panel's and the tile's rounded backgrounds on the CPU first cost +1.4 ms per keystroke (the
-  panel repaints when it grows or shrinks); as layer properties they cost nothing.
-- Icons: two sizes now (20 pt rows, 48 pt tile), ~4.8 MB for 111 apps instead of ~1.4 MB; the idle footprint is to be
-  measured with `make stats`.
+- Speed, `make bench`, same session, before → after: keystroke update 1.89 → 2.00–2.07 ms; ⌘P with the recent list
+  0.38 → 0.39–0.50 ms. Drawing the panel's and the tile's rounded backgrounds on the CPU first cost +1.4 ms per
+  keystroke (the panel repaints when it grows or shrinks); as layer properties they cost nothing.
+- On screen (`make logs`): ⌘P → drawn 23 ms (one sample; ~27 ms on the milestone 2 build), so the clear window and its
+  corners cost nothing measurable and stay (decision 29). Keystrokes 7–12 ms, as before.
+- Memory: 39 MB 25 s after launch, against 30 MB for the milestone 2 build measured the same way. 5.9 MB of it is the
+  tile's 96 px icons, one per app, each in its own 48 KB block. Under the 50 MB target; whether to trim it is
+  Edoardo's call.
+- Impeccable's finish review: three fixes (the Force Quit row's ↩ in red, the problem tile's copy, the reason for the
+  fixed height), then "ship". `docs/DESIGN.md` and `.impeccable/design.json` were written from the build.
 - Tests: `theTileShowsWhatReturnActsOn`, `onlyTheSelectedRowEndsInReturn`, `saysWhenAnItemWasLastOpened`,
-  `History.lastOpened`. The snapshots use a fixed clock, so "opened today at 14:05" doesn't change them; the problem
-  snapshot selects the problem, to show its tile.
-- Left:
-  - The corners make the window clear instead of opaque. ⌘P → drawn on screen (`make logs`) and the idle footprint
-    (`make stats`) need the app running, which needs Edoardo's OK. If the corners cost ⌘P its frame, he decides.
-  - Impeccable's finish review against the direction contract, then `docs/DESIGN.md`. The mockup in
-    `.impeccable/directions/` is deleted after that.
+  `theTileSplitsAProblemIntoTitleAndSentence`, `History.lastOpened`. The snapshots use a fixed clock, so "opened today
+  at 14:05" doesn't change them; the problem snapshot selects the problem, to show its tile.
 
 ## 6. Briefs for the planned surfaces
 

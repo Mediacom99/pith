@@ -20,8 +20,9 @@ disagree, this section wins:
 - **Type has fixed point sizes.** macOS has no Dynamic Type. SF (the system font) carries the UI, and 11 pt is the floor.
 - **Color comes from the semantic system colors** (`NSColor` label, secondary label, window background, separator,
   the user's accent color), so light, dark and Increase Contrast adapt on their own.
-- **No materials, motion or glass.** The window is opaque, with no blur, translucency or Liquid Glass. The panel
-  appears and disappears in one frame with no transition. These are performance rules (`AGENTS.md`), not taste.
+- **No materials, motion or glass.** The panel is opaque inside its rounded corners (the window is clear only so the
+  corners can be round), with no blur, translucency or Liquid Glass. It appears and disappears in one frame with no
+  transition. These are performance rules (`AGENTS.md`), not taste.
 - **Components:** AppKit's table and text field, SF Symbols, the system notification for Zip, the system Quick Look
   panel.
 - **Verifying:** screenshots come from `make snapshots`, never the Simulator or a browser. It draws the panel's states
@@ -65,7 +66,7 @@ rates. Settings are a text file, not a settings window.
 - **Built (milestones 1–2):**
   - One ranked list of apps, files and folders, with fuzzy matching word by word and a learned ranking.
   - Empty state: `recent`, `running` or `none`.
-  - A dot under running apps.
+  - "running" after the name of a running app.
   - ⌘K actions for each kind of row, Open with…, Quick Look, and Zip with a notification.
   - Launcher commands: Open Config, Reload Config, Quit.
   - Config problems shown as rows.

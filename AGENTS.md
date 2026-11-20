@@ -63,7 +63,7 @@ It's a small app, so it has to be excellent: fast, and light on memory, threads 
 - **Prepare ahead of time:** windows are built at launch, search keys at index time, and icons are rendered once at their exact pixel size. Showing something means displaying what's already prepared.
 - **Hot paths** (per keystroke × per item) don't allocate, block or log above debug level. Reuse buffers, and skip work whose result didn't change: no table reload when the matches are the same.
 - **Memory:** keep what's displayed at display size (icon bitmaps at exact pixels, never full-size images). Keep only what the index needs, and prune caches when the index changes.
-- **Drawing:** fixed frames, not Auto Layout, in views that change per keystroke. Opaque windows, no animations, no blur.
+- **Drawing:** fixed frames, not Auto Layout, in views that change per keystroke. Opaque panels (the window is clear only at its rounded corners, decision 29), no animations, no blur.
 - **Measure, don't guess:**
   - `make bench` for algorithms (Release).
   - `make logs` for live ⌘P and keystroke latencies.
