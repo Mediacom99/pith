@@ -30,6 +30,13 @@ supersede an earlier one.
 | 21 | 2026-11-19 | A finished Zip posts a macOS notification (permission asked once); clicking it reveals the zip. | Feedback without popping windows. | Edoardo |
 | 22 | 2026-11-19 | With no `folders` in config.toml, the file index covers the whole home folder, minus ~/Library, hidden files and the ignore list. | Find anything by default. | Edoardo |
 | 23 | 2026-11-20 | Queries are split into words at spaces and `/`; every word must match, in any order. For files, the last word matches the name and earlier words match the name or a folder above it, at half weight; one word matches names only. | Requested: multi-word queries failed, and paths should work. The rules are Claude's proposal; one word staying names-only keeps a folder name from flooding the results. | Edoardo |
+| 24 | 2026-11-20 | The styling that decision 9 put off starts now, through the impeccable skill. It has no macOS platform, so PRODUCT.md sets `ios` and a macOS section overrides the iPhone rules (touch targets, tab bars, simulator). PRODUCT.md and DESIGN.md live in `docs/`. Its screenshots come from `make snapshots`. | `ios` turns on its native checks (VoiceOver, both appearances, system colors) and off its web tooling (CSS rules, browser), which can't read Swift. | Edoardo |
+| 25 | 2026-11-20 | Edoardo picks the visual direction, from options Claude offers; Claude picks the exact values (sizes, colors, spacing). This replaces "visual choices are Claude's call". | Edoardo is driving the design now. | Edoardo |
+| 26 | 2026-11-20 | The design work has its own plan, `docs/DESIGN-PLAN.md`, alongside the milestones. It covers every surface in `FEATURES.md`, including the calculator and clipboard that aren't built yet. | Requested: the planned surfaces get designed in the same style before they're built. | Edoardo |
+| 27 | 2026-11-20 | Audience: Edoardo first, others later. Nothing may block a public release, but first run and other setups aren't designed for yet. Accessibility bar: WCAG AA contrast in light and dark, plus full keyboard use; no VoiceOver work for now. Both are in `docs/PRODUCT.md`. | His answers to `/impeccable init`. | Edoardo |
+| 28 | 2026-11-20 | Force Quit asks for a second ⏎: the first turns its row into "Press ⏎ again to force quit <app>", and ⎋, typing or moving the selection puts it back. Quit, a file's Move to Trash and the other actions still run on one ⏎. | Critique finding: Force Quit sits one row under Quit, and a stray ↓ lost unsaved work. A second ⏎ in the row keeps it keyboard-only, with no dialog. | Edoardo |
+| 29 | 2026-11-20 | The visual direction is Stage: a tile under the search bar shows what ⏎ will act on (the selected item, the calculator's answer, the clipboard preview) with the keys for ⏎ and ⌘K, over a compact list. Quiet low-opacity fills like Raycast's and no accent-colored selection; color only for meaning (red for Force Quit, orange for a config problem). The selected row ends in ↩, so it doesn't rely on its fill (decision 27). 14 pt rounded corners if step 5 measures them free; otherwise Edoardo decides. The direction contract is in `.impeccable/surfaces/`. | Edoardo picked it from four mockups (Native Tahoe, rofi-dense, Raycast-like, Stage). He turned down the solid blue selection and the impeccable roll's direction (Tokyo rail signage), and asked for an original one. | Edoardo |
+| 30 | 2026-11-21 | The app is called Pith: `Pith.app`, bundle ID `dev.edoardo.pith`, config in `~/.config/pith/`, history in `~/Library/Application Support/pith/`, logs under `dev.edoardo.pith`. The Swift modules keep their names (`Launcher`, `LauncherCore`): a launcher is what they are. | Edoardo liked it from Claude's list ("weird, I like it"): the essential part and nothing else. A web search found no Mac app or launcher called Pith; no trademark search yet. | Edoardo |
 
 ## Principles
 
@@ -63,7 +70,7 @@ Sources/
     main.swift             NSApplication with the accessory policy
     AppDelegate.swift      wiring: panel, config → hotkey/empty state/login item, commands, index (re)builds; Log
     Background.swift       runInBackground: blocking work on a GCD worker, awaited from the main actor
-    ConfigStore.swift      ~/.config/launcher/config.toml: create, read and parse on a worker, reload on change, open
+    ConfigStore.swift      ~/.config/pith/config.toml: create, read and parse on a worker, reload on change, open
     HistoryStore.swift     the History, loaded and saved as JSON on workers
     RunningApps.swift      open apps in MRU order: runningApplications re-read on launch/quit and on show
     LoginItem.swift        SMAppService registration, for a copy in an Applications folder only
@@ -72,7 +79,9 @@ Sources/
     LauncherViewController.swift  rows, merged app + file search, empty state, ⌘K sublists, keyboard, opening
     Actions.swift          ⌘K actions per kind, the SF Symbols rows use, AppResolver (config app names, Open With…)
     IconStore.swift        app, symbol and file-type icons as exact-size bitmaps rendered off the main thread
-    ResultViews.swift      fixed-frame cell (title, folder detail, running dot), bitmap IconView, row view
+    ResultViews.swift      one-line cell (name, folder, "running", ↩), the tile (StageView) and its keys, bitmap IconView,
+                           row view (the quiet selection)
+    Palette.swift          the few colors the system doesn't have: quiet gray, fills, edge, red and orange
     ZipNotifier.swift      Zip in the background, a notification when done, reveal on click
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement), copied in by `make app`
 ```
@@ -81,8 +90,8 @@ Files the app keeps:
 
 | File | What | Written |
 |---|---|---|
-| `~/.config/launcher/config.toml` | Settings (FEATURES §8) | Created with commented defaults on first launch; then only by you |
-| `~/Library/Application Support/launcher/history.json` | What you opened and when (≤ 200 items × 10 times); deleted files are dropped | After every open or deletion, on a serial worker, atomically |
+| `~/.config/pith/config.toml` | Settings (FEATURES §8) | Created with commented defaults on first launch; then only by you |
+| `~/Library/Application Support/pith/history.json` | What you opened and when (≤ 200 items × 10 times); deleted files are dropped | After every open or deletion, on a serial worker, atomically |
 
 **Startup.** `AppDelegate` builds and draws the panel, loads the history, then the config, and registers the
 configured hotkey. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
@@ -118,6 +127,8 @@ keys. ⌘X/C/V/A/Z are routed by hand, because an agent app has no main menu to 
 
 **⌘K.** On an app row, ⌘K replaces the list with its actions: Open and Reveal in Finder, plus Quit and Force Quit if
 it's running. The search field filters them, ⏎ runs one, and ⎋ or ⌘K goes back to the search and selection you had.
+Force Quit waits for a second ⏎ (decision 28); ⎋, typing or moving the selection cancels it. Quitting goes through
+`quitApp`, which tests swap out so they never quit a real app.
 
 **Opening.** ⏎ or a double click records the item in the history, hides the panel, then launches the app (or brings
 it to the front) or runs the command. Losing focus also hides the panel. Every hide empties the field.
@@ -158,10 +169,13 @@ At idle, nothing is scheduled: no timers, no polling. Workers exist only while t
 
 The first draw of an app icon costs ~5 ms on average and ~38 ms at worst (measured over 108 apps), because IconServices
 renders the layered icon on demand. Drawing it on the main thread while typing is what made the first build stutter.
-Now `IconStore` renders every app's icon once, right after indexing. It works on all cores, into a 56×56 px BGRA bitmap
-(28 pt at the screen's scale), and a row only sets that bitmap as its layer's contents. The 108 icons render in about
-10 ms when IconServices' cache is warm, and take ~1.4 MB in all. A row whose icon isn't ready yet shows none until the
-batch lands. Commands, actions and problems use SF Symbols, rendered the same way in the secondary label color.
+Now `IconStore` renders every app's icon once, right after indexing. It works on all cores, into BGRA bitmaps at the two
+sizes the panel shows: 40×40 px for the rows and 96×96 px for the tile (20 pt and 48 pt at the screen's scale). A row or
+the tile only sets the bitmap as its layer's contents. 111 apps take ~4.8 MB in all: 0.7 MB for the rows and 4.1 MB for
+the tile (the single 28 pt size before Stage took ~1.4 MB). A row whose icon isn't ready yet shows none until the batch
+lands. File icons are rendered by type on first request, with the type's name ("PDF document") for the tile.
+Commands, actions and problems use SF Symbols, rendered the same way: in the quiet gray, a problem's in orange and
+Force Quit's in red too, and at tile size for the commands and problems.
 
 Rendering happens under the app's current appearance (light or dark). Everything is re-rendered when that changes
 (KVO on `NSApp.effectiveAppearance`) or when the system icon style changes (Default, Dark, Clear, Tinted). For the
@@ -179,28 +193,33 @@ identical.
 | Scan of the home folder with the default rules (35,627 entries) | 130–150 ms on a worker (warm cache) | `make bench` |
 | File index memory | 4.4 MB for the home folder; 16 MB for 100k files | `make bench` (`FileIndex.memoryBytes`) |
 | File search | 0.1–0.3 ms for one word, 0.2–0.4 ms for two or three (35k entries); up to 0.7 ms at 100k; round trip from the main thread 0.1–0.2 ms | `make bench` |
-| Keystroke work in-process (apps + 35.6k files, merge, update the rows, render; offscreen) | ~1.7 ms | `make bench` (UIBenchmark) |
-| ⌘P work in-process (sync running apps, fill the empty state, lay out, draw; offscreen) | 0.3 ms recent (8 rows), 0.4 ms running (114 rows), 0.1 ms none | `make bench` (UIBenchmark) |
+| Keystroke work in-process (apps + 35.6k files, merge, update the rows and the tile, render; offscreen) | ~2.0 ms (1.9 ms before Stage, same session) | `make bench` (UIBenchmark) |
+| ⌘P work in-process (sync running apps, fill the empty state, lay out, draw; offscreen) | 0.4–0.5 ms recent (8 rows), 0.45 ms running (111 rows), 0.2 ms none | `make bench` (UIBenchmark) |
 | FSEvents → file searchable | about 0.5–1 s (0.5 s coalescing) | tests |
-| ⌘P → panel drawn, on screen (milestone 2 build) | ~27 ms, almost all "update", against 0.3 ms of our own work offscreen | `make logs` |
-| Keystroke → results drawn, on screen (milestone 2 build, apps + 35.6k files) | typically 7–10 ms: delivery 2–4, update 4–6, draw 0–2 | `make logs` |
-| Idle | 24 MB footprint, 0% CPU, 6 threads | `make stats` |
+| ⌘P → panel drawn, on screen | Stage build, clear window with round corners: 23 ms, almost all "update" (one sample); milestone 2 build: ~27 ms | `make logs` |
+| Keystroke → results drawn, on screen (apps + 35.6k files) | Stage build: typically 7–12 ms: delivery 2–3, update 4.7–6, draw 0–2; a few at 19–22 ms with 8–13 ms of delivery. Milestone 2 build: 7–10 ms | `make logs` |
+| Footprint 25 s after launch, untouched | Stage build 39 MB, the milestone 2 build 30 MB, measured the same way. 5.9 MB of the Stage build is the tile's 96 px icons: 123 bitmaps of 36 KB, each in its own 48 KB block | `make stats`, `footprint` |
+| Idle (milestone 2 build) | 24 MB footprint, 0% CPU, 6 threads | `make stats` |
 
 ## Visual decisions
 
-Speed first and style later (decision 9), so this is the plain, fast version.
+Stage, the direction Edoardo picked (decision 29); the values are Claude's (decision 25). Every state, light and dark,
+is in `docs/snapshots/` (`make snapshots`).
 
 | Element | Choice | By |
 |---|---|---|
-| Panel | 680 pt wide. Only the 56 pt search bar when there are no results (FEATURES §4); 421 pt, with 8 rows × 44 pt, when there are. The top edge stays fixed. | Claude |
-| Surface | An opaque window in the system window-background color, with square corners and the system shadow. No glass or blur, so the window server never blends or blurs what's behind. | Claude |
+| Panel | 680 pt wide. Only the 52 pt search bar when there are no results (FEATURES §4); 423 pt when there are: the bar, the tile with an 8 pt margin around it, 8 rows of 32 pt and 6 pt under them. The top edge stays fixed. It keeps that height with fewer rows (FEATURES §2: a fixed size), so the panel doesn't jump while you type and the tile, keys and rows never move. | Claude |
+| Surface | The window background color in a rectangle with 14 pt continuous corners and a 1 pt edge (black 12 % light, white 14 % dark), with the system shadow. The window itself is clear so the corners can be round; the fill, corners and edge are layer properties, so the compositor draws them and growing or shrinking repaints nothing. No glass or blur. | Claude |
 | Position | On the screen under the mouse pointer, which is how "the active screen" is defined. The expanded panel would be centered, and the search bar is its top edge. | Claude |
-| Type | Search field 22 pt regular with a magnifying glass symbol and a "Search" placeholder. Rows 15 pt with 28 pt icons; names cut in the middle. | Claude |
-| Selection | System inset table style in the accent color, always drawn emphasized (the focus stays in the search field). | Claude |
-| Running indicator | A 4 pt dot in the secondary label color under the icon, like the Dock. | Claude |
-| File rows | Two lines: the name (15 pt), and under it the full folder path (`~/…`, 11 pt, secondary color), both full width and cut in the middle only when too long, so the start and the extension stay visible. Other rows are one centered line. Icons by type: one for folders, one per extension, an app's own. | Edoardo's suggestion |
-| Commands, actions, problems | SF Symbols in the secondary label color in place of an icon: gearshape, arrow.clockwise, power for commands; arrow.up.forward.app, folder, link, square.grid.2x2, terminal, doc.on.doc, trash, xmark.circle, xmark.octagon for actions; exclamationmark.triangle for problems. A problem row reads "Config problem, line N: …". | Claude |
-| ⌘K | Sublists replace the list in place: "Actions for <item>", then "Open <file> with…". ⎋ steps back one level as it was; ⌘K goes back to the search. | Claude |
+| Grid | The bar and the rows share one: icons start 18 pt from the panel's side (10 pt inside the selection), and the magnifying glass is centered on their column. Names and the query start at 48 pt. | Claude |
+| Type | Search field 20 pt with a "Search" placeholder ("Filter actions", "Filter apps" in ⌘K). Rows 14 pt with 20 pt icons, the folder after the name at 12 pt. The tile: name 19 pt semibold, folder and kind 12 pt. Names and folders cut in the middle. | Claude |
+| Tile | Under the bar, 92 pt, 10 pt corners, a faint fill (black 3.5 % light, white 4.5 % dark). It shows what ⏎ acts on: a 48 pt icon, the name, the folder, and the kind with when it was last opened ("PDF document · opened today at 14:05") or "running". In ⌘K and Open With… the item stays on it. On the right, two keys as words with key caps: what ⏎ does in bold (Open, the selected action, Open in Preview, Open Config, Run), then "Actions ⌘K", or "Back ⎋" one level down. | Claude |
+| Selection | A quiet rounded rectangle (7 pt corners, black 7 % light, white 10 % dark), inset 8 pt from the panel's sides, drawn by our row view on a plain table. The fill alone is 1.2:1 and 1.4:1, so the selected row also ends in ↩ (9.4:1 light, 8.4:1 dark) and the tile names the item (decision 27). Scrollers are always overlay. | Claude |
+| Quiet gray | Folders, kinds, "running", the second key and symbols: #666666 light, #A1A1A1 dark, opaque. 4.9:1 and 4.75:1 on the selection, its darkest background. | Claude |
+| Color for meaning | Force Quit waiting for its second ⏎: red text and symbol (#D70015 light, #FF6961 dark) on a faint red row, and the tile's key in red. A config problem: its symbol in orange (#C93400 light, #FF9F0A dark; the system orange is 2.2:1 on white). No accent color anywhere. | Claude |
+| Running indicator | "running" after the name, in the quiet gray; on the tile, "Application · running". | Claude |
+| Commands, actions, problems | SF Symbols in the quiet gray in place of an icon: gearshape, arrow.clockwise, power for commands; arrow.up.forward.app, folder, link, square.grid.2x2, terminal, doc.on.doc, doc.zipper, trash, xmark.circle, xmark.octagon for actions; exclamationmark.triangle for problems. A problem row reads "Config problem, line N: …"; on the tile, "Config problem, line N" over the problem, capitalized unless it starts with a setting's name. | Claude |
+| ⌘K | Sublists replace the list in place; the item stays on the tile. ⎋ steps back one level as it was; ⌘K goes back to the search. | Claude |
 | Motion | None: the panel appears and disappears without animation. | Claude |
 
 ## Libraries
@@ -227,6 +246,7 @@ No third-party dependencies.
 | Quick Look | `QLPreviewPanel` (Quartz, system) | The system preview; the launcher acts as its controller. |
 | Notifications | UserNotifications (system) | For Zip completion (decision 21). |
 | Tests | Swift Testing (toolchain) | The current standard over XCTest. |
+| Panel snapshots | `NSView.cacheDisplay(in:to:)` into a 2× bitmap, written as PNG (AppKit, system) | Draws real panels that are never on screen, so it runs anytime. swift-snapshot-testing would add a dependency for image comparisons we don't do. |
 | Formatting | swift-format (toolchain), configured in `.swift-format` | Ships with Swift, so nothing to install. |
 
 GRDB, the `FEATURES.md` candidate for clipboard storage, is decided when the clipboard milestone starts.

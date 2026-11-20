@@ -59,6 +59,11 @@ public struct History: Sendable, Codable, Equatable {
         return boosts
     }
 
+    /// When `id` was last opened, if it's remembered.
+    public func lastOpened(_ id: String) -> Date? {
+        entries[id]?.opens.last.map(Date.init(timeIntervalSince1970:))
+    }
+
     /// Item ids, most recently opened first.
     public func recent(limit: Int) -> [String] {
         entries.sorted { ($0.value.opens.last ?? 0) > ($1.value.opens.last ?? 0) }.prefix(limit).map(\.key)

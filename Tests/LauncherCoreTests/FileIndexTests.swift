@@ -145,14 +145,14 @@ struct FileIndexTests {
 
     @Test func matchesNamesNotFolders() {
         let files = index(
-            ["/u/Projects/launcher/README.md", "/u/Projects/readme-old.txt", "/u/launcher.txt"], root: "/u")
+            ["/u/Projects/gizmo/README.md", "/u/Projects/readme-old.txt", "/u/gizmo.txt"], root: "/u")
         #expect(
             files.search("readme", limit: 10).map(\.path) == [
-                "/u/Projects/launcher/README.md", "/u/Projects/readme-old.txt",
+                "/u/Projects/gizmo/README.md", "/u/Projects/readme-old.txt",
             ])
         #expect(
-            files.search("launcher", limit: 10).map(\.path) == ["/u/Projects/launcher", "/u/launcher.txt"],
-            "the folder named launcher matches; README.md inside it doesn't")
+            files.search("gizmo", limit: 10).map(\.path) == ["/u/Projects/gizmo", "/u/gizmo.txt"],
+            "the folder named gizmo matches; README.md inside it doesn't")
     }
 
     @Test func matchesSeveralWordsInAnyOrder() {

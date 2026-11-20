@@ -19,8 +19,8 @@ enum Sublist: Equatable {
     case openWith(file: Item, apps: [Item])
 }
 
-/// The search field and the list under it: the empty state before you type, search results while you do, and an
-/// item's ⌘K actions.
+/// The search field, the tile under it and the list under that: the empty state before you type, search results while
+/// you do, and an item's ⌘K actions. The tile shows what ⏎ acts on and the keys for it (decision 29).
 ///
 /// Each keystroke searches the apps synchronously (a few hundred entries, microseconds) and the files on the file
 /// engine's queue (tens of thousands, spread over the cores, well under a millisecond), then shows both merged in one
@@ -39,7 +39,7 @@ final class LauncherViewController: NSViewController {
     var emptyState = Config.EmptyState.recent
     /// Shown at the top of the empty state until they're fixed.
     var problems: [String] = []
-    /// Runs a launcher command (Open Config, Quit Launcher…).
+    /// Runs a launcher command (Open Config, Quit Pith…).
     var runCommand: (Command) -> Void = { _ in }
     /// `[open_with]`, resolved: extension or type → app.
     var openWithApps: [String: URL] = [:]
@@ -47,6 +47,12 @@ final class LauncherViewController: NSViewController {
     var terminalApp: URL?
     /// Runs Zip in the background and notifies when done.
     var zipper: ZipNotifier?
+    /// The time, for "opened today at 14:05". Snapshots fix it.
+    var now: () -> Date = { .now }
+    /// Quits or force-quits a running app. Tests swap it out, so they never quit a real one.
+    var quitApp: (NSRunningApplication, _ force: Bool) -> Void = { app, force in
+        if force { app.forceTerminate() } else { app.terminate() }
+    }
 
     private static let resultLimit = 50
     private static let recentLimit = Int(Layout.visibleRows)
@@ -56,8 +62,13 @@ final class LauncherViewController: NSViewController {
 
     let searchField = NSTextField()
     let tableView = NSTableView()
+    let stage = StageView(
+        frame: NSRect(
+            x: Layout.tileMargin, y: Layout.barHeight + 1 + Layout.tileMargin,
+            width: Layout.width - 2 * Layout.tileMargin,
+            height: Layout.tileHeight))
     private let separator = NSBox()
-    private let scrollView = NSScrollView()
+    private let scrollView = OverlayScrollView()
     private let icons = IconStore()
     private let history: HistoryStore
     private let running: RunningApps
@@ -77,6 +88,8 @@ final class LauncherViewController: NSViewController {
     private(set) var sublist: Sublist?
     /// What ⎋ goes back to, innermost last: each level's sublist (nil for the search), query, rows and selection.
     private var backStack: [(sublist: Sublist?, query: String, rows: [Row], selection: Int)] = []
+    /// Force Quit is waiting for its second ⏎ (decision 28). ⎋, typing or moving the selection cancels it.
+    private(set) var confirmingForceQuit = false
 
     private var panel: LauncherPanel? { viewIfLoaded?.window as? LauncherPanel }
 
@@ -94,18 +107,19 @@ final class LauncherViewController: NSViewController {
 
     override func loadView() {
         // Flipped, so y grows downward and everything stays pinned to the top as the panel grows and shrinks.
-        let root = FlippedView(frame: NSRect(x: 0, y: 0, width: Layout.width, height: Layout.barHeight))
+        let root = PanelView(frame: NSRect(x: 0, y: 0, width: Layout.width, height: Layout.barHeight))
         let barMidY = Layout.barHeight / 2
 
-        let searchIcon = NSImageView(frame: NSRect(x: 20, y: barMidY - 10, width: 20, height: 20))
+        let searchIcon = NSImageView(
+            frame: NSRect(x: Layout.iconX + (Layout.iconSize - 20) / 2, y: barMidY - 10, width: 20, height: 20))
         searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
-        searchIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 18, weight: .medium)
-        searchIcon.contentTintColor = .secondaryLabelColor
+        searchIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 16, weight: .regular)
+        searchIcon.contentTintColor = Palette.quiet
 
         searchField.isBordered = false
         searchField.drawsBackground = false
         searchField.focusRingType = .none
-        searchField.font = .systemFont(ofSize: 22)
+        searchField.font = .systemFont(ofSize: 20)
         searchField.placeholderString = "Search"
         searchField.cell?.isScrollable = true
         searchField.cell?.wraps = false
@@ -115,14 +129,17 @@ final class LauncherViewController: NSViewController {
         searchField.delegate = self
         let fieldHeight = ceil(searchField.intrinsicContentSize.height)
         searchField.frame = NSRect(
-            x: 52, y: (barMidY - fieldHeight / 2).rounded(), width: Layout.width - 72, height: fieldHeight)
+            x: Layout.textX, y: (barMidY - fieldHeight / 2).rounded(),
+            width: Layout.width - Layout.textX - Layout.textTrailing - 2, height: fieldHeight)
 
         separator.frame = NSRect(x: 0, y: Layout.barHeight, width: Layout.width, height: 1)
         separator.boxType = .separator
 
         tableView.addTableColumn(NSTableColumn(identifier: NSUserInterfaceItemIdentifier("result")))
         tableView.headerView = nil
-        tableView.style = .inset
+        // Plain, so the geometry is all ours: the inset style adds padding of its own, which pushed the 8th row out of
+        // the panel. ResultRowView draws the inset selection instead.
+        tableView.style = .plain
         tableView.rowHeight = Layout.rowHeight
         tableView.intercellSpacing = .zero
         tableView.backgroundColor = .clear
@@ -133,23 +150,23 @@ final class LauncherViewController: NSViewController {
         tableView.doubleAction = #selector(activateClickedRow)
 
         scrollView.frame = NSRect(
-            x: 0, y: Layout.barHeight + 1, width: Layout.width, height: Layout.expandedHeight - Layout.barHeight - 1)
+            x: 0, y: Layout.listTop, width: Layout.width, height: Layout.expandedHeight - Layout.listTop)
         scrollView.documentView = tableView
         scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.automaticallyAdjustsContentInsets = false
-        scrollView.contentInsets = NSEdgeInsets(
-            top: Layout.resultsInset, left: 0, bottom: Layout.resultsInset, right: 0)
+        scrollView.contentInsets = NSEdgeInsets(top: 0, left: 0, bottom: Layout.listBottomInset, right: 0)
 
         // The one column spans the table; without this it keeps NSTableColumn's default 100 pt width.
         tableView.columnAutoresizingStyle = .lastColumnOnlyAutoresizingStyle
         tableView.sizeLastColumnToFit()
 
-        for subview in [searchIcon, searchField, separator, scrollView] {
+        for subview in [searchIcon, searchField, separator, stage, scrollView] {
             root.addSubview(subview)
         }
         separator.isHidden = true
+        stage.isHidden = true
         scrollView.isHidden = true
         view = root
     }
@@ -173,7 +190,8 @@ final class LauncherViewController: NSViewController {
     func reset() {
         sublist = nil
         backStack = []
-        searchField.placeholderString = "Search"
+        confirmingForceQuit = false
+        searchField.placeholderString = Self.placeholder(for: nil)
         setQuery("")
         if !rows.isEmpty { show([], selecting: 0) }
     }
@@ -286,54 +304,74 @@ final class LauncherViewController: NSViewController {
                 tableView.reloadData()
             } else {
                 // reloadData would build fresh cells for every visible row (the old ones are still attached when it
-                // asks), so the cells already there get their new rows. Only rows added at the end get new views.
+                // asks), so the cells already there get their new rows. Only rows added at the end get new views,
+                // configured as they're built and shown at once: noteNumberOfRowsChanged would fade them in over
+                // ~200 ms.
+                let old = tableRows.count
                 tableRows = rows
-                tableView.noteNumberOfRowsChanged()
                 refreshVisibleRows()
+                if rows.count > old {
+                    tableView.insertRows(at: IndexSet(old..<rows.count), withAnimation: [])
+                } else if rows.count < old {
+                    tableView.removeRows(at: IndexSet(rows.count..<old), withAnimation: [])
+                }
             }
             select(row: min(selection, rows.count - 1))
         }
         // Only the search bar while there's nothing to list.
         if rows.isEmpty != wasEmpty {
             separator.isHidden = rows.isEmpty
+            stage.isHidden = rows.isEmpty
             scrollView.isHidden = rows.isEmpty
             panel?.setResultsVisible(!rows.isEmpty)
         }
+        updateStage()
     }
 
     private func configure(_ cell: ResultCell, for row: Row) {
         var detail = ""
         var isRunning = false
+        var isDanger = false
         switch row {
         case .item(let item):
-            cell.textField?.stringValue = item.name
+            cell.title = item.name
             switch item.kind {
             case .app(let url):
                 cell.icon.image = icons.icon(for: url)
                 isRunning = running.isRunning(item.id)
             case .file(let url), .folder(let url):
                 cell.icon.image = icons.icon(forFile: url)
-                detail = (url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
+                detail = Self.folder(of: url)
             case .command(let command):
                 cell.icon.image = icons.symbol(Symbols.command(command))
             }
         case .action(let action):
-            if case .actions(let item) = sublist { cell.textField?.stringValue = action.title(for: item) }
-            cell.icon.image = icons.symbol(action.symbol)
+            if case .actions(let item) = sublist {
+                isDanger = action == .forceQuit && confirmingForceQuit
+                cell.title = isDanger ? Action.forceQuitConfirmation(for: item) : action.title(for: item)
+            }
+            cell.icon.image = icons.symbol(action.symbol, tint: isDanger ? .danger : .quiet)
         case .problem(let message):
-            cell.textField?.stringValue = "Config problem, \(message)"
-            cell.icon.image = icons.symbol(Symbols.problem)
+            cell.title = "Config problem, \(message)"
+            cell.icon.image = icons.symbol(Symbols.problem, tint: .warning)
         }
         cell.detail = detail
         cell.isRunning = isRunning
+        cell.isDanger = isDanger
     }
 
-    /// New icons or running states: update the rows on screen without reloading.
+    /// The folder `url` is in, from the home folder as `~`.
+    private static func folder(of url: URL) -> String {
+        (url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
+    }
+
+    /// New icons or running states: update the rows on screen, and the tile, without reloading.
     private func refreshVisibleRows() {
         tableView.enumerateAvailableRowViews { rowView, row in
             guard let cell = rowView.view(atColumn: 0) as? ResultCell, tableRows.indices.contains(row) else { return }
             configure(cell, for: tableRows[row])
         }
+        updateStage()
     }
 
     private func loadIcons() {
@@ -352,15 +390,140 @@ final class LauncherViewController: NSViewController {
         select(row: min(max(tableView.selectedRow + offset, 0), rows.count - 1))
     }
 
+    /// Puts a Force Quit that's waiting for its second ⏎ back to normal.
+    private func cancelForceQuit() {
+        guard confirmingForceQuit else { return }
+        confirmingForceQuit = false
+        refreshVisibleRows()
+    }
+
     private func select(row: Int) {
+        cancelForceQuit()
         tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         tableView.scrollRowToVisible(row)
         previewSelectionChanged()
+        updateStage()
     }
 
     private func setQuery(_ query: String) {
         searchField.stringValue = query
         searchField.currentEditor()?.selectedRange = NSRange(location: query.utf16.count, length: 0)
+    }
+
+    // MARK: The tile
+
+    /// The field's placeholder: the item a sublist is for is on the tile, so it only says what you're filtering.
+    private static func placeholder(for sublist: Sublist?) -> String {
+        switch sublist {
+        case .actions?: "Filter actions"
+        case .openWith?: "Filter apps"
+        case nil: "Search"
+        }
+    }
+
+    /// Shows what ⏎ acts on: the selected row, or in ⌘K the item the list is for, with the selected action or app as
+    /// the primary key.
+    private func updateStage() {
+        guard rows.indices.contains(tableView.selectedRow) else { return }
+        let row = rows[tableView.selectedRow]
+        let back = StageView.Key(words: "Back", caps: ["⎋"])
+        switch sublist {
+        case .actions(let item)?:
+            var content = stageContent(for: item)
+            guard case .action(let action) = row else { return }
+            if action == .forceQuit, confirmingForceQuit {
+                content.primary = action.title(for: item)
+                content.isDanger = true
+                content.secondary = StageView.Key(words: "Cancel", caps: ["⎋"])
+            } else {
+                content.primary = action.title(for: item)
+                content.secondary = back
+            }
+            stage.content = content
+        case .openWith(let file, _)?:
+            var content = stageContent(for: file)
+            guard case .item(let app) = row else { return }
+            content.primary = "Open in \(app.name)"
+            content.secondary = back
+            stage.content = content
+        case nil:
+            switch row {
+            case .item(let item):
+                stage.content = stageContent(for: item)
+            case .problem(let message):
+                let (title, detail) = Self.problemTile(message)
+                stage.content = StageView.Content(
+                    icon: icons.symbol(Symbols.problem, tint: .warning, size: .tile), name: title, place: detail,
+                    kind: (ConfigStore.file.path as NSString).abbreviatingWithTildeInPath, primary: "Open Config")
+            case .action:
+                break
+            }
+        }
+    }
+
+    /// A config problem on the tile: "line 3: unknown setting "theme"" becomes "Config problem, line 3" over
+    /// "Unknown setting "theme"". A message that starts with a setting's name keeps its case.
+    static func problemTile(_ message: String) -> (title: String, detail: String) {
+        guard message.hasPrefix("line "), let colon = message.range(of: ": ") else {
+            return ("Config problem", message)
+        }
+        var detail = String(message[colon.upperBound...])
+        if let word = detail.split(separator: " ").first, word.allSatisfy(\.isLetter) {
+            detail = detail.prefix(1).uppercased() + detail.dropFirst()
+        }
+        return ("Config problem, \(message[..<colon.lowerBound])", detail)
+    }
+
+    /// An item on the tile: its icon, name, folder, kind, and when it was last opened (or that it's running).
+    private func stageContent(for item: Item) -> StageView.Content {
+        let actions = StageView.Key(words: "Actions", caps: ["⌘", "K"])
+        let opened = history.history.lastOpened(item.id).map { Self.opened($0, now: now()) }
+        func kind(_ parts: String?...) -> String { parts.compactMap { $0 }.joined(separator: " · ") }
+        switch item.kind {
+        case .app(let url):
+            let isRunning = running.isRunning(item.id)
+            return StageView.Content(
+                icon: icons.icon(for: url, size: .tile), name: item.name, place: Self.folder(of: url),
+                kind: kind("Application", isRunning ? "running" : opened), primary: "Open", secondary: actions)
+        case .file(let url), .folder(let url):
+            return StageView.Content(
+                icon: icons.icon(forFile: url, size: .tile), name: item.name, place: Self.folder(of: url),
+                kind: kind(icons.typeName(forFile: url), opened), primary: Action.open.title(for: item),
+                secondary: actions)
+        case .command(let command):
+            return StageView.Content(
+                icon: icons.symbol(Symbols.command(command), size: .tile), name: item.name, place: "Launcher command",
+                primary: "Run")
+        }
+    }
+
+    private static let timeFormat: DateFormatter = {
+        let format = DateFormatter()
+        format.timeStyle = .short
+        format.dateStyle = .none
+        return format
+    }()
+
+    /// Day and month names in English, like the rest of the copy.
+    private static func englishFormat(_ template: String) -> DateFormatter {
+        let format = DateFormatter()
+        format.locale = Locale(identifier: "en")
+        format.setLocalizedDateFormatFromTemplate(template)
+        return format
+    }
+    private static let weekdayFormat = englishFormat("EEEE")
+    private static let dayFormat = englishFormat("MMMd")
+
+    /// "opened today at 14:05", "opened yesterday", "opened Tuesday" within the week, else "opened Nov 3".
+    static func opened(_ date: Date, now: Date = .now) -> String {
+        let calendar = Calendar.current
+        if calendar.isDate(date, inSameDayAs: now) { return "opened today at \(timeFormat.string(from: date))" }
+        let days =
+            calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: now))
+            .day ?? .max
+        if days == 1 { return "opened yesterday" }
+        if (2..<7).contains(days) { return "opened \(weekdayFormat.string(from: date))" }
+        return "opened \(dayFormat.string(from: date))"
     }
 
     // MARK: Quick Look
@@ -443,11 +606,7 @@ final class LauncherViewController: NSViewController {
     private func enter(_ new: Sublist) {
         backStack.append((sublist, searchField.stringValue, rows, tableView.selectedRow))
         sublist = new
-        searchField.placeholderString =
-            switch new {
-            case .actions(let item): "Actions for \(item.name)"
-            case .openWith(let file, _): "Open \(file.name) with…"
-            }
+        searchField.placeholderString = Self.placeholder(for: new)
         setQuery("")
         refresh()
     }
@@ -457,12 +616,7 @@ final class LauncherViewController: NSViewController {
         guard let previous = backStack.popLast() else { return }
         sublist = previous.sublist
         searchGeneration += 1  // a search still in flight would overwrite the restored rows
-        searchField.placeholderString =
-            switch previous.sublist {
-            case .actions(let item): "Actions for \(item.name)"
-            case .openWith(let file, _): "Open \(file.name) with…"
-            case nil: "Search"
-            }
+        searchField.placeholderString = Self.placeholder(for: previous.sublist)
         setQuery(previous.query)
         show(previous.rows, selecting: previous.selection)
     }
@@ -483,6 +637,11 @@ final class LauncherViewController: NSViewController {
         case (.item(let item), _):
             open(item)
         case (.action(let action), .actions(let item)?):
+            if action == .forceQuit, !confirmingForceQuit {
+                confirmingForceQuit = true
+                refreshVisibleRows()
+                return
+            }
             perform(action, on: item)
         case (.action, _):
             break
@@ -579,9 +738,9 @@ final class LauncherViewController: NSViewController {
                 }
             }
         case .quit:
-            running.application(item.id)?.terminate()
+            if let app = running.application(item.id) { quitApp(app, false) }
         case .forceQuit:
-            running.application(item.id)?.forceTerminate()
+            if let app = running.application(item.id) { quitApp(app, true) }
         case .openWith:
             break
         }
@@ -624,6 +783,8 @@ extension LauncherViewController: NSTextFieldDelegate {
         case #selector(NSResponder.cancelOperation(_:)):
             if isPreviewing {
                 closePreview()
+            } else if confirmingForceQuit {
+                cancelForceQuit()
             } else if sublist != nil {
                 goBack()
             } else {
@@ -649,11 +810,20 @@ extension LauncherViewController: NSTableViewDataSource, NSTableViewDelegate {
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
         tableView.makeView(withIdentifier: ResultRowView.identifier, owner: nil) as? ResultRowView ?? ResultRowView()
     }
+
+    /// A click on another row also cancels a Force Quit waiting for its second ⏎.
+    func tableViewSelectionDidChange(_ notification: Notification) {
+        cancelForceQuit()
+    }
 }
 
-/// A view whose y axis grows downward, so subviews with default autoresizing stay pinned to the top.
-final class FlippedView: NSView {
-    override var isFlipped: Bool { true }
+/// Overlay scrollers whatever System Settings says: an always-visible scroller would take 15 pt off the rows, so a
+/// list that scrolls would be narrower than one that doesn't.
+final class OverlayScrollView: NSScrollView {
+    override var scrollerStyle: NSScroller.Style {
+        get { .overlay }
+        set { super.scrollerStyle = .overlay }
+    }
 }
 
 extension LauncherViewController: QLPreviewPanelDataSource, QLPreviewPanelDelegate {

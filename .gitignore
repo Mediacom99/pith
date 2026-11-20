@@ -3,3 +3,11 @@
 /.swiftpm/
 .claude/memory/
 .claude/settings.local.json
+# Impeccable: keep its shared settings and briefs, not its scratch (mocks, reviews, critique snapshots, local config)
+/.impeccable/*
+!/.impeccable/config.json
+!/.impeccable/design.json
+!/.impeccable/surfaces/
+!/.impeccable/critique/
+/.impeccable/critique/*
+!/.impeccable/critique/ignore.md

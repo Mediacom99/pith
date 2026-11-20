@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-20T00:00:00Z",
+  "title": "Design System: launcher",
+  "extensions": {
+    "colorMeta": {
+      "window-background-light": { "role": "neutral", "displayName": "Window Background (light)", "canonical": "NSColor.windowBackgroundColor", "tonalRamp": ["#1F1F1F", "#3A3A3A", "#5C5C5C", "#808080", "#A6A6A6", "#CCCCCC", "#EAEAEA", "#FFFFFF"] },
+      "window-background-dark": { "role": "neutral", "displayName": "Window Background (dark)", "canonical": "NSColor.windowBackgroundColor", "tonalRamp": ["#1E1E1E", "#282828", "#353535", "#454545", "#5C5C5C", "#808080", "#A6A6A6", "#CCCCCC"] },
+      "label-light": { "role": "neutral", "displayName": "Label (light)", "canonical": "NSColor.labelColor" },
+      "label-dark": { "role": "neutral", "displayName": "Label (dark)", "canonical": "NSColor.labelColor" },
+      "quiet-light": { "role": "neutral", "displayName": "Quiet Gray (light)", "canonical": "Palette.quiet", "tonalRamp": ["#262626", "#3D3D3D", "#525252", "#666666", "#808080", "#A1A1A1", "#C4C4C4", "#E6E6E6"] },
+      "quiet-dark": { "role": "neutral", "displayName": "Quiet Gray (dark)", "canonical": "Palette.quiet", "tonalRamp": ["#262626", "#3D3D3D", "#525252", "#666666", "#808080", "#A1A1A1", "#C4C4C4", "#E6E6E6"] },
+      "tile-fill-light": { "role": "neutral", "displayName": "Tile Fill (light)", "canonical": "Palette.tile; renders #F6F6F6 on the window" },
+      "tile-fill-dark": { "role": "neutral", "displayName": "Tile Fill (dark)", "canonical": "Palette.tile; renders #282828 on the window" },
+      "selection-fill-light": { "role": "neutral", "displayName": "Selection Fill (light)", "canonical": "Palette.selection; renders #EDEDED on the window" },
+      "selection-fill-dark": { "role": "neutral", "displayName": "Selection Fill (dark)", "canonical": "Palette.selection; renders #353535 on the window" },
+      "edge-light": { "role": "neutral", "displayName": "Edge (light)", "canonical": "Palette.edge" },
+      "edge-dark": { "role": "neutral", "displayName": "Edge (dark)", "canonical": "Palette.edge" },
+      "danger-light": { "role": "meaning", "displayName": "Danger Red (light)", "canonical": "Palette.danger", "tonalRamp": ["#3D0006", "#6B000B", "#A10010", "#D70015", "#F0404D", "#FF6961", "#FFA8A3", "#FFE3E1"] },
+      "danger-dark": { "role": "meaning", "displayName": "Danger Red (dark)", "canonical": "Palette.danger", "tonalRamp": ["#3D0006", "#6B000B", "#A10010", "#D70015", "#F0404D", "#FF6961", "#FFA8A3", "#FFE3E1"] },
+      "danger-fill-light": { "role": "meaning", "displayName": "Danger Fill (light)", "canonical": "Palette.dangerFill" },
+      "danger-fill-dark": { "role": "meaning", "displayName": "Danger Fill (dark)", "canonical": "Palette.dangerFill" },
+      "warning-light": { "role": "meaning", "displayName": "Warning Orange (light)", "canonical": "Palette.warning", "tonalRamp": ["#3A1000", "#651C00", "#972700", "#C93400", "#F06A10", "#FF9F0A", "#FFC766", "#FFEBC7"] },
+      "warning-dark": { "role": "meaning", "displayName": "Warning Orange (dark)", "canonical": "Palette.warning", "tonalRamp": ["#3A1000", "#651C00", "#972700", "#C93400", "#F06A10", "#FF9F0A", "#FFC766", "#FFEBC7"] }
+    },
+    "typographyMeta": {
+      "search": { "displayName": "Search", "purpose": "The query and its placeholder in the 52 pt search bar." },
+      "tile-name": { "displayName": "Tile Name", "purpose": "The selected item's name on the tile." },
+      "row-title": { "displayName": "Row Title", "purpose": "Each row's name; actions and apps in ⌘K." },
+      "key-primary": { "displayName": "Key Primary", "purpose": "What ⏎ does, on the tile, in label color (red in Force Quit's confirmation)." },
+      "key-secondary": { "displayName": "Key Secondary", "purpose": "Actions, Back, Cancel, in quiet gray." },
+      "return-mark": { "displayName": "Return Mark", "purpose": "The ↩ at the end of the selected row, in secondary label color." },
+      "detail": { "displayName": "Detail", "purpose": "Folders after row names; the tile's folder and kind lines." },
+      "tag": { "displayName": "Tag", "purpose": "\"running\" at the end of a running app's row." },
+      "key-cap": { "displayName": "Key Cap", "purpose": "The glyph inside a key cap." }
+    },
+    "shadows": [
+      { "name": "panel-system", "value": "the system window shadow (NSWindow.hasShadow)", "purpose": "The panel's only shadow. Nothing inside the panel casts one." }
+    ],
+    "motion": [
+      { "name": "none", "value": "none", "purpose": "The panel appears, resizes and disappears in one frame, with no animation (animationBehavior = .none)." }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "The launcher's one surface: window background, 14 pt continuous corners, a 1 pt edge, the system shadow.",
+      "html": "<div class=\"ds-panel\"><div class=\"ds-bar\"><svg class=\"ds-mag\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"><circle cx=\"6.5\" cy=\"6.5\" r=\"5\"/><path d=\"M10.2 10.2 15 15\"/></svg><span class=\"ds-placeholder\">Search</span></div></div>",
+      "css": ".ds-panel { width: 680px; background: #FFFFFF; border: 1px solid rgba(0,0,0,0.12); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); overflow: hidden; font-family: -apple-system, system-ui, sans-serif; } .ds-bar { height: 52px; display: flex; align-items: center; } .ds-mag { color: #666666; margin-left: 20px; margin-right: 12px; } .ds-placeholder { font-size: 20px; color: rgba(0,0,0,0.25); } @media (prefers-color-scheme: dark) { .ds-panel { background: #282828; border-color: rgba(255,255,255,0.14); } .ds-mag { color: #A1A1A1; } .ds-placeholder { color: rgba(255,255,255,0.25); } }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "search-field",
+      "description": "Borderless 20 pt field with the magnifier in quiet gray, no focus ring, a separator under it.",
+      "html": "<div class=\"ds-search\"><svg class=\"ds-search-icon\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"><circle cx=\"6.5\" cy=\"6.5\" r=\"5\"/><path d=\"M10.2 10.2 15 15\"/></svg><input class=\"ds-search-input\" placeholder=\"Search\" value=\"quarterly\"></div>",
+      "css": ".ds-search { width: 680px; height: 52px; display: flex; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.1); font-family: -apple-system, system-ui, sans-serif; } .ds-search-icon { color: #666666; margin: 0 12px 0 20px; } .ds-search-input { flex: 1; margin-right: 18px; border: none; outline: none; background: transparent; font: 400 20px -apple-system, system-ui, sans-serif; color: rgba(0,0,0,0.85); } .ds-search-input:focus-visible { outline: none; } @media (prefers-color-scheme: dark) { .ds-search { border-bottom-color: rgba(255,255,255,0.12); } .ds-search-icon { color: #A1A1A1; } .ds-search-input { color: rgba(255,255,255,0.85); } }"
+    },
+    {
+      "name": "Tile",
+      "kind": "custom",
+      "refersTo": "tile",
+      "description": "What ⏎ acts on: 48 pt icon, name, folder, kind, and the keys for ⏎ and ⌘K on the right.",
+      "html": "<div class=\"ds-tile\"><div class=\"ds-tile-icon\"></div><div class=\"ds-tile-text\"><div class=\"ds-tile-name\">Quarterly_Budget_Review.pdf</div><div class=\"ds-tile-detail\">~/Documents/Acme</div><div class=\"ds-tile-detail\">PDF document · opened today at 14:05</div></div><div class=\"ds-keys\"><div class=\"ds-key\"><span class=\"ds-key-primary\">Open</span><span class=\"ds-cap\">↩</span></div><div class=\"ds-key\"><span class=\"ds-key-secondary\">Actions</span><span class=\"ds-cap\">⌘</span><span class=\"ds-cap\">K</span></div></div></div>",
+      "css": ".ds-tile { width: 664px; height: 92px; box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; background: rgba(0,0,0,0.035); border-radius: 10px; font-family: -apple-system, system-ui, sans-serif; } .ds-tile-icon { width: 48px; height: 48px; border-radius: 10px; background: #E6E6E6; flex: none; } .ds-tile-text { flex: 1; min-width: 0; margin: 0 16px 0 14px; display: flex; flex-direction: column; gap: 1px; } .ds-tile-name { font-size: 19px; font-weight: 600; color: rgba(0,0,0,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-tile-detail { font-size: 12px; color: #666666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-keys { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; } .ds-key { display: flex; align-items: center; gap: 4px; } .ds-key-primary { font-size: 13px; font-weight: 600; color: rgba(0,0,0,0.85); margin-right: 4px; } .ds-key-secondary { font-size: 13px; color: #666666; margin-right: 4px; } .ds-cap { min-width: 20px; height: 20px; box-sizing: border-box; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; background: rgba(0,0,0,0.07); font-size: 11px; font-weight: 500; color: #666666; } @media (prefers-color-scheme: dark) { .ds-tile { background: rgba(255,255,255,0.045); } .ds-tile-icon { background: #454545; } .ds-tile-name, .ds-key-primary { color: rgba(255,255,255,0.85); } .ds-tile-detail, .ds-key-secondary, .ds-cap { color: #A1A1A1; } .ds-cap { background: rgba(255,255,255,0.10); } }"
+    },
+    {
+      "name": "Row",
+      "kind": "custom",
+      "refersTo": "row",
+      "description": "A 32 pt result row on one line: 20 pt icon, name, folder in quiet gray; \"running\" at the end of a running app.",
+      "html": "<div class=\"ds-row\"><span class=\"ds-row-icon\"></span><span class=\"ds-row-title\">Acme</span><span class=\"ds-row-detail\">~/Documents</span><span class=\"ds-row-tag\"></span></div><div class=\"ds-row\"><span class=\"ds-row-icon\"></span><span class=\"ds-row-title\">Finder</span><span class=\"ds-row-detail\"></span><span class=\"ds-row-tag\">running</span></div>",
+      "css": ".ds-row { width: 680px; height: 32px; box-sizing: border-box; padding: 0 18px; display: flex; align-items: baseline; font-family: -apple-system, system-ui, sans-serif; } .ds-row-icon { width: 20px; height: 20px; align-self: center; border-radius: 5px; background: #E6E6E6; margin-right: 10px; flex: none; } .ds-row-title { font-size: 14px; color: rgba(0,0,0,0.85); } .ds-row-detail { font-size: 12px; color: #666666; margin-left: 6px; flex: 1; } .ds-row-tag { font-size: 11px; color: #666666; } @media (prefers-color-scheme: dark) { .ds-row-icon { background: #454545; } .ds-row-title { color: rgba(255,255,255,0.85); } .ds-row-detail, .ds-row-tag { color: #A1A1A1; } }"
+    },
+    {
+      "name": "Selected Row",
+      "kind": "custom",
+      "refersTo": "row-selected",
+      "description": "The selection: a quiet 7 pt rounded fill inset 8 pt, ending in ↩. Never an accent color.",
+      "html": "<div class=\"ds-row-sel\"><span class=\"ds-row-sel-icon\"></span><span class=\"ds-row-sel-title\">Quarterly_Budget_Review.pdf</span><span class=\"ds-row-sel-detail\">~/Documents/Acme</span><span class=\"ds-row-sel-mark\">↩</span></div>",
+      "css": ".ds-row-sel { width: 664px; margin: 0 8px; height: 32px; box-sizing: border-box; padding: 0 10px; display: flex; align-items: baseline; background: rgba(0,0,0,0.07); border-radius: 7px; font-family: -apple-system, system-ui, sans-serif; } .ds-row-sel-icon { width: 20px; height: 20px; align-self: center; border-radius: 5px; background: #E6E6E6; margin-right: 10px; flex: none; } .ds-row-sel-title { font-size: 14px; color: rgba(0,0,0,0.85); } .ds-row-sel-detail { font-size: 12px; color: #666666; margin-left: 6px; flex: 1; } .ds-row-sel-mark { font-size: 13px; font-weight: 600; color: rgba(0,0,0,0.5); } @media (prefers-color-scheme: dark) { .ds-row-sel { background: rgba(255,255,255,0.10); } .ds-row-sel-icon { background: #5C5C5C; } .ds-row-sel-title { color: rgba(255,255,255,0.85); } .ds-row-sel-detail { color: #A1A1A1; } .ds-row-sel-mark { color: rgba(255,255,255,0.55); } }"
+    },
+    {
+      "name": "Force Quit Confirmation",
+      "kind": "custom",
+      "refersTo": "row-danger",
+      "description": "Force Quit waiting for its second ⏎: red text, symbol and ↩ on a faint red fill.",
+      "html": "<div class=\"ds-row-danger\"><svg class=\"ds-row-danger-icon\" width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\"><path d=\"M4.3 1h5.4L13 4.3v5.4L9.7 13H4.3L1 9.7V4.3z\"/><path d=\"M4.8 4.8l4.4 4.4M9.2 4.8l-4.4 4.4\"/></svg><span class=\"ds-row-danger-title\">Press ⏎ again to force quit Finder</span><span class=\"ds-row-danger-mark\">↩</span></div>",
+      "css": ".ds-row-danger { width: 664px; margin: 0 8px; height: 32px; box-sizing: border-box; padding: 0 10px; display: flex; align-items: center; background: rgba(255,59,48,0.10); border-radius: 7px; font-family: -apple-system, system-ui, sans-serif; color: #D70015; } .ds-row-danger-icon { margin: 0 13px 0 3px; } .ds-row-danger-title { font-size: 14px; flex: 1; } .ds-row-danger-mark { font-size: 13px; font-weight: 600; } @media (prefers-color-scheme: dark) { .ds-row-danger { background: rgba(255,69,58,0.16); color: #FF6961; } }"
+    },
+    {
+      "name": "Config Problem Row",
+      "kind": "custom",
+      "refersTo": "row",
+      "description": "A config problem at the top of the empty state, with the orange triangle as its icon; ⏎ opens the config file.",
+      "html": "<div class=\"ds-row-problem\"><svg class=\"ds-row-problem-icon\" width=\"14\" height=\"13\" viewBox=\"0 0 14 13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\"><path d=\"M7 1 13 12H1z\"/><path d=\"M7 5v3.2M7 10v.2\"/></svg><span class=\"ds-row-problem-title\">Config problem, line 3: unknown setting \"theme\"</span></div>",
+      "css": ".ds-row-problem { width: 680px; height: 32px; box-sizing: border-box; padding: 0 18px; display: flex; align-items: center; font-family: -apple-system, system-ui, sans-serif; } .ds-row-problem-icon { color: #C93400; margin: 0 13px 0 3px; } .ds-row-problem-title { font-size: 14px; color: rgba(0,0,0,0.85); } @media (prefers-color-scheme: dark) { .ds-row-problem-icon { color: #FF9F0A; } .ds-row-problem-title { color: rgba(255,255,255,0.85); } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Stage",
+    "overview": "The panel answers one question before you press ⏎: what will it act on? A tile under the search bar shows the selected item large, with its icon, name, folder and kind, and the keys for ⏎ and ⌘K on its right. The list under it is compact. In ⌘K and Open With… the item stays on the tile while the list becomes its actions or apps, and the tile's first key names the selected one.\n\nEverything else is quiet. The panel is the system window color, the tile and the selection are low-opacity fills of the label color, and nothing is filled with the accent color. Color appears only where it means something: red for Force Quit waiting for its second ⏎, orange for a config problem. Type is SF at fixed point sizes, icons are the system's own app and file icons and SF Symbols. The panel never animates, blurs or goes translucent; it appears in one frame and stays still.\n\nLight and dark follow the system. Each custom color is a light/dark pair in `Sources/Launcher/Palette.swift`; every other color is an AppKit semantic color (`windowBackgroundColor`, `labelColor`, `secondaryLabelColor`, `placeholderTextColor`, the separator).",
+    "keyCharacteristics": [
+      "A 92 pt tile that always shows what ⏎ acts on, with its keys spelled out.",
+      "Compact 32 pt rows on one line: icon, name, folder.",
+      "Quiet fills (3.5–4.5 % tile, 7–10 % selection) instead of an accent bar.",
+      "The selected row ends in ↩, so the selection never relies on its fill.",
+      "Color only for meaning: red for danger, orange for a problem.",
+      "Opaque, still, fixed geometry: no motion, no blur, no layout shift while typing."
+    ],
+    "rules": [
+      { "name": "The No-Accent Rule", "body": "Nothing in the panel is filled or tinted with the accent color or any brand hue. The selection is a gray fill plus ↩.", "section": "colors" },
+      { "name": "The Meaning-Only Rule", "body": "Red and orange appear only for Force Quit's confirmation and config problems. A new hue needs a new meaning first.", "section": "colors" },
+      { "name": "The Fill-Is-Not-Enough Rule", "body": "A low-contrast fill never carries state alone: the selected row ends in ↩ and the tile names the item.", "section": "colors" },
+      { "name": "The 11 pt Floor Rule", "body": "No text is smaller than 11 pt.", "section": "typography" },
+      { "name": "The Cut-in-the-Middle Rule", "body": "Names and folders that don't fit truncate in the middle, so both the start and the extension stay visible (`Quarterly_Bud…Review.pdf`).", "section": "typography" },
+      { "name": "The One-Baseline Rule", "body": "Everything on a row (name, folder, \"running\", ↩) sits on the name's baseline.", "section": "typography" },
+      { "name": "The Flat-Inside Rule", "body": "Only the panel casts a shadow, and it is the system's. Nothing inside the panel is lifted.", "section": "elevation" }
+    ],
+    "dos": [
+      "**Do** show what ⏎ acts on in the tile, with the ⏎ key's words in semibold label color.",
+      "**Do** end the selected row in ↩, and keep the selection a quiet fill (black 7 % light, white 10 % dark) with 7 pt corners, inset 8 pt.",
+      "**Do** use the system semantic colors for surfaces and text, and Palette's quiet gray (#666666 / #A1A1A1) for everything secondary.",
+      "**Do** keep every element on the shared grid: icons at 18 pt, text at 48 pt, 18 pt from the right.",
+      "**Do** keep the panel's height fixed at 423 pt with results, however many rows there are.",
+      "**Do** use SF Symbols in regular weight, in quiet gray, for anything that has no app or file icon.",
+      "**Do** check text and meaningful symbols against WCAG AA in light and dark, on the selection, its darkest background."
+    ],
+    "donts": [
+      "**Don't** fill the selection, a key or anything else with the accent color or a solid color bar.",
+      "**Don't** use red or orange except for Force Quit's confirmation and config problems.",
+      "**Don't** animate, fade, slide or blur anything; the panel appears and disappears in one frame.",
+      "**Don't** use materials, vibrancy, translucency or Liquid Glass; the panel is opaque.",
+      "**Don't** add shadows inside the panel.",
+      "**Don't** set text below 11 pt, or use uppercase labels or letter-spacing for hierarchy.",
+      "**Don't** hide what ⏎ does in a footer or leave it unsaid."
+    ]
+  }
+}

@@ -120,6 +120,9 @@ Status: **in progress**. This build measured on screen (with apps and 35.6k file
     AppKit has finished drawing the keystroke itself.
   - Next: time search versus waiting inside "update", and try showing the apps' results synchronously in the same
     turn, with the files merged right after.
-- **Idle memory, CPU and threads:** not taken yet. Run `make stats` on the next run.
+- **Memory, CPU and threads:** 39 MB, 25 s after launch with nothing touched, on the Stage build (30 MB for the build
+  before it, measured the same way); 6 threads, ~0% CPU. 5.9 MB is the tile's 96 px icons (design plan step 5).
+- **Stage build, on screen:** ⌘P → drawn 23 ms (one sample), keystrokes 7–12 ms (a few at 19–22 ms from delivery), so
+  the gaps above are unchanged.
 
 The baseline before this milestone (milestone 1 build): ⌘P 28–49 ms, keystrokes 4–18 ms.

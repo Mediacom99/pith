@@ -3,7 +3,7 @@ import LauncherCore
 
 /// The history of what was opened, loaded at launch and saved after every open. Disk work happens on workers.
 final class HistoryStore {
-    nonisolated static let defaultFile = URL.applicationSupportDirectory.appending(path: "launcher/history.json")
+    nonisolated static let defaultFile = URL.applicationSupportDirectory.appending(path: "pith/history.json")
 
     private(set) var history = History()
     private let file: URL
@@ -29,8 +29,8 @@ final class HistoryStore {
         }
     }
 
-    func record(_ id: String) {
-        history.record(id)
+    func record(_ id: String, at date: Date = .now) {
+        history.record(id, at: date)
         let snapshot = history
         let file = self.file
         writer.async { Self.write(snapshot, to: file) }

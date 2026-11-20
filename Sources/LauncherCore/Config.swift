@@ -1,6 +1,6 @@
 import Foundation
 
-/// The settings in `~/.config/launcher/config.toml`. Every one has a default, so a missing file or key is fine.
+/// The settings in `~/.config/pith/config.toml`. Every one has a default, so a missing file or key is fine.
 public struct Config: Sendable, Equatable {
     /// What the launcher lists before you type (decisions 11–13).
     public enum EmptyState: String, Sendable, CaseIterable {
@@ -104,7 +104,7 @@ public struct Config: Sendable, Equatable {
                 case ("launcher.max_depth", _):
                     problem("launcher.max_depth should be a number")
                 default:
-                    problem("unknown setting \(name)")
+                    problem("unknown setting \"\(name)\"")
                 }
             }
         }
@@ -113,7 +113,7 @@ public struct Config: Sendable, Equatable {
 
     /// Written to a new config file: every setting with its default, explained.
     public static let template = """
-        # Launcher settings. Saved changes apply right away.
+        # Pith settings. Saved changes apply right away.
 
         [hotkeys]
         # Opens the launcher from anywhere: modifiers (cmd, shift, alt, ctrl) + one key.

@@ -20,6 +20,14 @@ struct HistoryTests {
         #expect(history.recent(limit: 2) == ["a", "b"])
     }
 
+    @Test func remembersWhenEachItemWasLastOpened() {
+        var history = History()
+        history.record("a", at: daysAgo(3))
+        history.record("a", at: daysAgo(1))
+        #expect(history.lastOpened("a") == daysAgo(1))
+        #expect(history.lastOpened("never") == nil)
+    }
+
     @Test func frecencyGrowsWithUseAndFadesWithAge() {
         var history = History()
         history.record("daily", at: daysAgo(1))

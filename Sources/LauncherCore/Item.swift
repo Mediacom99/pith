@@ -74,7 +74,7 @@ public enum Command: String, Sendable, CaseIterable {
         switch self {
         case .openConfig: "Open Config"
         case .reloadConfig: "Reload Config"
-        case .quit: "Quit Launcher"
+        case .quit: "Quit Pith"
         }
     }
 }
