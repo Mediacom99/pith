@@ -9,7 +9,7 @@ INSTALLED := $(HOME)/Applications/$(APP_NAME).app
 PROCESS  := $(APP_NAME).app/Contents/MacOS/$(APP_NAME)
 
 .DEFAULT_GOAL := help
-.PHONY: help build app run install stop logs stats test bench snapshots lint format clean
+.PHONY: help build app run install uninstall stop logs stats test bench snapshots lint format clean
 
 help: ## List the targets
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z]+:.*## / { printf "  make %-9s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -32,6 +32,9 @@ install: app stop ## Build, copy to ~/Applications and launch: the copy that sta
 	rm -rf "$(INSTALLED)"
 	cp -R $(APP) "$(INSTALLED)"
 	open "$(INSTALLED)"
+
+uninstall: stop ## Quit the app and remove the installed copy from ~/Applications
+	rm -rf "$(INSTALLED)"
 
 stop: ## Quit the running app, dev or installed copy, and wait until it's gone
 	@pkill -f "$(PROCESS)" || true
