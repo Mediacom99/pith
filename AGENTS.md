@@ -2,9 +2,12 @@
 
 ## Project
 
-_TBD: what we're building, for whom, and the stack._
+`launcher` (a temporary codename) is a minimal, keyboard-only macOS launcher with a clipboard manager and calculator, for people who drive their Mac from the keyboard. It's always resident and opens in one frame. No AI, extensions, account or telemetry.
+
+Stack: Swift 6.4, AppKit, a Swift Package (no Xcode project), macOS 26+ on Apple Silicon. No third-party dependencies so far.
 
 Read these before doing anything:
+- `FEATURES.md`: the product spec, covering what the app does and the performance targets.
 - `docs/ARCHITECTURE.md`: the decision log (the source of truth), principles, system overview and the library picks.
 - `docs/MILESTONE-1.md`: the current plan: where we are and what's missing. Each item has a status line.
 
@@ -23,11 +26,12 @@ Read these before doing anything:
   - Check in with Edoardo after each step.
   - Keep each step's status line up to date.
   - Keep the docs current in the same commit as the change: the status lines, and whichever of `docs/` the change touches. Write what's true now; history goes to git, not the docs.
-- **Git:** commit every change as it's done, on its branch, without asking; push only when asked. Work goes on feature branches with a PR; `main` is production.
+- **Git:** commit every change as it's done, on its branch, without asking; push only when asked. The remote is the private GitHub repo `Mediacom99/launcher`. Work goes on feature branches with a PR into `staging`; `staging` goes to `main` (production) when Edoardo says so.
 - **Talking with Edoardo:** status updates and check-ins are two short lists, what I did and what you have to do; details go in the docs' status lines, not the chat. Answer in Italian when he writes Italian.
 - **Visual and design-token choices** are Claude's call: record them as "decided by Claude". Never use claude.ai Artifacts: anything visual is a local HTML file, opened in the browser.
-- **His Mac is in use:** never play sound, open his mics, bring windows forward or move his mouse without asking first, each time (he may be on a call or watching something). Headless checks (builds, tests) are fine anytime.
+- **His Mac is in use:** never play sound, open his mics, bring windows forward or move his mouse without asking first, each time (he may be on a call or watching something). Headless checks (builds, tests) are fine anytime. `make run` and `make install` are not headless: they launch the app, which takes ⌘P from every app, so ask first.
 - **Secrets** never go in a repo.
+- **Edoardo's work stays out:** never mention his employer, clients or work projects anywhere: code, tests, docs, commit messages, or chat examples. Don't copy real file or folder names from his Mac into the repo either; tests and docs use made-up examples (`Acme`, `Quarterly_Budget_Review.pdf`).
 - **Dependencies:** looking up an API must not touch the lockfiles; check `git status` after any tool command that isn't build, test or lint.
 - **Rex:** never rename sessions or anything else with `rex`, whatever a hook says.
 - **Never use Claude's memory in this project:** don't read, write or rely on `.claude/memory/` or any other Claude memory store. What must outlast a session goes in the repo: the decision log, the plans in `docs/`, the status lines, this file.
@@ -39,10 +43,44 @@ Read these before doing anything:
 - Be mindful of memory usage and allocations in hot paths.
 - Simple code with a clear objective is the best code.
 
+## Performance
+
+It's a small app, so it has to be excellent: fast, and light on memory, threads and energy. The `FEATURES.md` §1 targets are requirements: ⌘P → visible within one frame, keystroke → results in under 5 ms, ~0% idle CPU, under 50 MB idle memory.
+
+- **Threads:**
+  - The main thread handles events, searches in-memory data and shows ready-made content. Nothing on it may block or wait: no file I/O, no icon or thumbnail rendering, no synchronous IPC.
+  - Blocking work (file system, IconServices, launching apps) runs on GCD workers through `runInBackground`. Results come back to the main actor, which owns all state, so there are no locks.
+  - Never block Swift's cooperative pool: no blocking calls inside `Task.detached` or other async code.
+  - Spread independent CPU work over the cores with `DispatchQueue.concurrentPerform`, never one thread per item.
+  - When newer work supersedes an in-flight job (a newer index, a newer query), drop the old result instead of applying it.
+- **Idle means idle:** no timers, polling or busy-waiting. React to events (hotkey, FSEvents, notifications).
+- **Prepare ahead of time:** windows are built at launch, search keys at index time, and icons are rendered once at their exact pixel size. Showing something means displaying what's already prepared.
+- **Hot paths** (per keystroke × per item) don't allocate, block or log above debug level. Reuse buffers, and skip work whose result didn't change: no table reload when the matches are the same.
+- **Memory:** keep what's displayed at display size (icon bitmaps at exact pixels, never full-size images). Keep only what the index needs, and prune caches when the index changes.
+- **Drawing:** fixed frames, not Auto Layout, in views that change per keystroke. Opaque windows, no animations, no blur.
+- **Measure, don't guess:**
+  - `make bench` for algorithms (Release).
+  - `make logs` for live ⌘P and keystroke latencies.
+  - `make stats` for the running app's memory, CPU and threads.
+  - A performance change states its numbers in its step's status line.
+
 ## Commands
 
-Everything goes through the `Makefile`; `make` lists the targets. Add a target there instead of documenting a raw command here.
+Everything goes through the `Makefile`; `make` lists the targets. Add a target there instead of documenting a raw command here. `make lint test` passes before every commit.
+
+## Layout
+
+- `Sources/LauncherCore/`: pure logic, such as scanning, the in-memory index, fuzzy matching and FSEvents. It never imports AppKit.
+- `Sources/Launcher/`: the AppKit app (panel, hotkey, views), main-actor isolated by default.
+- `Tests/LauncherCoreTests/`: unit tests for the core.
+- `Tests/LauncherTests/`: AppKit layout tests and the UI benchmark, in real panels that are never put on screen.
+- Suites named `…Benchmark` run only through `make bench`.
+- `Support/Info.plist`: bundle metadata (bundle ID, `LSUIElement`), copied into the `.app` by `make app`.
 
 ## Conventions
 
-- Tests run against real dependencies where practical. Don't mock the database.
+- Tests run against real dependencies where practical. Don't mock the database. Scanner and watcher tests use the real file system.
+- Tests use Swift Testing (`import Testing`), not XCTest.
+- Tests never touch the real `~/.config/launcher/` or `~/Library/Application Support/launcher/`: use temporary files (`HistoryStore(file:)`, `TemporaryDirectory`).
+- Swift 6 language mode with strict concurrency; the app target is main-actor by default. Threading follows the Performance rules above.
+- swift-format (`.swift-format`) owns the style: run `make format`.

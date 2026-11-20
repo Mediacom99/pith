@@ -1,0 +1,325 @@
+import AppKit
+import LauncherCore
+import TestSupport
+import Testing
+
+@testable import Launcher
+
+/// A real panel, laid out and drawn but never ordered onto the screen. Its history lives in a temporary file and
+/// starts with `opened`, oldest first.
+func makePanel(
+    items: [Item], opened: [String] = [], emptyState: Config.EmptyState = .none, problems: [String] = [],
+    files: FileSearchEngine = FileSearchEngine()
+) -> LauncherPanel {
+    _ = NSApplication.shared
+    // One shared scratch file: tests read the history from memory, so its contents don't matter, and nothing piles up.
+    let history = HistoryStore(
+        file: FileManager.default.temporaryDirectory.appending(path: "LauncherTests-history.json"))
+    for id in opened { history.record(id) }
+    let launcher = LauncherViewController(history: history, running: RunningApps(), files: files)
+    launcher.emptyState = emptyState
+    launcher.problems = problems
+    let panel = LauncherPanel(launcher: launcher)
+    launcher.index = SearchIndex(items: items)
+    return panel
+}
+
+/// Types `text` and waits for the search, files included, to land.
+func type(_ text: String, in panel: LauncherPanel) async {
+    panel.launcher.searchField.stringValue = text
+    panel.launcher.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification))
+    await panel.launcher.pendingSearch?.value
+    panel.layoutIfNeeded()
+}
+
+func press(_ command: Selector, in panel: LauncherPanel) {
+    _ = panel.launcher.control(panel.launcher.searchField, textView: NSTextView(), doCommandBy: command)
+}
+
+/// Made-up apps, so none of them is running on the machine that runs the tests.
+private let apps = ["Gizmo", "Gadget Pro", "Widget", "Hollow Thing", "Sprocket"].map {
+    Item(name: $0, appAt: URL(filePath: "/nonexistent/\($0).app"))
+}
+
+private func names(_ rows: [Row], for item: Item? = nil) -> [String] {
+    rows.map {
+        switch $0 {
+        case .item(let item): item.name
+        case .action(let action): item.map(action.title(for:)) ?? "\(action)"
+        case .problem(let message): message
+        }
+    }
+}
+
+/// What the panel lists, with action titles for the item they're for.
+private func names(_ panel: LauncherPanel) -> [String] {
+    if case .actions(let item)? = panel.launcher.sublist { return names(panel.launcher.rows, for: item) }
+    return names(panel.launcher.rows)
+}
+
+/// Polls `condition` on the main actor until it holds or a few seconds pass, for work that hops through a worker.
+private func eventually(_ condition: () -> Bool) async -> Bool {
+    for _ in 0..<200 where !condition() { try? await Task.sleep(for: .milliseconds(25)) }
+    return condition()
+}
+
+struct LauncherPanelTests {
+    @Test func opensAsJustTheSearchBarWhenTheEmptyStateIsNone() {
+        let panel = makePanel(items: apps, opened: [apps[0].id])
+        panel.launcher.prepareToShow()
+        #expect(panel.launcher.rows.isEmpty)
+        #expect(panel.frame.height == Layout.barHeight)
+    }
+
+    @Test func growsWithResultsAndShrinksKeepingTheTopEdge() async {
+        let panel = makePanel(items: apps)
+        let top = panel.frame.maxY
+
+        await type("g", in: panel)
+        #expect(panel.frame.height == Layout.expandedHeight)
+        #expect(panel.frame.maxY == top)
+
+        await type("gqqq", in: panel)
+        #expect(panel.frame.height == Layout.barHeight)
+        #expect(panel.frame.maxY == top)
+    }
+
+    @Test func namesUseTheWholeRow() async throws {
+        let panel = makePanel(items: apps)
+        await type("giz", in: panel)
+        let cell = try #require(
+            panel.launcher.tableView.view(atColumn: 0, row: 0, makeIfNecessary: false) as? ResultCell)
+        let title = try #require(cell.textField)
+        #expect(title.stringValue == "Gizmo")
+        #expect(cell.frame.width > Layout.width - 60, "the column spans the table")
+        #expect(title.frame.width > Layout.width - 120, "the title spans the cell")
+    }
+
+    @Test func searchFieldHasNoTextServices() throws {
+        let panel = makePanel(items: apps)
+        let editor = try #require(panel.fieldEditor(true, for: panel.launcher.searchField) as? NSTextView)
+        #expect(editor.isFieldEditor)
+        #expect(editor.inlinePredictionType == .no)
+        #expect(editor.writingToolsBehavior == .none)
+        #expect(!editor.isContinuousSpellCheckingEnabled)
+        #expect(!editor.isAutomaticSpellingCorrectionEnabled)
+        #expect(!editor.isAutomaticTextCompletionEnabled)
+    }
+
+    @Test func resetEmptiesAndCollapses() async {
+        let panel = makePanel(items: apps)
+        await type("g", in: panel)
+        panel.launcher.reset()
+        #expect(panel.launcher.searchField.stringValue.isEmpty)
+        #expect(panel.launcher.rows.isEmpty)
+        #expect(panel.frame.height == Layout.barHeight)
+    }
+
+    @Test func recentListsWhatWasOpenedNewestFirst() {
+        let panel = makePanel(items: apps, opened: [apps[0].id, apps[2].id, "/gone/Old.app"], emptyState: .recent)
+        panel.launcher.prepareToShow()
+        #expect(names(panel.launcher.rows) == ["Widget", "Gizmo"], "items no longer in the index are skipped")
+        #expect(panel.launcher.tableView.selectedRow == 0)
+        #expect(panel.frame.height == Layout.expandedHeight)
+    }
+
+    @Test func recentWithoutHistoryIsJustTheSearchBar() {
+        let panel = makePanel(items: apps, emptyState: .recent)
+        panel.launcher.prepareToShow()
+        #expect(panel.launcher.rows.isEmpty)
+        #expect(panel.frame.height == Layout.barHeight)
+    }
+
+    @Test func runningListsOpenAppsThenAllOthersAlphabetically() {
+        let commands = Command.allCases.map(Item.init(command:))
+        let panel = makePanel(items: apps + commands, emptyState: .running)
+        panel.launcher.prepareToShow()
+        let running = RunningApps()
+        let rows = panel.launcher.rows
+        #expect(!running.order.isEmpty, "Finder at least is always running")
+        #expect(rows.count == running.order.count + apps.count, "every open app, then every other app, no commands")
+        #expect(
+            Array(names(rows).suffix(apps.count)) == ["Gadget Pro", "Gizmo", "Hollow Thing", "Sprocket", "Widget"],
+            "the made-up apps aren't running, so they come after, alphabetically")
+        #expect(panel.launcher.tableView.selectedRow == (running.order.count > 1 ? 1 : 0))
+    }
+
+    @Test func problemsComeFirst() {
+        let panel = makePanel(
+            items: apps, opened: [apps[0].id], emptyState: .recent, problems: ["line 2: unknown setting x"])
+        panel.launcher.prepareToShow()
+        #expect(panel.launcher.rows == [.problem("line 2: unknown setting x"), .item(apps[0])])
+        #expect(panel.launcher.tableView.selectedRow == 1)
+    }
+
+    @Test func historyBoostsWhatYouOpenMost() async {
+        let panel = makePanel(items: apps, opened: Array(repeating: apps[2].id, count: 5))
+        panel.launcher.prepareToShow()
+        await type("g", in: panel)
+        #expect(names(panel.launcher.rows).first == "Widget", "without history it would be Gizmo, the shortest")
+    }
+
+    @Test func commandsAreSearchable() async {
+        let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))
+        await type("quit", in: panel)
+        #expect(panel.launcher.rows.first == .item(Item(command: .quit)))
+    }
+
+    @Test func commandKListsActionsAndEscapeGoesBack() async {
+        let panel = makePanel(items: apps)
+        await type("g", in: panel)
+        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        let results = panel.launcher.rows
+        let selected = panel.launcher.tableView.selectedRow
+
+        panel.launcher.toggleActions()
+        #expect(names(panel) == ["Open", "Reveal in Finder"], "not running: no Quit")
+        #expect(panel.launcher.searchField.stringValue.isEmpty)
+        #expect(panel.launcher.searchField.placeholderString?.hasPrefix("Actions for ") == true)
+
+        await type("rev", in: panel)
+        #expect(names(panel) == ["Reveal in Finder"])
+
+        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        #expect(panel.launcher.searchField.stringValue == "g")
+        #expect(panel.launcher.rows == results)
+        #expect(panel.launcher.tableView.selectedRow == selected)
+    }
+
+    @Test func commandKDoesNothingForCommands() async {
+        let panel = makePanel(items: [Item(command: .quit)])
+        await type("quit", in: panel)
+        panel.launcher.toggleActions()
+        #expect(panel.launcher.rows == [.item(Item(command: .quit))])
+    }
+
+    @Test func filesShowUpMergedWithTheirFolder() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFile("Reports/Quarterly Gizmo.pdf")
+        let files = FileSearchEngine()
+        await files.rebuild(FileRules(roots: [folder.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        let panel = makePanel(items: apps, files: files)
+
+        await type("gizmo", in: panel)
+        #expect(
+            names(panel.launcher.rows) == ["Gizmo", "Quarterly Gizmo.pdf"], "the app first: same match, head start")
+        let cell = try #require(
+            panel.launcher.tableView.view(atColumn: 0, row: 1, makeIfNecessary: false) as? ResultCell)
+        cell.layoutSubtreeIfNeeded()
+        let title = try #require(cell.textField)
+        let detail = try #require(cell.subviews.compactMap { $0 as? NSTextField }.first { $0 !== title })
+        #expect(cell.detail.hasSuffix("/Reports"))
+        #expect(detail.frame.maxY <= title.frame.minY, "the folder sits under the name")
+        #expect(title.frame.width > Layout.width - 120 && detail.frame.width == title.frame.width, "both full width")
+
+        await type("quarterly", in: panel)
+        #expect(
+            panel.launcher.rows == [
+                .item(Item(path: folder.url.path + "/Reports/Quarterly Gizmo.pdf", isFolder: false))
+            ])
+    }
+
+    @Test func recentListsFilesToo() {
+        let panel = makePanel(items: apps, opened: [apps[0].id, "folder:/tmp/Somewhere"], emptyState: .recent)
+        panel.launcher.prepareToShow()
+        #expect(panel.launcher.rows == [.item(Item(path: "/tmp/Somewhere", isFolder: true)), .item(apps[0])])
+    }
+
+    @Test func commandKOnAFileOffersNoQuit() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFile("notes.md")
+        let files = FileSearchEngine()
+        await files.rebuild(FileRules(roots: [folder.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        let panel = makePanel(items: [], files: files)
+        await type("notes", in: panel)
+        panel.launcher.toggleActions()
+        #expect(
+            names(panel) == [
+                "Open", "Reveal in Finder", "Copy Path", "Open With…", "Copy File", "Zip", "Move to Trash",
+            ])
+    }
+
+    @Test func commandKOnAFolderOffersTerminal() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFolder("Projects Zeta")
+        let files = FileSearchEngine()
+        await files.rebuild(FileRules(roots: [folder.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        let panel = makePanel(items: [], files: files)
+        await type("zeta", in: panel)
+        panel.launcher.toggleActions()
+        #expect(
+            names(panel) == [
+                "Open in Finder", "Reveal in Finder", "Copy Path", "Open in Terminal", "Copy Folder", "Zip",
+                "Move to Trash",
+            ])
+    }
+
+    @Test func openWithListsAppsAndEscapeStepsBack() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFile("letter.txt")
+        let files = FileSearchEngine()
+        await files.rebuild(FileRules(roots: [folder.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        let panel = makePanel(items: [], files: files)
+        await type("letter", in: panel)
+        panel.launcher.toggleActions()
+        await type("with", in: panel)
+        #expect(names(panel) == ["Open With…"])
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+
+        #expect(await eventually { if case .openWith? = panel.launcher.sublist { true } else { false } })
+        #expect(names(panel).contains("TextEdit"), "\(names(panel))")
+        #expect(panel.launcher.searchField.placeholderString == "Open letter.txt with…")
+
+        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        #expect(names(panel) == ["Open With…"], "back to the actions, still filtered")
+        #expect(panel.launcher.searchField.stringValue == "with")
+        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        #expect(panel.launcher.sublist == nil)
+        #expect(panel.launcher.searchField.stringValue == "letter")
+    }
+
+    @Test func previewsFilesAndFoldersOnly() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFile("Gizmo manual.pdf")
+        let files = FileSearchEngine()
+        await files.rebuild(FileRules(roots: [folder.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        let panel = makePanel(items: apps, files: files)
+
+        await type("gizmo", in: panel)
+        #expect(panel.launcher.previewURL == nil, "the app Gizmo is selected")
+        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        #expect(panel.launcher.previewURL?.lastPathComponent == "Gizmo manual.pdf")
+        panel.launcher.toggleActions()
+        #expect(panel.launcher.previewURL == nil, "not from the actions list")
+    }
+
+    @Test func everySymbolExists() {
+        for name in Symbols.all {
+            #expect(NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil, "\(name)")
+        }
+    }
+}
+
+struct RunningAppsTests {
+    @Test func runningAppsHaveTheIdsTheIndexUses() throws {
+        let index = SearchIndex(items: AppScanner.scan(AppScanner.defaultRoots, extras: AppScanner.defaultExtras))
+        let running = RunningApps()
+        let finder = try #require(running.order.first { $0.hasSuffix("/Finder.app") }, "Finder is always running")
+        #expect(index.position(of: finder) != nil)
+        let indexed = running.order.filter { $0.hasPrefix("/Applications/") || $0.hasPrefix("/System/Applications/") }
+        #expect(indexed.allSatisfy { index.position(of: $0) != nil }, "\(indexed)")
+    }
+}
+
+extension RunningAppsTests {
+    @Test func syncMatchesWhatMacOSReportsAndIsStable() {
+        let running = RunningApps()
+        let open = Set(
+            NSWorkspace.shared.runningApplications
+                .filter { $0.activationPolicy == .regular && !$0.isTerminated }
+                .compactMap { $0.bundleURL?.resolvingSymlinksInPath().path })
+        #expect(Set(running.order) == open)
+        #expect(running.order.allSatisfy { running.application($0)?.isTerminated == false })
+        #expect(!running.sync(), "nothing changed, so nothing to report")
+    }
+}
