@@ -1,6 +1,6 @@
-# launcher — Features
+# Pith — Features
 
-> **`launcher` is a temporary codename — rename to a cool name later.** It is used for the bundle ID (`dev.<you>.launcher`) and config path (`~/.config/launcher/`), so renaming is a find-and-replace.
+> The app is called **Pith** (decision 30): bundle ID `dev.edoardo.pith`, config in `~/.config/pith/`.
 
 A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppKit. No AI, no extensions, no account, no telemetry. Opens in one frame.
 
@@ -57,9 +57,9 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 ## 4. Launcher (root search)
 
-- **Empty state:** nothing, just the search field.
+- **Empty state:** configurable (`[launcher] empty_state`): `recent` (default; what you opened last, newest first), `running` (open apps, most recently used first, then all other apps alphabetically) or `none` (just the search field).
 - **Sources:** applications and files/folders from configured folders.
-- **Matching:** fuzzy.
+- **Matching:** fuzzy, word by word: every word must match, in any order. For files, earlier words may also match a folder in the path, so `acme/deploy` or `acme deploy` find `deploy.sh` under `Acme`.
 - **Ranking:** match quality, boosted by frequency + recency of what you pick. Learns over time.
 - **Calculator results** appear inline as the top row when the query parses as an expression (§6).
 - **Prefix `c `** switches to clipboard mode.
@@ -73,7 +73,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 |---|---|
 | `Enter` | Launch / bring to front |
 | `⌘K` → Quit | Quit app (running only) |
-| `⌘K` → Force Quit | Force quit (running only) |
+| `⌘K` → Force Quit | Force quit (running only); asks for a second `Enter` in the row |
 | `⌘K` → Reveal in Finder | |
 
 ### 4.2 Files
@@ -84,7 +84,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 | Key | Action |
 |---|---|
-| `Enter` | Open with default app |
+| `Enter` | Open with the app set for its type in `[open_with]`, else the default app |
 | `⌘K` → Reveal in Finder | |
 | `⌘K` → Copy path | Full POSIX path to clipboard |
 | `⌘K` → Open with… | Pick an app |
@@ -149,7 +149,7 @@ Both limits apply; whichever triggers first wins:
 | `⌘K` → Edit text | In-panel editor; saving creates a new entry at the top and puts it on the clipboard (original kept) |
 | `⌘K` → Edit image | Opens in Preview; when saved, the edited image comes back as a new entry at the top |
 | `⌘K` → Save as file | Images / text to a file |
-| `⌘K` → Open URL | For copied links |
+| `⌘K` → Open URL | For copied links, with the app set for the scheme in `[open_links]`, else the default |
 | `⌘K` → Reveal in Finder | For copied files |
 
 ---
@@ -173,13 +173,13 @@ Since there is no menu bar icon, these are searchable commands:
 - **Reload config** (also automatic on save)
 - **Pause / resume clipboard recording**
 - **Clear clipboard history** (keeps pinned)
-- **Quit launcher**
+- **Quit Pith**
 
 ---
 
 ## 8. Configuration
 
-Single file, no settings window: `~/.config/launcher/config.toml`. Reloaded automatically on save.
+Single file, no settings window: `~/.config/pith/config.toml`. Reloaded automatically on save.
 
 ```toml
 [hotkeys]
@@ -187,12 +187,24 @@ launcher  = "cmd+p"
 clipboard = "cmd+shift+v"
 
 [launcher]
+empty_state = "recent"   # recent | running | none
+launch_at_login = true
 folders = ["~/Desktop", "~/Documents", "~/Downloads", "~/dev"]
 ignore  = [".git", "node_modules", ".build", "*.photoslibrary"]
 max_depth = 6
 
 [actions]
 terminal = "Ghostty"   # Terminal | iTerm | Ghostty | Warp | …
+
+# Which app opens what, for files and links opened from the launcher (macOS defaults are untouched).
+[open_with]            # file extension or type → app (name, bundle id or path)
+md  = "Visual Studio Code"
+pdf = "Preview"
+"public.image" = "Pixelmator Pro"
+
+[open_links]           # URL scheme → app
+https  = "Safari"
+mailto = "Mail"
 
 [clipboard]
 max_size_gb = 2
@@ -224,7 +236,7 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 
 ## 11. Open questions
 
-- [ ] **Pick a cool final name** (replace the `launcher` codename everywhere)
+- [x] **Pick a final name:** Pith (decision 30)
 - [ ] Clipboard hotkey (default `⌘⇧V`)
 - [ ] Clipboard privacy: skip password managers? ignore-app list? pause hotkey?
 - [ ] Default size cap / max age values
