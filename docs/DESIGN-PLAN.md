@@ -87,7 +87,10 @@ Status: **in review**: the four directions are drawn, waiting for Edoardo's pick
   four states at real size, in light and dark: a search, ⌘K on a long name while filtering, the calculator's answer on
   top of the results, and the clipboard. The icons are the system's, and the colors are Tahoe's, sampled from the
   snapshots.
-- Claude's own is Wayfinding, after Tokyo's rail signage, drawn by impeccable's roll (`seed:47a00053a3e03fc9`).
+- Claude's own is Stage, built from what the launcher does rather than from a reference: a tile above a compact list
+  holds the selected item (or the answer, or the clipboard preview) and the keys for ⏎ and ⌘K. Edoardo turned down
+  impeccable's roll (Tokyo rail signage) and asked for an original one instead.
+- Edoardo's leaning so far: Raycast-like is the best of the three he named.
 - Each direction also answers the critique's two design findings and the audit's three open ones: where the ⌘K
   context lives while you filter (cut in the middle), how the panel shows what ⏎ and ⌘K do, a dark selection with a
   second cue at 3:1, and the corners and dark-mode edge.
