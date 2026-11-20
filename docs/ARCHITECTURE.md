@@ -30,6 +30,8 @@ supersede an earlier one.
 | 21 | 2026-11-19 | A finished Zip posts a macOS notification (permission asked once); clicking it reveals the zip. | Feedback without popping windows. | Edoardo |
 | 22 | 2026-11-19 | With no `folders` in config.toml, the file index covers the whole home folder, minus ~/Library, hidden files and the ignore list. | Find anything by default. | Edoardo |
 | 23 | 2026-11-20 | Queries are split into words at spaces and `/`; every word must match, in any order. For files, the last word matches the name and earlier words match the name or a folder above it, at half weight; one word matches names only. | Requested: multi-word queries failed, and paths should work. The rules are Claude's proposal; one word staying names-only keeps a folder name from flooding the results. | Edoardo |
+| 24 | 2026-11-20 | The styling that decision 9 put off starts now, through the impeccable skill. It has no macOS platform, so PRODUCT.md sets `ios` and a macOS section overrides the iPhone rules (touch targets, tab bars, simulator). PRODUCT.md and DESIGN.md live in `docs/`. Its screenshots come from `make snapshots`. | `ios` turns on its native checks (VoiceOver, both appearances, system colors) and off its web tooling (CSS rules, browser), which can't read Swift. | Edoardo |
+| 25 | 2026-11-20 | Edoardo picks the visual direction, from options Claude offers; Claude picks the exact values (sizes, colors, spacing). This replaces "visual choices are Claude's call". | Edoardo is driving the design now. | Edoardo |
 
 ## Principles
 
@@ -188,7 +190,8 @@ identical.
 
 ## Visual decisions
 
-Speed first and style later (decision 9), so this is the plain, fast version.
+The plain, fast version from decision 9, which the design pass starts from (decisions 24–25). Every state, light and
+dark, is in `docs/snapshots/` (`make snapshots`).
 
 | Element | Choice | By |
 |---|---|---|
@@ -227,6 +230,7 @@ No third-party dependencies.
 | Quick Look | `QLPreviewPanel` (Quartz, system) | The system preview; the launcher acts as its controller. |
 | Notifications | UserNotifications (system) | For Zip completion (decision 21). |
 | Tests | Swift Testing (toolchain) | The current standard over XCTest. |
+| Panel snapshots | `NSView.cacheDisplay(in:to:)` into a 2× bitmap, written as PNG (AppKit, system) | Draws real panels that are never on screen, so it runs anytime. swift-snapshot-testing would add a dependency for image comparisons we don't do. |
 | Formatting | swift-format (toolchain), configured in `.swift-format` | Ships with Swift, so nothing to install. |
 
 GRDB, the `FEATURES.md` candidate for clipboard storage, is decided when the clipboard milestone starts.

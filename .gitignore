@@ -3,3 +3,4 @@
 /.swiftpm/
 .claude/memory/
 .claude/settings.local.json
+/.impeccable/

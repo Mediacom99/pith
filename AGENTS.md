@@ -28,7 +28,11 @@ Read these before doing anything:
   - Keep the docs current in the same commit as the change: the status lines, and whichever of `docs/` the change touches. Write what's true now; history goes to git, not the docs.
 - **Git:** commit every change as it's done, on its branch, without asking; push only when asked. The remote is the private GitHub repo `Mediacom99/launcher`. Work goes on feature branches with a PR into `staging`; `staging` goes to `main` (production) when Edoardo says so.
 - **Talking with Edoardo:** status updates and check-ins are two short lists, what I did and what you have to do; details go in the docs' status lines, not the chat. Answer in Italian when he writes Italian.
-- **Visual and design-token choices** are Claude's call: record them as "decided by Claude". Never use claude.ai Artifacts: anything visual is a local HTML file, opened in the browser.
+- **Design:**
+  - UI/UX work goes through the impeccable skill (`/impeccable …`, decision 24).
+  - The visual direction is Edoardo's call: offer options, he picks. Exact values (sizes, colors, spacing) are Claude's: record them as "Claude" in the Visual decisions table (decision 25).
+  - Impeccable can't run the app: `make snapshots` draws the panel's states, light and dark, into `docs/snapshots/` without putting anything on screen. Regenerate and commit them with every visual change.
+  - Never use claude.ai Artifacts: anything visual is a local HTML file, opened in the browser.
 - **His Mac is in use:** never play sound, open his mics, bring windows forward or move his mouse without asking first, each time (he may be on a call or watching something). Headless checks (builds, tests) are fine anytime. `make run` and `make install` are not headless: they launch the app, which takes ⌘P from every app, so ask first.
 - **Secrets** never go in a repo.
 - **Edoardo's work stays out:** never mention his employer, clients or work projects anywhere: code, tests, docs, commit messages, or chat examples. Don't copy real file or folder names from his Mac into the repo either; tests and docs use made-up examples (`Acme`, `Quarterly_Budget_Review.pdf`).
@@ -73,8 +77,9 @@ Everything goes through the `Makefile`; `make` lists the targets. Add a target t
 - `Sources/LauncherCore/`: pure logic, such as scanning, the in-memory index, fuzzy matching and FSEvents. It never imports AppKit.
 - `Sources/Launcher/`: the AppKit app (panel, hotkey, views), main-actor isolated by default.
 - `Tests/LauncherCoreTests/`: unit tests for the core.
-- `Tests/LauncherTests/`: AppKit layout tests and the UI benchmark, in real panels that are never put on screen.
-- Suites named `…Benchmark` run only through `make bench`.
+- `Tests/LauncherTests/`: AppKit layout tests, the UI benchmark and the panel snapshots, in real panels that are never put on screen.
+- Suites named `…Benchmark` run only through `make bench`, and `…Snapshots` only through `make snapshots`.
+- `docs/snapshots/`: the panel's states as PNGs, written by `make snapshots`.
 - `Support/Info.plist`: bundle metadata (bundle ID, `LSUIElement`), copied into the `.app` by `make app`.
 
 ## Conventions

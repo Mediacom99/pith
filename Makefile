@@ -9,10 +9,10 @@ INSTALLED := $(HOME)/Applications/$(APP_NAME).app
 PROCESS  := $(APP_NAME).app/Contents/MacOS/$(APP_NAME)
 
 .DEFAULT_GOAL := help
-.PHONY: help build app run install stop logs stats test bench lint format clean
+.PHONY: help build app run install stop logs stats test bench snapshots lint format clean
 
 help: ## List the targets
-	@awk 'BEGIN { FS = ":.*## " } /^[a-z]+:.*## / { printf "  make %-7s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN { FS = ":.*## " } /^[a-z]+:.*## / { printf "  make %-9s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 build: ## Compile (CONFIG=release by default, CONFIG=debug for a debug build)
 	swift build -c $(CONFIG)
@@ -46,10 +46,13 @@ stats: ## Memory footprint, CPU and thread count of the running app
 	echo "cpu $$(ps -o %cpu= -p $$pid | tr -d ' ')%  threads $$(($$(ps -M -p $$pid | wc -l) - 1))"
 
 test: ## Run the unit tests
-	swift test --skip Benchmark
+	swift test --skip 'Benchmark|Snapshots'
 
 bench: ## Time scanning and fuzzy search in a release build
 	swift test -c release --filter Benchmark
+
+snapshots: ## Draw the panel's main states, light and dark, into docs/snapshots/ (off screen)
+	swift test --filter Snapshots
 
 lint: ## Check formatting
 	swift format lint --strict --recursive Package.swift Sources Tests
