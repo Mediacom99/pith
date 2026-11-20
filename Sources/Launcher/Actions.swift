@@ -31,6 +31,11 @@ nonisolated enum Action: CaseIterable {
         }
     }
 
+    /// What the Force Quit row says while it waits for its second ⏎ (decision 28).
+    static func forceQuitConfirmation(for item: Item) -> String {
+        "Press ⏎ again to force quit \(item.name)"
+    }
+
     var symbol: String {
         switch self {
         case .open: "arrow.up.forward.app"

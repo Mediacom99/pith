@@ -27,8 +27,14 @@ final class ResultCell: NSTableCellView {
         }
     }
 
+    /// Emphasized on the selected row: the labels, symbol and running dot turn white.
     override var backgroundStyle: NSView.BackgroundStyle {
-        didSet { detailLabel.cell?.backgroundStyle = backgroundStyle }
+        didSet {
+            detailLabel.cell?.backgroundStyle = backgroundStyle
+            let selected = backgroundStyle == .emphasized
+            icon.isSelected = selected
+            runningDot.isSelected = selected
+        }
     }
 
     init() {
@@ -47,7 +53,7 @@ final class ResultCell: NSTableCellView {
         identifier = Self.identifier
 
         let iconY = ((Layout.rowHeight - Layout.iconSize) / 2).rounded()
-        icon.frame = NSRect(x: 8, y: iconY, width: Layout.iconSize, height: Layout.iconSize)
+        icon.frame = NSRect(x: Layout.iconX, y: iconY, width: Layout.iconSize, height: Layout.iconSize)
         runningDot.frame = NSRect(x: icon.frame.midX - 2, y: iconY - 5, width: 4, height: 4)
         runningDot.isHidden = true
 
@@ -62,8 +68,9 @@ final class ResultCell: NSTableCellView {
     override func layout() {
         super.layout()
         guard let title = textField else { return }
-        let x = icon.frame.maxX + 10
-        let width = max(0, bounds.width - 8 - x)
+        // The cell spans the panel (plain table style), so these are the panel's grid.
+        let x = Layout.textX
+        let width = max(0, bounds.width - Layout.textTrailing - x)
         if detailLabel.stringValue.isEmpty {
             detailLabel.isHidden = true
             title.frame = NSRect(
@@ -80,10 +87,17 @@ final class ResultCell: NSTableCellView {
     required init?(coder: NSCoder) { fatalError("not used") }
 }
 
-/// Shows a ready-made bitmap as its layer's contents: no drawing, no scaling.
+/// Shows a ready-made bitmap as its layer's contents: no drawing, no scaling. A symbol also comes in white, for the
+/// selected row.
 final class IconView: NSView {
     var image: CGImage? {
         didSet { if image !== oldValue { needsDisplay = true } }
+    }
+    var selectedImage: CGImage? {
+        didSet { if selectedImage !== oldValue { needsDisplay = true } }
+    }
+    var isSelected = false {
+        didSet { if isSelected != oldValue { needsDisplay = true } }
     }
 
     override init(frame: NSRect) {
@@ -98,12 +112,16 @@ final class IconView: NSView {
     override var wantsUpdateLayer: Bool { true }
 
     override func updateLayer() {
-        layer?.contents = image
+        layer?.contents = (isSelected ? selectedImage : nil) ?? image
     }
 }
 
-/// A small filled circle in the secondary label color, like the Dock's running indicator.
+/// A small filled circle in the secondary label color, like the Dock's running indicator. White on the selected row.
 final class DotView: NSView {
+    var isSelected = false {
+        didSet { if isSelected != oldValue { needsDisplay = true } }
+    }
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
@@ -116,11 +134,13 @@ final class DotView: NSView {
 
     override func updateLayer() {
         layer?.cornerRadius = bounds.width / 2
-        layer?.backgroundColor = NSColor.secondaryLabelColor.cgColor
+        layer?.backgroundColor =
+            (isSelected ? NSColor.alternateSelectedControlTextColor : NSColor.secondaryLabelColor).cgColor
     }
 }
 
-/// Draws the selection in the accent color although the search field, not the table, has the focus.
+/// Draws the selection in the accent color although the search field, not the table, has the focus: a rounded
+/// rectangle inset from the panel's sides.
 final class ResultRowView: NSTableRowView {
     static let identifier = NSUserInterfaceItemIdentifier("ResultRow")
 
@@ -135,5 +155,13 @@ final class ResultRowView: NSTableRowView {
     override var isEmphasized: Bool {
         get { true }
         set {}
+    }
+
+    override func drawSelection(in dirtyRect: NSRect) {
+        NSColor.selectedContentBackgroundColor.setFill()
+        NSBezierPath(
+            roundedRect: bounds.insetBy(dx: Layout.selectionInset, dy: 0), xRadius: Layout.selectionRadius,
+            yRadius: Layout.selectionRadius
+        ).fill()
     }
 }

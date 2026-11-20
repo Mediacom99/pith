@@ -9,6 +9,14 @@ enum Layout {
     static let resultsInset: CGFloat = 6
     static let iconSize: CGFloat = 28
     static let expandedHeight = barHeight + 1 + visibleRows * rowHeight + 2 * resultsInset
+    /// The selection's distance from the panel's sides, and its corner radius.
+    static let selectionInset: CGFloat = 10
+    static let selectionRadius: CGFloat = 8
+    /// One grid for the bar and the rows: icons start 12 pt inside the selection, and the magnifier is centered on
+    /// the same column. Titles and the query start 12 pt after the icons and stop 12 pt inside the selection.
+    static let iconX: CGFloat = selectionInset + 12
+    static let textX: CGFloat = iconX + iconSize + 12
+    static let textTrailing: CGFloat = selectionInset + 12
 }
 
 /// The launcher window: built and drawn once at launch, then only moved, shown and hidden.

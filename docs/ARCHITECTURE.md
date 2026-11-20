@@ -34,6 +34,7 @@ supersede an earlier one.
 | 25 | 2026-11-20 | Edoardo picks the visual direction, from options Claude offers; Claude picks the exact values (sizes, colors, spacing). This replaces "visual choices are Claude's call". | Edoardo is driving the design now. | Edoardo |
 | 26 | 2026-11-20 | The design work has its own plan, `docs/DESIGN-PLAN.md`, alongside the milestones. It covers every surface in `FEATURES.md`, including the calculator and clipboard that aren't built yet. | Requested: the planned surfaces get designed in the same style before they're built. | Edoardo |
 | 27 | 2026-11-20 | Audience: Edoardo first, others later. Nothing may block a public release, but first run and other setups aren't designed for yet. Accessibility bar: WCAG AA contrast in light and dark, plus full keyboard use; no VoiceOver work for now. Both are in `docs/PRODUCT.md`. | His answers to `/impeccable init`. | Edoardo |
+| 28 | 2026-11-20 | Force Quit asks for a second ⏎: the first turns its row into "Press ⏎ again to force quit <app>", and ⎋, typing or moving the selection puts it back. Quit, a file's Move to Trash and the other actions still run on one ⏎. | Critique finding: Force Quit sits one row under Quit, and a stray ↓ lost unsaved work. A second ⏎ in the row keeps it keyboard-only, with no dialog. | Edoardo |
 
 ## Principles
 
@@ -76,7 +77,7 @@ Sources/
     LauncherViewController.swift  rows, merged app + file search, empty state, ⌘K sublists, keyboard, opening
     Actions.swift          ⌘K actions per kind, the SF Symbols rows use, AppResolver (config app names, Open With…)
     IconStore.swift        app, symbol and file-type icons as exact-size bitmaps rendered off the main thread
-    ResultViews.swift      fixed-frame cell (title, folder detail, running dot), bitmap IconView, row view
+    ResultViews.swift      fixed-frame cell (title, folder detail, running dot), bitmap IconView, row view (selection)
     ZipNotifier.swift      Zip in the background, a notification when done, reveal on click
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement), copied in by `make app`
 ```
@@ -122,6 +123,8 @@ keys. ⌘X/C/V/A/Z are routed by hand, because an agent app has no main menu to 
 
 **⌘K.** On an app row, ⌘K replaces the list with its actions: Open and Reveal in Finder, plus Quit and Force Quit if
 it's running. The search field filters them, ⏎ runs one, and ⎋ or ⌘K goes back to the search and selection you had.
+Force Quit waits for a second ⏎ (decision 28); ⎋, typing or moving the selection cancels it. Quitting goes through
+`quitApp`, which tests swap out so they never quit a real app.
 
 **Opening.** ⏎ or a double click records the item in the history, hides the panel, then launches the app (or brings
 it to the front) or runs the command. Losing focus also hides the panel. Every hide empties the field.
@@ -165,7 +168,8 @@ renders the layered icon on demand. Drawing it on the main thread while typing i
 Now `IconStore` renders every app's icon once, right after indexing. It works on all cores, into a 56×56 px BGRA bitmap
 (28 pt at the screen's scale), and a row only sets that bitmap as its layer's contents. The 108 icons render in about
 10 ms when IconServices' cache is warm, and take ~1.4 MB in all. A row whose icon isn't ready yet shows none until the
-batch lands. Commands, actions and problems use SF Symbols, rendered the same way in the secondary label color.
+batch lands. Commands, actions and problems use SF Symbols, rendered the same way twice: in the secondary label color,
+and in white for the selected row.
 
 Rendering happens under the app's current appearance (light or dark). Everything is re-rendered when that changes
 (KVO on `NSApp.effectiveAppearance`) or when the system icon style changes (Default, Dark, Clear, Tinted). For the
@@ -197,14 +201,15 @@ dark, is in `docs/snapshots/` (`make snapshots`).
 
 | Element | Choice | By |
 |---|---|---|
-| Panel | 680 pt wide. Only the 56 pt search bar when there are no results (FEATURES §4); 421 pt, with 8 rows × 44 pt, when there are. The top edge stays fixed. | Claude |
+| Panel | 680 pt wide. Only the 56 pt search bar when there are no results (FEATURES §4); 421 pt when there are: 8 rows × 44 pt, with 6 pt above and below them, so the 8th row ends inside the panel. The top edge stays fixed. | Claude |
 | Surface | An opaque window in the system window-background color, with square corners and the system shadow. No glass or blur, so the window server never blends or blurs what's behind. | Claude |
 | Position | On the screen under the mouse pointer, which is how "the active screen" is defined. The expanded panel would be centered, and the search bar is its top edge. | Claude |
+| Grid | The bar and the rows share one: icons start 22 pt from the panel's side (12 pt inside the selection), and the magnifying glass is centered on their column. Titles and the query start at 62 pt, 12 pt after the icons, and stop 12 pt inside the selection. | Claude |
 | Type | Search field 22 pt regular with a magnifying glass symbol and a "Search" placeholder. Rows 15 pt with 28 pt icons; names cut in the middle. | Claude |
-| Selection | System inset table style in the accent color, always drawn emphasized (the focus stays in the search field). | Claude |
-| Running indicator | A 4 pt dot in the secondary label color under the icon, like the Dock. | Claude |
+| Selection | A rounded rectangle (8 pt corners) inset 10 pt from the panel's sides, in the emphasized selection color (the accent), always drawn emphasized (the focus stays in the search field). Drawn by our row view on a plain table, so no table style adds padding. Scrollers are always overlay, so a list that scrolls is as wide as one that doesn't. | Claude |
+| Running indicator | A 4 pt dot in the secondary label color under the icon, like the Dock; white on the selected row. | Claude |
 | File rows | Two lines: the name (15 pt), and under it the full folder path (`~/…`, 11 pt, secondary color), both full width and cut in the middle only when too long, so the start and the extension stay visible. Other rows are one centered line. Icons by type: one for folders, one per extension, an app's own. | Edoardo's suggestion |
-| Commands, actions, problems | SF Symbols in the secondary label color in place of an icon: gearshape, arrow.clockwise, power for commands; arrow.up.forward.app, folder, link, square.grid.2x2, terminal, doc.on.doc, trash, xmark.circle, xmark.octagon for actions; exclamationmark.triangle for problems. A problem row reads "Config problem, line N: …". | Claude |
+| Commands, actions, problems | SF Symbols in the secondary label color in place of an icon, white on the selected row: gearshape, arrow.clockwise, power for commands; arrow.up.forward.app, folder, link, square.grid.2x2, terminal, doc.on.doc, trash, xmark.circle, xmark.octagon for actions; exclamationmark.triangle for problems. A problem row reads "Config problem, line N: …". | Claude |
 | ⌘K | Sublists replace the list in place: "Actions for <item>", then "Open <file> with…". ⎋ steps back one level as it was; ⌘K goes back to the search. | Claude |
 | Motion | None: the panel appears and disappears without animation. | Claude |
 

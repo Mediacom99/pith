@@ -73,7 +73,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 |---|---|
 | `Enter` | Launch / bring to front |
 | `⌘K` → Quit | Quit app (running only) |
-| `⌘K` → Force Quit | Force quit (running only) |
+| `⌘K` → Force Quit | Force quit (running only); asks for a second `Enter` in the row |
 | `⌘K` → Reveal in Finder | |
 
 ### 4.2 Files

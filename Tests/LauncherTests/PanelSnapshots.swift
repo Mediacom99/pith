@@ -61,6 +61,17 @@ import Testing
         actions.launcher.toggleActions()
         try await snapshot(actions, "actions-\(suffix)")
 
+        // Finder's actions, with Force Quit waiting for its second ⏎. Quitting is swapped out: Finder is never quit.
+        let confirm = try await panel(emptyState: .recent)
+        confirm.launcher.quitApp = { _, _ in }
+        confirm.launcher.prepareToShow()
+        press(#selector(NSResponder.moveDown(_:)), in: confirm)
+        confirm.launcher.toggleActions()
+        try #require(confirm.launcher.rows.last == .action(.forceQuit), "Finder isn't running")
+        for _ in 1..<confirm.launcher.rows.count { press(#selector(NSResponder.moveDown(_:)), in: confirm) }
+        press(#selector(NSResponder.insertNewline(_:)), in: confirm)
+        try await snapshot(confirm, "force-quit-\(suffix)")
+
         let problem = try await panel(emptyState: .recent, problems: ["line 3: unknown setting theme"])
         problem.launcher.prepareToShow()
         try await snapshot(problem, "problem-\(suffix)")

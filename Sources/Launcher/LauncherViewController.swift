@@ -47,6 +47,10 @@ final class LauncherViewController: NSViewController {
     var terminalApp: URL?
     /// Runs Zip in the background and notifies when done.
     var zipper: ZipNotifier?
+    /// Quits or force-quits a running app. Tests swap it out, so they never quit a real one.
+    var quitApp: (NSRunningApplication, _ force: Bool) -> Void = { app, force in
+        if force { app.forceTerminate() } else { app.terminate() }
+    }
 
     private static let resultLimit = 50
     private static let recentLimit = Int(Layout.visibleRows)
@@ -57,7 +61,7 @@ final class LauncherViewController: NSViewController {
     let searchField = NSTextField()
     let tableView = NSTableView()
     private let separator = NSBox()
-    private let scrollView = NSScrollView()
+    private let scrollView = OverlayScrollView()
     private let icons = IconStore()
     private let history: HistoryStore
     private let running: RunningApps
@@ -77,6 +81,8 @@ final class LauncherViewController: NSViewController {
     private(set) var sublist: Sublist?
     /// What ⎋ goes back to, innermost last: each level's sublist (nil for the search), query, rows and selection.
     private var backStack: [(sublist: Sublist?, query: String, rows: [Row], selection: Int)] = []
+    /// Force Quit is waiting for its second ⏎ (decision 28). ⎋, typing or moving the selection cancels it.
+    private(set) var confirmingForceQuit = false
 
     private var panel: LauncherPanel? { viewIfLoaded?.window as? LauncherPanel }
 
@@ -97,7 +103,8 @@ final class LauncherViewController: NSViewController {
         let root = FlippedView(frame: NSRect(x: 0, y: 0, width: Layout.width, height: Layout.barHeight))
         let barMidY = Layout.barHeight / 2
 
-        let searchIcon = NSImageView(frame: NSRect(x: 20, y: barMidY - 10, width: 20, height: 20))
+        let searchIcon = NSImageView(
+            frame: NSRect(x: Layout.iconX + (Layout.iconSize - 20) / 2, y: barMidY - 10, width: 20, height: 20))
         searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
         searchIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 18, weight: .medium)
         searchIcon.contentTintColor = .secondaryLabelColor
@@ -115,14 +122,17 @@ final class LauncherViewController: NSViewController {
         searchField.delegate = self
         let fieldHeight = ceil(searchField.intrinsicContentSize.height)
         searchField.frame = NSRect(
-            x: 52, y: (barMidY - fieldHeight / 2).rounded(), width: Layout.width - 72, height: fieldHeight)
+            x: Layout.textX, y: (barMidY - fieldHeight / 2).rounded(),
+            width: Layout.width - Layout.textX - Layout.textTrailing, height: fieldHeight)
 
         separator.frame = NSRect(x: 0, y: Layout.barHeight, width: Layout.width, height: 1)
         separator.boxType = .separator
 
         tableView.addTableColumn(NSTableColumn(identifier: NSUserInterfaceItemIdentifier("result")))
         tableView.headerView = nil
-        tableView.style = .inset
+        // Plain, so the geometry is all ours: the inset style adds padding of its own, which pushed the 8th row out of
+        // the panel. ResultRowView draws the inset selection instead.
+        tableView.style = .plain
         tableView.rowHeight = Layout.rowHeight
         tableView.intercellSpacing = .zero
         tableView.backgroundColor = .clear
@@ -173,6 +183,7 @@ final class LauncherViewController: NSViewController {
     func reset() {
         sublist = nil
         backStack = []
+        confirmingForceQuit = false
         searchField.placeholderString = "Search"
         setQuery("")
         if !rows.isEmpty { show([], selecting: 0) }
@@ -304,6 +315,7 @@ final class LauncherViewController: NSViewController {
     private func configure(_ cell: ResultCell, for row: Row) {
         var detail = ""
         var isRunning = false
+        var symbol: String?
         switch row {
         case .item(let item):
             cell.textField?.stringValue = item.name
@@ -315,14 +327,25 @@ final class LauncherViewController: NSViewController {
                 cell.icon.image = icons.icon(forFile: url)
                 detail = (url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
             case .command(let command):
-                cell.icon.image = icons.symbol(Symbols.command(command))
+                symbol = Symbols.command(command)
             }
         case .action(let action):
-            if case .actions(let item) = sublist { cell.textField?.stringValue = action.title(for: item) }
-            cell.icon.image = icons.symbol(action.symbol)
+            if case .actions(let item) = sublist {
+                cell.textField?.stringValue =
+                    action == .forceQuit && confirmingForceQuit
+                    ? Action.forceQuitConfirmation(for: item) : action.title(for: item)
+            }
+            symbol = action.symbol
         case .problem(let message):
             cell.textField?.stringValue = "Config problem, \(message)"
-            cell.icon.image = icons.symbol(Symbols.problem)
+            symbol = Symbols.problem
+        }
+        // Symbols turn white on the selection; app and file icons stay as they are.
+        if let symbol {
+            cell.icon.image = icons.symbol(symbol)
+            cell.icon.selectedImage = icons.selectedSymbol(symbol)
+        } else {
+            cell.icon.selectedImage = nil
         }
         cell.detail = detail
         cell.isRunning = isRunning
@@ -352,7 +375,15 @@ final class LauncherViewController: NSViewController {
         select(row: min(max(tableView.selectedRow + offset, 0), rows.count - 1))
     }
 
+    /// Puts a Force Quit that's waiting for its second ⏎ back to normal.
+    private func cancelForceQuit() {
+        guard confirmingForceQuit else { return }
+        confirmingForceQuit = false
+        refreshVisibleRows()
+    }
+
     private func select(row: Int) {
+        cancelForceQuit()
         tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         tableView.scrollRowToVisible(row)
         previewSelectionChanged()
@@ -483,6 +514,11 @@ final class LauncherViewController: NSViewController {
         case (.item(let item), _):
             open(item)
         case (.action(let action), .actions(let item)?):
+            if action == .forceQuit, !confirmingForceQuit {
+                confirmingForceQuit = true
+                refreshVisibleRows()
+                return
+            }
             perform(action, on: item)
         case (.action, _):
             break
@@ -579,9 +615,9 @@ final class LauncherViewController: NSViewController {
                 }
             }
         case .quit:
-            running.application(item.id)?.terminate()
+            if let app = running.application(item.id) { quitApp(app, false) }
         case .forceQuit:
-            running.application(item.id)?.forceTerminate()
+            if let app = running.application(item.id) { quitApp(app, true) }
         case .openWith:
             break
         }
@@ -624,6 +660,8 @@ extension LauncherViewController: NSTextFieldDelegate {
         case #selector(NSResponder.cancelOperation(_:)):
             if isPreviewing {
                 closePreview()
+            } else if confirmingForceQuit {
+                cancelForceQuit()
             } else if sublist != nil {
                 goBack()
             } else {
@@ -649,11 +687,25 @@ extension LauncherViewController: NSTableViewDataSource, NSTableViewDelegate {
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
         tableView.makeView(withIdentifier: ResultRowView.identifier, owner: nil) as? ResultRowView ?? ResultRowView()
     }
+
+    /// A click on another row also cancels a Force Quit waiting for its second ⏎.
+    func tableViewSelectionDidChange(_ notification: Notification) {
+        cancelForceQuit()
+    }
 }
 
 /// A view whose y axis grows downward, so subviews with default autoresizing stay pinned to the top.
 final class FlippedView: NSView {
     override var isFlipped: Bool { true }
+}
+
+/// Overlay scrollers whatever System Settings says: an always-visible scroller would take 15 pt off the rows, so a
+/// list that scrolls would be narrower than one that doesn't.
+final class OverlayScrollView: NSScrollView {
+    override var scrollerStyle: NSScroller.Style {
+        get { .overlay }
+        set { super.scrollerStyle = .overlay }
+    }
 }
 
 extension LauncherViewController: QLPreviewPanelDataSource, QLPreviewPanelDelegate {

@@ -16,6 +16,8 @@ final class IconStore {
 
     private var apps: [URL: CGImage] = [:]
     private var symbols: [String: CGImage] = [:]
+    /// The same symbols in white, for the selected row.
+    private var selectedSymbols: [String: CGImage] = [:]
     /// File and folder icons by type (`IconSource.key`), rendered on first request.
     private var types: [String: CGImage] = [:]
     private var requestedTypes: Set<String> = []
@@ -49,6 +51,10 @@ final class IconStore {
 
     func symbol(_ name: String) -> CGImage? {
         symbols[name]
+    }
+
+    func selectedSymbol(_ name: String) -> CGImage? {
+        selectedSymbols[name]
     }
 
     /// A file's or folder's icon by its type (an app bundle's own icon), or nil until it's rendered: the first
@@ -122,7 +128,12 @@ final class IconStore {
             let (icons, glyphs) = await runInBackground(qos: .userInitiated) {
                 (
                     Self.renderApps(urls, pixels: pixels, appearance: appearance),
-                    names.map { Self.renderSymbol($0, pixels: pixels, appearance: appearance) }
+                    names.map { name in
+                        (
+                            Self.renderSymbol(name, selected: false, pixels: pixels, appearance: appearance),
+                            Self.renderSymbol(name, selected: true, pixels: pixels, appearance: appearance)
+                        )
+                    }
                 )
             }
             guard style == self.style else { return }
@@ -131,7 +142,8 @@ final class IconStore {
                 apps[url] = icon
             }
             for (name, glyph) in zip(names, glyphs) {
-                symbols[name] = glyph
+                symbols[name] = glyph.0
+                selectedSymbols[name] = glyph.1
             }
             onChange?()
         }
@@ -152,9 +164,10 @@ final class IconStore {
         return images
     }
 
-    /// A symbol in the secondary label color, centered.
-    private nonisolated static func renderSymbol(_ name: String, pixels: Int, appearance: NSAppearance.Name) -> CGImage?
-    {
+    /// A symbol, centered, in the secondary label color, or in white (the selected text color) for the selected row.
+    private nonisolated static func renderSymbol(
+        _ name: String, selected: Bool, pixels: Int, appearance: NSAppearance.Name
+    ) -> CGImage? {
         let configuration = NSImage.SymbolConfiguration(pointSize: CGFloat(pixels) * 0.5, weight: .regular)
         guard
             let symbol = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
@@ -166,8 +179,10 @@ final class IconStore {
                 in: NSRect(
                     x: (canvas.width - size.width) / 2, y: (canvas.height - size.height) / 2, width: size.width,
                     height: size.height))
-            NSColor.secondaryLabelColor.set()
-            canvas.fill(using: .sourceAtop)
+            // Source-in keeps the glyph's shape and takes the color, alpha included. The secondary label color is a
+            // translucent black or white, which source-atop painted over an opaque glyph, so light mode came out black.
+            (selected ? NSColor.alternateSelectedControlTextColor : NSColor.secondaryLabelColor).set()
+            canvas.fill(using: .sourceIn)
         }
     }
 

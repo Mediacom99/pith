@@ -186,6 +186,62 @@ struct LauncherPanelTests {
         #expect(panel.launcher.tableView.selectedRow == selected)
     }
 
+    @Test func forceQuitWaitsForASecondReturn() async throws {
+        // Finder is always running, so it has Force Quit. Quitting is swapped out: nothing real is ever quit.
+        let finder = Item(name: "Finder", appAt: URL(filePath: "/System/Library/CoreServices/Finder.app"))
+        let panel = makePanel(items: [finder])
+        var quits: [Bool] = []
+        panel.launcher.quitApp = { _, force in quits.append(force) }
+        await type("finder", in: panel)
+        panel.launcher.toggleActions()
+        try #require(panel.launcher.rows.last == .action(.forceQuit), "Finder isn't running")
+        let last = panel.launcher.rows.count - 1
+        for _ in 0..<last { press(#selector(NSResponder.moveDown(_:)), in: panel) }
+        func title() -> String? {
+            (panel.launcher.tableView.view(atColumn: 0, row: last, makeIfNecessary: false) as? ResultCell)?
+                .textField?.stringValue
+        }
+
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        #expect(quits.isEmpty)
+        #expect(title() == "Press ⏎ again to force quit Finder")
+
+        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        #expect(panel.launcher.sublist != nil, "⎋ cancels the confirmation, not the actions")
+        #expect(title() == "Force Quit")
+
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press(#selector(NSResponder.moveUp(_:)), in: panel)
+        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        #expect(!panel.launcher.confirmingForceQuit, "moving the selection cancels it too")
+
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        #expect(quits == [true])
+    }
+
+    @Test func eightRowsFitAndShareTheBarsGrid() async throws {
+        let many = (1...12).map { Item(name: "Gizmo \($0)", appAt: URL(filePath: "/nonexistent/Gizmo \($0).app")) }
+        let panel = makePanel(items: many)
+        await type("gizmo", in: panel)
+        let root = try #require(panel.contentView)
+        let table = panel.launcher.tableView
+
+        let eighth = table.convert(table.rect(ofRow: 7), to: root)
+        #expect(
+            eighth.maxY == Layout.expandedHeight - Layout.resultsInset,
+            "the 8th row ends where the panel's inset starts")
+        #expect(table.rect(ofRow: 0).width == Layout.width, "a scrolling list keeps its full width")
+
+        let cell = try #require(table.view(atColumn: 0, row: 0, makeIfNecessary: false) as? ResultCell)
+        cell.layoutSubtreeIfNeeded()
+        let icon = cell.icon.convert(cell.icon.bounds, to: root)
+        let magnifier = try #require(root.subviews.first { $0 is NSImageView })
+        #expect(magnifier.frame.midX == icon.midX, "the magnifier sits on the icons' column")
+        let title = try #require(cell.textField)
+        #expect(title.convert(title.bounds, to: root).minX == panel.launcher.searchField.frame.minX)
+    }
+
     @Test func commandKDoesNothingForCommands() async {
         let panel = makePanel(items: [Item(command: .quit)])
         await type("quit", in: panel)
