@@ -31,7 +31,7 @@ Status: **done**.
 
 ## 3. Critique and audit
 
-Status: **in progress** (the critique and the audit are done and the audit's fade bug is fixed; the re-audit is next).
+Status: **done**. The audit's fade bug is fixed, and the re-audit gives 16/20. What's left goes to steps 4, 5 and 7.
 - `/impeccable critique` and `/impeccable audit`, run on the snapshots and the code.
 - Critique: 25/40 (Acceptable). It's saved in `.impeccable/critique/`, which isn't committed. Its five priority issues:
   - **P1:** symbols never change on the selection, and light mode draws them black instead of grey. A selected
@@ -73,6 +73,8 @@ Status: **in progress** (the critique and the audit are done and the audit's fad
   - **P3, outside the bar:** VoiceOver hears nothing as the selection moves, and the symbols ignore Increase Contrast.
   - Everything else passes AA in light and dark. The lowest text is the detail line on the light selection (4.71:1);
     the lowest symbol is 3.95:1 in light mode.
+- Re-audit after the fade fix: 16/20 (Performance 3 → 4). Nothing in the panel animates any more: rows, the panel's
+  size and keyboard scrolling all change in one frame. The two P2s and the dark-selection P1 remain, for step 4.
 - Snapshot states for the review: `long-names` and `long-actions` are added. `running` and Open with… aren't: they
   use the same app rows as `recent`, and both would put the real apps on this Mac in the repo.
 
