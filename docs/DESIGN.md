@@ -111,7 +111,7 @@ components:
     height: "32pt"
   key-cap:
     backgroundColor: "{colors.selection-fill-light}"
-    textColor: "{colors.quiet-light}"
+    textColor: "{colors.key-light}"
     typography: "{typography.key-cap}"
     rounded: "{rounded.key-cap}"
     height: "20pt"
