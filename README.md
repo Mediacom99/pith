@@ -184,5 +184,6 @@ The code is a Swift package with no Xcode project:
 More in the docs:
 - [`FEATURES.md`](FEATURES.md): the spec.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): the decision log, threads, icons and measurements.
-- [`docs/DESIGN.md`](docs/DESIGN.md): the design system.
+- [`docs/DESIGN.md`](docs/DESIGN.md): the design system's short map, with the full text in
+  [`docs/.impeccable/design-full.md`](docs/.impeccable/design-full.md).
 - [`docs/PRODUCT.md`](docs/PRODUCT.md): who it's for.
