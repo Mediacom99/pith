@@ -135,7 +135,8 @@ Status: **todo**.
 
 ## 7. Polish
 
-Status: **in review**. Polish, clarify and harden passes are done, and the snapshots are final for the launcher.
+Status: **done**. Polish, clarify and harden passes are done, Edoardo checked them in the installed app, and the
+snapshots are final for the launcher.
 - **Harden:** an action that fails after the panel closes posts a notification saying what failed and why, and a
   click reveals the item (decision 32): Move to Trash, opening a file, folder or app, Open With…, Open in Terminal.
   A failed Move to Trash keeps the item in the history. `Notifier` (was `ZipNotifier`) posts these and Zip's.
@@ -151,4 +152,4 @@ Status: **in review**. Polish, clarify and harden passes are done, and the snaps
 - **Contrast**, measured on the snapshots: the key caps' glyphs were 4.1:1 in dark mode, under AA. They now use a
   Key color shared with the row's ↩ (#3C3C3C light, #D6D6D6 dark): 8.8:1 and 7.4:1 on a cap. Everything else
   passes: the placeholder 10.4:1 and 10.9:1, "running" 5.7:1 and 6.5:1, and the step 5 numbers.
-- Not run on screen: the notifications, which need a real failure in the running app.
+- Checked on screen: the key caps in both modes, and a failed Move to Trash (a locked file) posting its notification.
