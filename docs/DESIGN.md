@@ -8,6 +8,8 @@ colors:
   label-dark: "rgba(255, 255, 255, 0.85)"
   quiet-light: "#666666"
   quiet-dark: "#A1A1A1"
+  key-light: "#3C3C3C"
+  key-dark: "#D6D6D6"
   tile-fill-light: "rgba(0, 0, 0, 0.035)"
   tile-fill-dark: "rgba(255, 255, 255, 0.045)"
   selection-fill-light: "rgba(0, 0, 0, 0.07)"
@@ -109,7 +111,7 @@ components:
     height: "32pt"
   key-cap:
     backgroundColor: "{colors.selection-fill-light}"
-    textColor: "{colors.quiet-light}"
+    textColor: "{colors.key-light}"
     typography: "{typography.key-cap}"
     rounded: "{rounded.key-cap}"
     height: "20pt"
@@ -132,7 +134,7 @@ The panel answers one question before you press ⏎: what will it act on? A tile
 
 Everything else is quiet. The panel is the system window color, the tile and the selection are low-opacity fills of the label color, and nothing is filled with the accent color. Color appears only where it means something: red for Force Quit waiting for its second ⏎, orange for a config problem. Type is SF at fixed point sizes, icons are the system's own app and file icons and SF Symbols. The panel never animates, blurs or goes translucent; it appears in one frame and stays still.
 
-Light and dark follow the system. Each custom color is a light/dark pair in `Sources/Launcher/Palette.swift`; every other color is an AppKit semantic color (`windowBackgroundColor`, `labelColor`, `secondaryLabelColor`, `placeholderTextColor`, the separator).
+Light and dark follow the system. Each custom color is a light/dark pair in `Sources/Launcher/Palette.swift`; every other color is an AppKit semantic color (`windowBackgroundColor`, `labelColor`, `placeholderTextColor`, the separator).
 
 **Key Characteristics:**
 - A 92 pt tile that always shows what ⏎ acts on, with its keys spelled out.
@@ -153,9 +155,9 @@ The panel has no brand or accent color. The role of "primary" is held by the lab
 ### Neutral
 - **Window Background** (light `window-background-light`, dark `window-background-dark`): `NSColor.windowBackgroundColor`, the panel's only surface. The hex values are what the snapshots render on macOS 26; the semantic color is what the code uses.
 - **Label** (`label-light`, `label-dark`): `NSColor.labelColor`. Names, the query, the tile's name and its first key.
-- **Secondary Label**: `NSColor.secondaryLabelColor`. The ↩ at the end of the selected row (9.4:1 light, 8.4:1 dark on the selection).
+- **Key** (`key-light` #3C3C3C, `key-dark` #D6D6D6): what you press. The ↩ at the end of the selected row (9.4:1 light, 8.4:1 dark on the selection) and the glyph in every key cap (8.8:1 light, 7.4:1 dark on the cap). Opaque: it is what `secondaryLabelColor` renders in a text field, but drawn as text in a view that color comes out lighter (3.8:1 on a light cap).
 - **Placeholder**: `NSColor.placeholderTextColor`. "Search", "Filter actions", "Filter apps".
-- **Quiet Gray** (`quiet-light` #666666, `quiet-dark` #A1A1A1): opaque, between the secondary and tertiary label colors. Folders, kinds, "running", the second key's words, key-cap glyphs, the magnifier and every SF Symbol in the list. 4.9:1 light and 4.75:1 dark on the selection, its darkest background.
+- **Quiet Gray** (`quiet-light` #666666, `quiet-dark` #A1A1A1): opaque, between the secondary and tertiary label colors. Folders, kinds, "running", the second key's words, the magnifier and every SF Symbol in the list. 4.9:1 light and 4.75:1 dark on the selection, its darkest background.
 - **Tile Fill** (`tile-fill-light`, `tile-fill-dark`): the tile's background. Rendered #F6F6F6 light and #282828 dark over the window.
 - **Selection Fill** (`selection-fill-light`, `selection-fill-dark`): the selected row and the key caps. Rendered #EDEDED light and #353535 dark. On its own it is 1.2:1 light and 1.4:1 dark against the window.
 - **Edge** (`edge-light`, `edge-dark`): the panel's 1 pt border in both appearances, which keeps it apart from a window of the same color behind it.
@@ -185,10 +187,10 @@ The panel has no brand or accent color. The role of "primary" is held by the lab
 - **Row Title** (400, 14 pt): each row's name, and action and app names in ⌘K.
 - **Key Primary** (600, 13 pt): what ⏎ does, on the tile ("Open", "Open in Finder", "Open in Preview" in Open With…, "Open Config", "Run", "Force Quit").
 - **Key Secondary** (400, 13 pt, quiet gray): "Actions", "Back", "Cancel".
-- **Return Mark** (600, 13 pt, secondary label): the ↩ at the end of the selected row.
+- **Return Mark** (600, 13 pt, Key): the ↩ at the end of the selected row.
 - **Detail** (400, 12 pt, quiet gray): the folder after a row's name; the tile's folder and kind lines.
 - **Tag** (400, 11 pt, quiet gray): "running" at the end of a running app's row.
-- **Key Cap** (500, 11 pt, quiet gray): the glyph inside a key cap (↩, ⌘, K, ⎋).
+- **Key Cap** (500, 11 pt, Key): the glyph inside a key cap (↩, ⌘, K, esc). Escape is "esc", as on the keyboard: ⎋ at 11 pt read as an undo arrow.
 
 ### Named Rules
 **The 11 pt Floor Rule.** No text is smaller than 11 pt.
@@ -236,21 +238,21 @@ Continuous (squircle) corners on the panel and tile, nested by size: panel 14 pt
 What ⏎ acts on, always visible when there are results.
 - **Shape:** 92 pt high, 10 pt corners, Tile Fill, no border.
 - **Content:** a 48 pt icon; the name (Tile Name); the folder (Detail); the kind with when it was last opened ("PDF document · opened today at 14:05", "Application · running") (Detail). Lines that are empty are left out and the rest re-centered.
-- **Commands:** their SF Symbol at 48 pt in quiet gray, "Launcher command" as the folder line, and "Run" as the only key.
+- **Commands:** their SF Symbol at 48 pt in quiet gray, "Pith command" as the folder line, and "Run" as the only key.
 - **Config problem:** the orange triangle, "Config problem, line 3" as the name, "Unknown setting "theme"" as the folder line, `~/.config/pith/config.toml` as the kind line, and "Open Config" as the only key.
-- **⌘K and Open With…:** the item stays; the first key becomes the selected action ("Reveal in Finder") or "Open in Preview", and the second becomes "Back ⎋".
+- **⌘K and Open With…:** the item stays; the first key becomes the selected action ("Reveal in Finder") or "Open in Preview", and the second becomes "Back esc".
 
 ### Keys
 - **Layout:** one key per line on the tile's right, right-aligned, 8 pt between lines: words, 8 pt, then key caps 4 pt apart.
-- **Key caps:** Selection Fill, 5 pt corners, 20 pt high and at least 20 pt wide (5 pt padding each side), the glyph in Key Cap type.
+- **Key caps:** Selection Fill, 5 pt corners, 20 pt high and at least 20 pt wide (5 pt padding each side), the glyph in Key Cap type and the Key color.
 - **First key:** what ⏎ does, in Key Primary, label color; red in Force Quit's confirmation.
-- **Second key:** "Actions ⌘ K" for items, "Back ⎋" one level down, "Cancel ⎋" in Force Quit's confirmation; Key Secondary in quiet gray. Commands and problems have no second key.
+- **Second key:** "Actions ⌘ K" for items, "Back esc" one level down, "Cancel esc" in Force Quit's confirmation; Key Secondary in quiet gray. Commands and problems have no second key.
 
 ### Rows
 - **Style:** 32 pt, one line: a 20 pt icon, the name (Row Title), the folder (Detail, quiet gray). A running app ends in "running" (Tag).
 - **Selected:** a Selection Fill rounded rectangle (7 pt corners) inset 8 pt from the panel's sides, and ↩ at its end in Return Mark. It is drawn by the row view, never emphasized, so text keeps its colors.
 - **Force Quit confirmation:** after the first ⏎ the row reads "Press ⏎ again to force quit Finder", its text, symbol and ↩ in Danger Red on Danger Fill, and the tile's first key turns red. ⎋, typing or moving the selection puts it back.
-- **Config problem:** first in the empty state, "Config problem, line 3: unknown setting "theme"", with the orange triangle as its icon. ⏎ opens the config file.
+- **Config problem:** first in the empty state, "Config problem, line 3: unknown setting "theme"", with the orange triangle as its icon. ⏎ opens the config file. Each says what's wrong and what Pith does meanwhile when that isn't obvious ("…, so every setting is at its default", "…is taken by another app, so it's still "cmd+p"").
 - **Scrollers:** overlay only.
 
 ### Icons and Symbols

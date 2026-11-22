@@ -62,7 +62,7 @@ struct ConfigTests {
     @Test func invalidTOMLGivesTheDefaultsAndOneProblem() {
         let (config, problems) = Config.parse("[launcher]\nempty_state = \"recent\nlaunch_at_login = true")
         #expect(config == Config())
-        #expect(problems == ["line 2: unterminated string"])
+        #expect(problems == ["line 2: unterminated string, so every setting is at its default"])
     }
 }
 

@@ -19,7 +19,7 @@ final class ResultCell: NSTableCellView {
     let icon = IconView()
     private let detailLabel = ResultCell.label(font: detailFont, color: Palette.quiet)
     private let tagLabel = ResultCell.label("running", font: tagFont, color: Palette.quiet)
-    private let mark = ResultCell.label("↩", font: markFont, color: .secondaryLabelColor)
+    private let mark = ResultCell.label("↩", font: markFont, color: Palette.key)
     private var titleWidth: CGFloat = 0
     private var detailWidth: CGFloat = 0
 
@@ -58,7 +58,7 @@ final class ResultCell: NSTableCellView {
         didSet {
             guard isDanger != oldValue else { return }
             textField?.textColor = isDanger ? Palette.danger : .labelColor
-            mark.textColor = isDanger ? Palette.danger : .secondaryLabelColor
+            mark.textColor = isDanger ? Palette.danger : Palette.key
             superview?.needsDisplay = true
         }
     }
@@ -339,8 +339,9 @@ final class KeysView: NSView {
             ])
     }
 
+    /// A key cap's glyph, in the row's ↩ color: the quiet gray was 4.1:1 on a dark cap, under AA.
     private func cap(_ text: String) -> NSAttributedString {
-        NSAttributedString(string: text, attributes: [.font: Self.capFont, .foregroundColor: Palette.quiet])
+        NSAttributedString(string: text, attributes: [.font: Self.capFont, .foregroundColor: Palette.key])
     }
 
     private func capWidth(_ text: String) -> CGFloat {

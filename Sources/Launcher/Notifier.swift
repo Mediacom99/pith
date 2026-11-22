@@ -2,9 +2,10 @@ import AppKit
 import LauncherCore
 import UserNotifications
 
-/// Zips in the background and says so with a notification when it's done (decision 21). Clicking the notification
-/// reveals the zip in Finder. macOS asks for permission the first time; without it, the zip just appears.
-final class ZipNotifier: NSObject, UNUserNotificationCenterDelegate {
+/// What happens after the panel has closed, as a macOS notification: a finished Zip (decision 21) and an action that
+/// failed (decision 32). Clicking one reveals its file in Finder. macOS asks for permission the first time; without
+/// it, nothing is shown and failures are only logged.
+final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     private nonisolated static let pathKey = "path"
 
     /// Set at launch, so a click is handled even after the launcher restarted.
@@ -12,11 +13,11 @@ final class ZipNotifier: NSObject, UNUserNotificationCenterDelegate {
         UNUserNotificationCenter.current().delegate = self
     }
 
+    /// Zips `item` next to itself on a worker, then says how it went.
     func zip(_ item: URL) {
         Task {
-            let center = UNUserNotificationCenter.current()
             // Asked once, later calls return the stored answer; meanwhile the zip is already under way.
-            async let allowed = (try? center.requestAuthorization(options: [.alert])) ?? false
+            async let allowed = Self.allowed()
             let result = await runInBackground(qos: .utility) { () -> Result<URL, Zipper.Failure> in
                 Result { () throws(Zipper.Failure) in try Zipper.zip(item) }
             }
@@ -32,8 +33,30 @@ final class ZipNotifier: NSObject, UNUserNotificationCenterDelegate {
                 content.body = failure.description
             }
             guard await allowed else { return }
-            try? await center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+            await Self.post(content)
         }
+    }
+
+    /// An action on `item` that failed: what failed as the title ("Couldn't move notes.md to the Trash"), why as the
+    /// body. A click reveals the item, to deal with it in Finder.
+    func failed(_ title: String, item: URL, reason: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = reason
+        content.userInfo = [Self.pathKey: item.path]
+        Task {
+            guard await Self.allowed() else { return }
+            await Self.post(content)
+        }
+    }
+
+    private static func allowed() async -> Bool {
+        (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert])) ?? false
+    }
+
+    private static func post(_ content: UNNotificationContent) async {
+        try? await UNUserNotificationCenter.current().add(
+            UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
     }
 
     // The center calls these on the main thread.

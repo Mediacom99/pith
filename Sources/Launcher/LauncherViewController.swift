@@ -45,8 +45,13 @@ final class LauncherViewController: NSViewController {
     var openWithApps: [String: URL] = [:]
     /// `[actions] terminal`, resolved.
     var terminalApp: URL?
-    /// Runs Zip in the background and notifies when done.
-    var zipper: ZipNotifier?
+    /// Runs Zip in the background, and posts its notification and those for failed actions.
+    var notifier: Notifier?
+    /// Says that an action failed after the panel closed: what failed, the item, and why (decision 32). Tests swap it
+    /// out, so they never post a notification.
+    lazy var reportFailure: (_ title: String, _ item: URL, _ reason: String) -> Void = { [weak self] in
+        self?.notifier?.failed($0, item: $1, reason: $2)
+    }
     /// The time, for "opened today at 14:05". Snapshots fix it.
     var now: () -> Date = { .now }
     /// Quits or force-quits a running app. Tests swap it out, so they never quit a real one.
@@ -426,7 +431,7 @@ final class LauncherViewController: NSViewController {
     private func updateStage() {
         guard rows.indices.contains(tableView.selectedRow) else { return }
         let row = rows[tableView.selectedRow]
-        let back = StageView.Key(words: "Back", caps: ["⎋"])
+        let back = StageView.Key(words: "Back", caps: ["esc"])
         switch sublist {
         case .actions(let item)?:
             var content = stageContent(for: item)
@@ -434,7 +439,7 @@ final class LauncherViewController: NSViewController {
             if action == .forceQuit, confirmingForceQuit {
                 content.primary = action.title(for: item)
                 content.isDanger = true
-                content.secondary = StageView.Key(words: "Cancel", caps: ["⎋"])
+                content.secondary = StageView.Key(words: "Cancel", caps: ["esc"])
             } else {
                 content.primary = action.title(for: item)
                 content.secondary = back
@@ -492,7 +497,7 @@ final class LauncherViewController: NSViewController {
                 secondary: actions)
         case .command(let command):
             return StageView.Content(
-                icon: icons.symbol(Symbols.command(command), size: .tile), name: item.name, place: "Launcher command",
+                icon: icons.symbol(Symbols.command(command), size: .tile), name: item.name, place: "Pith command",
                 primary: "Run")
         }
     }
@@ -681,10 +686,17 @@ final class LauncherViewController: NSViewController {
                     _ = try await NSWorkspace.shared.open(url, configuration: .init())
                 }
             } catch {
-                Log.app.error(
-                    "Couldn't open \(url.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                let name = url.lastPathComponent
+                let title = app.map { "Couldn't open \(name) in \($0.deletingPathExtension().lastPathComponent)" }
+                failed(title ?? "Couldn't open \(name)", url, error)
             }
         }
+    }
+
+    /// An action that failed after the panel closed: logged, and reported (decision 32).
+    private func failed(_ title: String, _ item: URL, _ error: any Error) {
+        Log.app.error("\(title, privacy: .public) (\(item.path, privacy: .public)): \(error, privacy: .public)")
+        reportFailure(title, item, error.localizedDescription)
     }
 
     private func perform(_ action: Action, on item: Item) {
@@ -723,18 +735,21 @@ final class LauncherViewController: NSViewController {
         case .openInTerminal:
             open(url, with: terminalApp)
         case .zip:
-            zipper?.zip(url)
+            notifier?.zip(url)
         case .trash:
-            history.forget(paths: [url.path])
             Task {
-                await runInBackground(qos: .userInitiated) {
+                let failure = await runInBackground(qos: .userInitiated) { () -> (any Error)? in
                     do {
                         try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                        return nil
                     } catch {
-                        Log.app.error(
-                            "Couldn't trash \(url.path, privacy: .public): \(error.localizedDescription, privacy: .public)"
-                        )
+                        return error
                     }
+                }
+                if let failure {
+                    failed("Couldn't move \(url.lastPathComponent) to the Trash", url, failure)
+                } else {
+                    history.forget(paths: [url.path])
                 }
             }
         case .quit:
@@ -760,8 +775,7 @@ final class LauncherViewController: NSViewController {
             do {
                 _ = try await NSWorkspace.shared.openApplication(at: url, configuration: .init())
             } catch {
-                Log.app.error(
-                    "Couldn't open \(url.path, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                failed("Couldn't open \(url.deletingPathExtension().lastPathComponent)", url, error)
             }
         }
     }
