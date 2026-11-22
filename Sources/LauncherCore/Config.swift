@@ -46,14 +46,14 @@ public struct Config: Sendable, Equatable {
     }
 
     /// The settings in `text`, plus a problem for every setting that's wrong or unknown. A wrong setting keeps its
-    /// default and the rest still apply. A file that isn't valid TOML gives the defaults and one problem.
+    /// default and the rest still apply. A file that isn't valid TOML gives the defaults and one problem, which says so.
     public static func parse(_ text: String) -> (config: Config, problems: [String]) {
         var config = Config()
         let tables: [String: [String: TOMLReader.Entry]]
         do {
             tables = try TOMLReader.parse(text)
         } catch {
-            return (config, [error.description])
+            return (config, ["\(error.description), so every setting is at its default"])
         }
 
         var problems: [(line: Int, message: String)] = []

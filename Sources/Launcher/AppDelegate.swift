@@ -30,7 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let configStore = ConfigStore()
     private let history = HistoryStore()
     private let hotKeys = HotKeyCenter()
-    private let zipper = ZipNotifier()
+    private let notifier = Notifier()
     private lazy var files = FileSearchEngine { [weak self] removed in
         Task { @MainActor in self?.history.forget(paths: removed) }
     }
@@ -49,8 +49,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Built now, so the hotkey only has to show it.
         let launcher = LauncherViewController(history: history, running: RunningApps(), files: files)
         launcher.runCommand = { [weak self] in self?.run($0) }
-        launcher.zipper = zipper
-        zipper.install()
+        launcher.notifier = notifier
+        notifier.install()
         panel = LauncherPanel(launcher: launcher)
 
         configStore.onChange = { [weak self] previous in self?.apply(previous: previous) }
@@ -83,8 +83,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 launcherHotkey = (config.launcherHotkey, id)
                 hotkeyProblem = nil
             } else {
-                let fallback = launcherHotkey.map { ", still using \($0.hotkey)" } ?? ""
-                hotkeyProblem = "hotkeys.launcher \(config.launcherHotkey) is taken by another app\(fallback)"
+                let fallback = launcherHotkey.map { ", so it's still \"\($0.hotkey)\"" } ?? ""
+                hotkeyProblem = "hotkeys.launcher \"\(config.launcherHotkey)\" is taken by another app\(fallback)"
             }
         }
         panel.launcher.emptyState = config.emptyState
@@ -125,11 +125,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     } else if let app = AppResolver.resolve(spec, among: apps) {
                         openWith[key] = app
                     } else {
-                        problems.append("open_with.\(key): no app \"\(spec)\"")
+                        problems.append("open_with.\(key): can't find the app \"\(spec)\"")
                     }
                 }
                 let terminal = AppResolver.resolve(config.terminal, among: apps)
-                if terminal == nil { problems.append("actions.terminal: no app \"\(config.terminal)\"") }
+                if terminal == nil { problems.append("actions.terminal: can't find the app \"\(config.terminal)\"") }
                 return (openWith, terminal, problems)
             }
             guard generation == resolveGeneration else { return }

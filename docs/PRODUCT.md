@@ -23,8 +23,8 @@ disagree, this section wins:
 - **No materials, motion or glass.** The panel is opaque inside its rounded corners (the window is clear only so the
   corners can be round), with no blur, translucency or Liquid Glass. It appears and disappears in one frame with no
   transition. These are performance rules (`AGENTS.md`), not taste.
-- **Components:** AppKit's table and text field, SF Symbols, the system notification for Zip, the system Quick Look
-  panel.
+- **Components:** AppKit's table and text field, SF Symbols, the system notifications for Zip and failed actions,
+  the system Quick Look panel.
 - **Verifying:** screenshots come from `make snapshots`, never the Simulator or a browser. It draws the panel's states
   off screen, in light and dark, into `docs/snapshots/`. `make run` puts the app on Edoardo's screen, so it needs his
   OK each time. Speed is checked with `make bench` and `make logs`.

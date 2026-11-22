@@ -9,6 +9,12 @@ nonisolated enum Palette {
     static let quiet = dynamic(
         light: NSColor(srgbRed: 0.4, green: 0.4, blue: 0.4, alpha: 1),
         dark: NSColor(srgbRed: 0.631, green: 0.631, blue: 0.631, alpha: 1))
+    /// What you press: the ↩ at the end of the selected row and the glyphs in the tile's key caps. Opaque, as the
+    /// secondary label color draws in a text field: drawn as text in a view, that color came out lighter (3.8:1 on a
+    /// light cap). 9.4:1 light and 8.4:1 dark on the selection; 8.8:1 and 7.4:1 on a key cap.
+    static let key = dynamic(
+        light: NSColor(srgbRed: 0.235, green: 0.235, blue: 0.235, alpha: 1),
+        dark: NSColor(srgbRed: 0.839, green: 0.839, blue: 0.839, alpha: 1))
     /// The tile's fill.
     static let tile = dynamic(light: NSColor(white: 0, alpha: 0.035), dark: NSColor(white: 1, alpha: 0.045))
     /// The selected row's fill, and the key caps'. Too faint to mark the selection alone (1.2:1 light, 1.4:1 dark),

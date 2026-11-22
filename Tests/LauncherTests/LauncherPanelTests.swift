@@ -137,7 +137,7 @@ struct LauncherPanelTests {
         panel.launcher.toggleActions()
         #expect(stage.content.name == second, "⌘K keeps the item on the tile")
         #expect(stage.content.primary == "Open")
-        #expect(stage.content.secondary == StageView.Key(words: "Back", caps: ["⎋"]))
+        #expect(stage.content.secondary == StageView.Key(words: "Back", caps: ["esc"]))
         press(#selector(NSResponder.moveDown(_:)), in: panel)
         #expect(stage.content.primary == "Reveal in Finder", "the selected action is what ⏎ does")
 
@@ -382,6 +382,27 @@ struct LauncherPanelTests {
             names(panel) == [
                 "Open", "Reveal in Finder", "Copy Path", "Open With…", "Copy File", "Zip", "Move to Trash",
             ])
+    }
+
+    /// A Move to Trash that fails says so (decision 32), and the file stays in the history. The file doesn't exist, so
+    /// nothing ever reaches the Trash.
+    @Test func aFailedMoveToTrashIsReported() async throws {
+        let folder = try TemporaryDirectory()
+        let missing = Item(path: folder.url.appending(path: "Quarterly_Budget_Review.pdf").path, isFolder: false)
+        let panel = makePanel(items: [], opened: [missing.id], emptyState: .recent)
+        var failures: [String] = []
+        panel.launcher.reportFailure = { title, _, _ in failures.append(title) }
+        panel.launcher.prepareToShow()
+        panel.launcher.toggleActions()
+        try #require(panel.launcher.rows.last == .action(.trash))
+        for _ in 1..<panel.launcher.rows.count { press(#selector(NSResponder.moveDown(_:)), in: panel) }
+
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        #expect(await eventually { !failures.isEmpty })
+        #expect(failures == ["Couldn't move Quarterly_Budget_Review.pdf to the Trash"])
+        panel.launcher.reset()
+        panel.launcher.prepareToShow()
+        #expect(names(panel) == ["Quarterly_Budget_Review.pdf"], "still in the recent list")
     }
 
     @Test func commandKOnAFolderOffersTerminal() async throws {
