@@ -107,7 +107,8 @@ Status: **in review**.
 
 ## 8. Performance pass
 
-Status: **in progress**. This build measured on screen (with apps and 35.6k files):
+Status: **todo**, after milestone 3 (decision 31): the numbers below are decent for now. Measured on screen (with apps
+and 35.6k files):
 - **⌘P → drawn: ~27 ms**, nearly all "update". Our part, filling the empty state and the rows, takes 0.3 ms
   offscreen, so the rest is the window server.
   - Likely cause: the panel is resized on almost every show. It collapses when hidden and grows for the empty state,

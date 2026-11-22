@@ -9,7 +9,8 @@ Goal: a deliberate look for every surface in `FEATURES.md`, done through the imp
 - **What doesn't change:** the speed targets (one frame from ⌘P, under 5 ms per keystroke), and an opaque panel with
   no animation and no blur.
 
-This plan runs alongside the milestone plans.
+This plan runs alongside the milestone plans. Step 7 comes before step 6, and step 6 starts with the clipboard,
+milestone 3 (decision 31).
 
 Status values: **done**, **in review** (built and tested, waiting for Edoardo), **in progress**, **todo**.
 
@@ -134,7 +135,7 @@ Status: **todo**.
 
 ## 7. Polish
 
-Status: **todo**.
+Status: **in progress**.
 - `/impeccable polish` and `/impeccable clarify` cover the copy: the placeholder, problem rows and action names.
 - `/impeccable harden`: a failed Move to Trash is reported, not only logged.
 - Check AA contrast in light and dark, then take the final snapshots.
