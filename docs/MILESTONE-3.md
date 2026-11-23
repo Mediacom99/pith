@@ -9,7 +9,7 @@ Status values: **done**, **in review** (built and tested, waiting for Edoardo), 
 
 ## 1. Storage and retention
 
-Status: **todo**.
+Status: **done** (core library; the app uses it from step 2).
 - `ClipboardStore` keeps the history in `~/Library/Application Support/pith/clipboard/`:
   - a SQLite database (the system library) holding the entries and their text;
   - images as files beside it;
@@ -21,8 +21,19 @@ Status: **todo**.
 - **Retention:**
   - 2 GB and 30 days by default (decision 37), oldest unpinned first; pins are never dropped.
   - Applied after each copy and at launch, so no timer is needed.
-- Every read and write runs on a worker; the main actor gets ready-made entries.
-- Tests use temporary folders, never the real `~/Library/Application Support/pith/`.
+- Every call runs on the store's own serial queue, `launcher.clipboard`, so it's off the main thread and off Swift's
+  cooperative pool. The main actor gets ready-made `Clip` values.
+- In memory, a clip keeps only the first 4,096 characters of its text; the rest stays on disk for the paste.
+- Duplicates are matched by a SHA-256 of the kind, every representation and the image.
+- Deleting gives the space back to the disk: incremental vacuum for the database, and the image files are removed.
+  On load, image files a crash left without their clip are removed too.
+- Covered by 12 tests on temporary folders, never the real `~/Library/Application Support/pith/`:
+  - newest-first loading;
+  - duplicates moving to the top with their pin;
+  - representations coming back in order;
+  - thumbnail sizes, including a small image that isn't scaled up;
+  - retention by age, then size, keeping pins;
+  - delete, clear, relaunch, long text, and leftover files.
 
 ## 2. Recording
 

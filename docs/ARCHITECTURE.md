@@ -71,6 +71,10 @@ Sources/
     FileSearchEngine.swift owns the FileIndex on a serial queue: rebuilds, FSEvents patches, searches
     History.swift          what was opened and when: recent list, frecency, boosts for apps and files
     Zipper.swift           Finder-style zip with ditto, next to the original, numbered when taken
+    Clip.swift             a clipboard clip (kind, when, source, pin, text start), its content and representations
+    ClipboardStore.swift   the clipboard history on disk, on its own serial queue: SQLite, image files, retention
+    SQLiteDatabase.swift   a thin wrapper over the system SQLite: open, prepare, bind, step, transactions
+    ImageThumbnails.swift  a copied image's row and preview thumbnails, decoded by ImageIO at their exact pixel sizes
     AppScanner.swift       walks the app folders (+ Finder) → [Item] with resolved-path ids
     DirectoryWatcher.swift FSEvents → folders or per-file events with flags, with source-level exclusions
     Config.swift           config.toml settings, defaults, problems with line numbers, the commented template
@@ -255,8 +259,9 @@ No third-party dependencies.
 | Zip | `/usr/bin/ditto` via `Process` (system) | What Finder's Compress uses (FEATURES §4.4): same format, resource forks kept. |
 | Quick Look | `QLPreviewPanel` (Quartz, system) | The system preview; the launcher acts as its controller. |
 | Notifications | UserNotifications (system) | For a finished Zip and failed actions (decisions 21, 32). |
-| Clipboard storage (milestone 3) | SQLite through the system `SQLite3` module, behind a small wrapper | Thousands of entries written one at a time, each copy an atomic insert. The history lives in memory for search, so the database only loads and saves. GRDB, the `FEATURES.md` candidate, is excellent but would be the first third-party dependency for a handful of queries. |
-| Clipboard thumbnails (milestone 3) | ImageIO `CGImageSourceCreateThumbnailAtIndex` (system) | Decodes straight to the exact pixel size without loading the full image. |
+| Clipboard storage | SQLite through the system `SQLite3` module, behind a small wrapper (`SQLiteDatabase`) | Thousands of entries written one at a time, each copy an atomic insert. The history lives in memory for search, so the database only loads and saves. GRDB, the `FEATURES.md` candidate, is excellent but would be the first third-party dependency for a handful of queries. |
+| Clipboard thumbnails | ImageIO `CGImageSourceCreateThumbnailAtIndex` (system) | Decodes straight to the exact pixel size without loading the full image. |
+| Clipboard duplicates | SHA-256 from CryptoKit (system) | A copy of content already in the history must find it, and a collision would move the wrong clip, so a 64-bit hash isn't enough. |
 | Watching the clipboard (milestone 3) | `NSPasteboard.changeCount` on a GCD timer with leeway | macOS has no notification for a new copy, so this is the only way; leeway lets the system coalesce the wakeups. |
 | Paste (milestone 3) | `CGEvent` ⌘V posted to the HID tap (CoreGraphics, system) | How every clipboard manager pastes; it needs Accessibility access. |
 | Tests | Swift Testing (toolchain) | The current standard over XCTest. |
