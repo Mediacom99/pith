@@ -340,6 +340,7 @@ final class LauncherViewController: NSViewController {
         searchField.placeholderString = placeholder(for: nil)
         setQuery("")
         if !rows.isEmpty || isExpanded { show([], selecting: 0) }
+        icons.trimTypes()
     }
 
     // MARK: The list

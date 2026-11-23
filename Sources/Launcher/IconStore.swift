@@ -43,6 +43,11 @@ final class IconStore {
     /// File and folder icons by type (`IconSource.key`), rendered on first request, and the type's name.
     private var types: [String: Pair] = [:]
     private var typeNames: [String: String] = [:]
+    /// When each type's icon was last asked for, counted in requests: past `typesKept`, the least recent go.
+    private var typeUses: [String: Int] = [:]
+    private var uses = 0
+    /// 256 types at about 43 KB each; a test keeps fewer.
+    let typesKept: Int
     private var requestedTypes: Set<String> = []
     private var renderingTypes: Set<String> = []
     private var wanted: Set<URL> = []
@@ -62,7 +67,8 @@ final class IconStore {
     /// Called on the main thread when new bitmaps are ready.
     var onChange: (() -> Void)?
 
-    init() {
+    init(typesKept: Int = 256) {
+        self.typesKept = typesKept
         appearanceObservation = NSApp.observe(\.effectiveAppearance) { [weak self] _, _ in
             Task { @MainActor in self?.restyle() }
         }
@@ -86,12 +92,31 @@ final class IconStore {
     /// request queues it, and `onChange` reports it ready.
     func icon(forFile url: URL, size: IconSize = .row) -> CGImage? {
         let source = IconSource(url)
+        uses &+= 1
+        typeUses[source.key] = uses
         if let icon = types[source.key] { return icon[size] }
         if !renderingTypes.contains(source.key), requestedTypes.insert(source.key).inserted, requestedTypes.count == 1 {
             // Collects the rows configured in this pass, then renders them in one batch.
             Task { @MainActor in renderRequestedTypes() }
         }
         return nil
+    }
+
+    /// How many types' icons are kept.
+    var typeCount: Int { types.count }
+
+    /// Drops the icons of the types least recently asked for, down to three quarters of `typesKept`, once there are
+    /// more: called as the panel closes, so a search never waits on it. Each odd extension (`backup.2025-11-23`) and
+    /// each app a file search shows would otherwise stay.
+    func trimTypes() {
+        guard types.count > typesKept else { return }
+        let dropped = types.keys.sorted { typeUses[$0, default: 0] < typeUses[$1, default: 0] }
+            .prefix(types.count - typesKept * 3 / 4)
+        for key in dropped {
+            types[key] = nil
+            typeNames[key] = nil
+            typeUses[key] = nil
+        }
     }
 
     /// The icon of the app with bundle id `id`, or nil until it's found and rendered (or if it isn't installed): the

@@ -50,3 +50,20 @@ struct AppResolverTests {
         #expect(allApps)
     }
 }
+
+/// The icons of file types, rendered as they're asked for.
+@MainActor
+struct IconStoreTests {
+    /// Past `typesKept` types, closing the panel drops the least recently asked for, so odd extensions don't pile up.
+    @Test func typeIconsAreTrimmedToTheMostRecent() async {
+        let icons = IconStore(typesKept: 8)
+        let files = (0..<12).map { URL(filePath: "/Users/me/Documents/Acme/backup.2025-\($0)") }
+        for file in files { _ = icons.icon(forFile: file) }
+        #expect(await eventuallyTrue { icons.typeCount == 12 })
+        _ = icons.icon(forFile: files[0])
+        icons.trimTypes()
+        #expect(icons.typeCount == 6, "down to three quarters of what's kept")
+        #expect(icons.icon(forFile: files[0]) != nil, "asked for again last, so kept")
+        #expect(icons.icon(forFile: files[1]) == nil, "among the least recent")
+    }
+}

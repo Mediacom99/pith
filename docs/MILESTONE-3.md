@@ -467,7 +467,9 @@ real folder prompts (4) on a first install.
         (`.cache`, `.npm`, `node_modules`), the most recently changed first, up to its 8; a test covers which. A hidden
         file such as `.zsh_history` can't be left out (FSEvents takes folders), so its writes still wake Pith, and are
         dropped at once. What it was: hidden folders under `~` woke Pith on every write.
-    33. The file-type icon cache never shrinks (about 43 KB per extension seen).
+    33. **Confirmed and fixed:** past 256 types, closing the panel drops the icons least recently asked for, down to
+        192; a test covers it. What it was: the file-type icon cache never shrank (about 43 KB per extension seen, and
+        per app a file search showed).
   - **Config:**
     34. **Fixed:** a hotkey that's an editing key is a problem and stays as it was; a test covers it. What it was:
         `clipboard = "cmd+v"` was accepted and took ⌘V from every app, Pith's own paste included.
