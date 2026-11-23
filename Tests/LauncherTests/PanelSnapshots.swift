@@ -141,6 +141,25 @@ import Testing
         denied.launcher.prepareToShow(.clipboard)
         press(#selector(NSResponder.moveUp(_:)), in: denied)
         try await snapshot(denied, "clipboard-cannot-read-\(suffix)")
+
+        // No Accessibility access: ⏎ copies, and the notice says why.
+        let noPaste = try await clipboardPanel()
+        noPaste.launcher.canPaste = false
+        noPaste.launcher.clipboardNotices = [.needsAccessibility]
+        noPaste.launcher.prepareToShow(.clipboard)
+        press(#selector(NSResponder.moveUp(_:)), in: noPaste)
+        try await snapshot(noPaste, "clipboard-accessibility-\(suffix)")
+
+        // ⌘K on the pinned agenda, then Delete waiting for its second ⏎.
+        let actions = try await clipboardPanel()
+        actions.launcher.prepareToShow(.clipboard)
+        for _ in 0..<4 { press(#selector(NSResponder.moveDown(_:)), in: actions) }
+        actions.launcher.toggleActions()
+        try await snapshot(actions, "clipboard-actions-\(suffix)")
+        for _ in 1..<actions.launcher.rows.count { press(#selector(NSResponder.moveDown(_:)), in: actions) }
+        try #require(actions.launcher.rows.last == .clipAction(.delete))
+        press(#selector(NSResponder.insertNewline(_:)), in: actions)
+        try await snapshot(actions, "clipboard-delete-pinned-\(suffix)")
     }
 
     /// A made-up clipboard history, oldest first: a file from Finder, a pinned agenda from Notes, a screenshot, a link
@@ -210,7 +229,8 @@ import Testing
         let clipboard = ClipboardHistory(store: store)
         await clipboard.load()
         panel.launcher.clipboard = clipboard
-        panel.launcher.copyClip = { _ in }
+        panel.launcher.deliverClip = { _, _ in }
+        panel.launcher.canPaste = true
         // The made-up file is there, 2.1 MB.
         panel.launcher.fileFacts = { _ in (true, 2_143_000) }
         return panel

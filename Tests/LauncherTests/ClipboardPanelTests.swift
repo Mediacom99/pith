@@ -5,8 +5,8 @@ import Testing
 
 @testable import Launcher
 
-/// A panel whose clipboard history is `clips` (oldest first), stored in `folder`. ⏎ is swapped for `copied`, so the
-/// tests never touch the clipboard.
+/// A panel whose clipboard history is `clips` (oldest first), stored in `folder`. Delivering a clip is swapped for
+/// `copied`, so the tests never touch the clipboard or type.
 @MainActor
 func clipboardPanel(
     _ folder: URL, _ clips: [(content: ClipContent, source: String?, minutesAgo: Double)], pinned: Set<Int> = [],
@@ -21,13 +21,14 @@ func clipboardPanel(
     let history = ClipboardHistory(store: store)
     await history.load()
     panel.launcher.clipboard = history
-    panel.launcher.copyClip = { copied.clips.append($0) }
+    panel.launcher.deliverClip = { clip, delivery in copied.deliveries.append((clip, delivery)) }
     return panel
 }
 
-/// What ⏎ copied, in order.
+/// What was pasted or copied, in order.
 @MainActor final class CopiedClips {
-    var clips: [Clip] = []
+    var deliveries: [(clip: Clip, delivery: ClipDelivery)] = []
+    var clips: [Clip] { deliveries.map(\.clip) }
 }
 
 func text(_ string: String) -> ClipContent {
@@ -49,7 +50,7 @@ struct ClipboardPanelTests {
         #expect(panel.launcher.searchField.placeholderString == "Search clipboard")
         #expect(panel.launcher.stage.frame.height == Layout.clipboardTileHeight)
         #expect(panel.frame.height == Layout.expandedHeight, "the panel keeps its height")
-        #expect(panel.launcher.stage.content.primary == "Copy")
+        #expect(panel.launcher.stage.content.primary == "Copy", "no Accessibility access in tests")
         #expect(panel.launcher.stage.content.preview == .text("third", isBlank: false))
     }
 
@@ -111,15 +112,126 @@ struct ClipboardPanelTests {
         #expect(panel.launcher.searchField.placeholderString == "Search")
     }
 
-    @Test func returnCopiesTheSelectedClipBack() async throws {
+    @Test func returnPastesWithAccessAndCopiesWithoutAsking() async throws {
         let folder = try TemporaryDirectory()
         let copied = CopiedClips()
         let panel = try await clipboardPanel(
             folder.url, [(text("older"), nil, 10), (text("newest"), nil, 1)], copied: copied)
+        var asked = 0
+        panel.launcher.askForAccessibility = { asked += 1 }
+
         panel.launcher.prepareToShow(.clipboard)
         press(#selector(NSResponder.moveDown(_:)), in: panel)
         press(#selector(NSResponder.insertNewline(_:)), in: panel)
-        #expect(copied.clips.map(\.text) == ["older"])
+        #expect(copied.deliveries.map(\.clip.text) == ["older"])
+        #expect(copied.deliveries.map(\.delivery) == [.copy])
+        #expect(asked == 1, "the first ⏎ without access asks for it")
+
+        panel.launcher.reset()
+        panel.launcher.canPaste = true
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(panel.launcher.stage.content.primary == "Paste")
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        #expect(copied.deliveries.map(\.delivery) == [.copy, .paste])
+        #expect(copied.clips.last?.text == "newest")
+    }
+
+    @Test func commandKOffersWhatEachKindCanDo() async throws {
+        let folder = try TemporaryDirectory()
+        let rich = ClipContent(
+            kind: .richText, text: "Acme",
+            items: [
+                [
+                    Representation(type: "public.html", data: Data("<b>Acme</b>".utf8)),
+                    Representation(type: "public.utf8-plain-text", data: Data("Acme".utf8)),
+                ]
+            ])
+        let link = ClipContent(
+            kind: .link, text: "https://acme.example",
+            items: [[Representation(type: "public.utf8-plain-text", data: Data("https://acme.example".utf8))]])
+        let files = ClipContent(
+            kind: .files, text: "/Users/me/notes.md",
+            items: [
+                [Representation(type: "public.file-url", data: URL(filePath: "/Users/me/notes.md").dataRepresentation)]
+            ])
+        let panel = try await clipboardPanel(
+            folder.url, [(files, nil, 4), (link, nil, 3), (rich, nil, 2), (text("plain"), nil, 1)], pinned: [0])
+        panel.launcher.canPaste = true
+        panel.launcher.prepareToShow(.clipboard)
+
+        func actions(at row: Int) -> [ClipAction] {
+            panel.launcher.reset()
+            panel.launcher.prepareToShow(.clipboard)
+            for _ in 0..<row { press(#selector(NSResponder.moveDown(_:)), in: panel) }
+            panel.launcher.toggleActions()
+            return panel.launcher.rows.compactMap { if case .clipAction(let action) = $0 { action } else { nil } }
+        }
+        #expect(actions(at: 0) == [.paste, .copy, .save, .pin, .delete])
+        #expect(actions(at: 1) == [.paste, .copy, .pastePlainText, .save, .pin, .delete])
+        #expect(actions(at: 2) == [.paste, .copy, .openLink, .pin, .delete])
+        #expect(actions(at: 3) == [.paste, .copy, .reveal, .unpin, .delete])
+        #expect(panel.launcher.searchField.placeholderString == "Filter actions")
+        #expect(panel.launcher.stage.content.name == "notes.md", "the clip stays on the tile")
+
+        panel.launcher.canPaste = false
+        #expect(actions(at: 1) == [.copy, .pastePlainText, .save, .pin, .delete])
+        #expect(ClipAction.pastePlainText.title(canPaste: false, linkApp: nil) == "Copy as Plain Text")
+    }
+
+    @Test func pinningStaysOpenWithTheClipSelected() async throws {
+        let folder = try TemporaryDirectory()
+        let panel = try await clipboardPanel(
+            folder.url, [(text("one"), nil, 3), (text("two"), nil, 2), (text("three"), nil, 1)])
+        panel.launcher.prepareToShow(.clipboard)
+        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        panel.launcher.toggleActions()
+        try select(.pin, in: panel)
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+
+        #expect(panel.launcher.sublist == nil, "back to the list")
+        #expect(await eventuallyTrue { pinned(panel) == ["two"] })
+        #expect(panel.launcher.tableView.selectedRow == 1, "the pinned clip stays selected")
+    }
+
+    @Test func deletingAPinnedClipWaitsForASecondReturn() async throws {
+        let folder = try TemporaryDirectory()
+        let panel = try await clipboardPanel(
+            folder.url, [(text("keep me"), nil, 2), (text("newest"), nil, 1)], pinned: [0])
+        panel.launcher.prepareToShow(.clipboard)
+        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        panel.launcher.toggleActions()
+        try select(.delete, in: panel)
+
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        #expect(panel.launcher.confirming)
+        #expect(panel.launcher.stage.content.isDanger && panel.launcher.stage.content.secondary?.words == "Cancel")
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        #expect(await eventuallyTrue { titles(panel) == ["newest"] })
+        #expect(try await panel.launcher.clipboard?.store.load().map(\.text) == ["newest"])
+    }
+
+    @Test func saveAsFileWritesADatedFileAndSaysWhere() async throws {
+        let folder = try TemporaryDirectory()
+        let downloads = try TemporaryDirectory()
+        let panel = try await clipboardPanel(folder.url, [(text("docker compose up\n"), nil, 1)])
+        let now = try #require(
+            Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 23, hour: 14, minute: 5)))
+        panel.launcher.now = { now }
+        panel.launcher.saveFolder = downloads.url
+        let saved = SavedFiles()
+        panel.launcher.reportSaved = { saved.files.append($0) }
+        panel.launcher.prepareToShow(.clipboard)
+        panel.launcher.toggleActions()
+        try select(.save, in: panel)
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+
+        #expect(await eventuallyTrue { !saved.files.isEmpty })
+        let file = try #require(saved.files.first)
+        #expect(file.lastPathComponent == "Clipboard 2026-11-23 at 14.05.txt")
+        #expect(try String(contentsOf: file, encoding: .utf8) == "docker compose up\n")
+        #expect(
+            ClipFiles.destination(in: downloads.url, at: now, extension: "txt").lastPathComponent
+                == "Clipboard 2026-11-23 at 14.05 2.txt", "a taken name is numbered")
     }
 
     @Test func noticesComeFirstAndTheNewestClipIsSelected() async throws {
@@ -180,6 +292,15 @@ struct ClipboardPanelTests {
         #expect(ago(minutes: 20 * 24 * 60) == "Oct 31")
     }
 
+    private func select(_ action: ClipAction, in panel: LauncherPanel) throws {
+        let row = try #require(panel.launcher.rows.firstIndex(of: .clipAction(action)))
+        for _ in 0..<row { press(#selector(NSResponder.moveDown(_:)), in: panel) }
+    }
+
+    private func pinned(_ panel: LauncherPanel) -> [String] {
+        panel.launcher.rows.compactMap { if case .clip(let clip) = $0, clip.pinned { clip.text } else { nil } }
+    }
+
     private func titles(_ panel: LauncherPanel) -> [String] {
         panel.launcher.rows.map {
             switch $0 {
@@ -188,7 +309,18 @@ struct ClipboardPanelTests {
             case .item(let item): item.name
             case .action(let action): "\(action)"
             case .problem(let message): message
+            case .clipAction(let action): action.title(canPaste: panel.launcher.canPaste, linkApp: nil)
             }
         }
     }
+}
+
+@MainActor final class SavedFiles {
+    var files: [URL] = []
+}
+
+/// Polls `condition` until it holds or a few seconds pass, for work that hops through the store's queue.
+@MainActor func eventuallyTrue(_ condition: () -> Bool) async -> Bool {
+    for _ in 0..<200 where !condition() { try? await Task.sleep(for: .milliseconds(25)) }
+    return condition()
 }

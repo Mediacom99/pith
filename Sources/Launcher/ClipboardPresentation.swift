@@ -7,6 +7,17 @@ enum ClipboardNotice: Equatable {
     case paused
     /// macOS is set to deny Pith the clipboard, so nothing is recorded; ⏎ opens the setting.
     case cannotRead
+    /// Pasting needs Accessibility access: until then ⏎ copies, and ⏎ on the notice opens the setting.
+    case needsAccessibility
+}
+
+/// How a clip goes back: with everything it was copied with, or as plain text; pasted into the app in front, or only
+/// put on the clipboard.
+nonisolated enum ClipDelivery: Sendable {
+    case paste, copy, pastePlainText, copyPlainText
+
+    var presses: Bool { self == .paste || self == .pastePlainText }
+    var isPlainText: Bool { self == .pastePlainText || self == .copyPlainText }
 }
 
 /// The words a clip shows in its row and on the tile (`docs/BRIEF-CLIPBOARD.md` §5). Pure functions of the clip, the

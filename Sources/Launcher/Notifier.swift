@@ -2,8 +2,8 @@ import AppKit
 import LauncherCore
 import UserNotifications
 
-/// What happens after the panel has closed, as a macOS notification: a finished Zip (decision 21) and an action that
-/// failed (decision 32). Clicking one reveals its file in Finder. macOS asks for permission the first time; without
+/// What happens after the panel has closed, as a macOS notification: a finished Zip (decision 21), a clip saved as a
+/// file (decision 39) and an action that failed (decision 32). Clicking one reveals its file in Finder. macOS asks for permission the first time; without
 /// it, nothing is shown and failures are only logged.
 final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     private nonisolated static let pathKey = "path"
@@ -37,13 +37,25 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    /// An action on `item` that failed: what failed as the title ("Couldn't move notes.md to the Trash"), why as the
-    /// body. A click reveals the item, to deal with it in Finder.
-    func failed(_ title: String, item: URL, reason: String) {
+    /// An action that failed: what failed as the title ("Couldn't move notes.md to the Trash"), why as the body. A
+    /// click reveals `item`, if there is one, to deal with it in Finder.
+    func failed(_ title: String, item: URL?, reason: String) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = reason
-        content.userInfo = [Self.pathKey: item.path]
+        if let item { content.userInfo = [Self.pathKey: item.path] }
+        Task {
+            guard await Self.allowed() else { return }
+            await Self.post(content)
+        }
+    }
+
+    /// A clip saved as a file (decision 39): where, and a click reveals it.
+    func saved(_ file: URL) {
+        let content = UNMutableNotificationContent()
+        content.title = "Saved to \(file.deletingLastPathComponent().lastPathComponent)"
+        content.body = file.lastPathComponent
+        content.userInfo = [Self.pathKey: file.path]
         Task {
             guard await Self.allowed() else { return }
             await Self.post(content)

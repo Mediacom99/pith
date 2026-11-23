@@ -9,6 +9,10 @@ import Foundation
 public final class ClipboardStore: @unchecked Sendable {
     public struct Failure: Error, CustomStringConvertible {
         public let description: String
+
+        public init(description: String) {
+            self.description = description
+        }
     }
 
     /// How much history is kept: whichever limit is hit first drops the oldest unpinned clips (decision 37).
@@ -176,6 +180,17 @@ public final class ClipboardStore: @unchecked Sendable {
                 for file in written { try? FileManager.default.removeItem(at: file) }
                 throw error
             }
+        }
+    }
+
+    /// Moves clip `id` to `date`, as if copied again: for a paste the recorder doesn't see (plain text).
+    public func touch(_ id: Int64, at date: Date) async throws(Failure) -> Clip {
+        try await run { () throws(Failure) in
+            let database = try self.database()
+            try database.prepare("UPDATE clip SET copied = ? WHERE id = ?").run([
+                .real(date.timeIntervalSince1970), .integer(id),
+            ])
+            return try self.clip(id, in: database)
         }
     }
 

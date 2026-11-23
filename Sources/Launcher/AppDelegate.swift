@@ -39,8 +39,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store: clipboard.store,
         onRecord: { [weak self] clip, removed in self?.clipboard.recorded(clip, removed: removed) },
         onAccessChange: { [weak self] allowed in
-            self?.panel?.launcher.clipboardNotices = allowed ? [] : [.cannotRead]
+            self?.canReadClipboard = allowed
+            self?.publishClipboardNotices()
         })
+    /// What the clipboard says above its clips: macOS denies reading it, or paste lacks Accessibility access.
+    private var canReadClipboard = true
+    private var askedForAccessibility = false
     private var fileRules: FileRules?
     private var panel: LauncherPanel?
     /// Each global hotkey as registered (`launcher`, `clipboard`), and the problem if the configured one is taken.
@@ -57,21 +61,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let launcher = LauncherViewController(history: history, running: RunningApps(), files: files)
         launcher.runCommand = { [weak self] in self?.run($0) }
         launcher.clipboard = clipboard
-        clipboard.onChange = { [weak launcher] in launcher?.clipboardChanged() }
         launcher.resolveNotice = { notice in
             switch notice {
             case .cannotRead:
                 // Privacy & Security, where macOS lists the apps that may read the clipboard.
-                if let settings = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy") {
-                    NSWorkspace.shared.open(settings)
-                }
+                if let settings = Accessibility.clipboardSettings { NSWorkspace.shared.open(settings) }
+            case .needsAccessibility:
+                if let settings = Accessibility.settings { NSWorkspace.shared.open(settings) }
             case .paused:
                 break
             }
         }
+        launcher.onShowClipboard = { [weak self] in self?.checkAccessibility() }
+        launcher.askForAccessibility = { [weak self] in
+            // Once per launch: macOS's request, then the setting is a notice away.
+            guard let self, !askedForAccessibility else { return }
+            askedForAccessibility = true
+            Task { await runInBackground(qos: .userInitiated) { Accessibility.ask() } }
+        }
         launcher.notifier = notifier
         notifier.install()
         panel = LauncherPanel(launcher: launcher)
+        checkAccessibility()
 
         configStore.onChange = { [weak self] previous in self?.apply(previous: previous) }
         Task {
@@ -117,6 +128,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             LoginItem.update(enabled: config.launchAtLogin)
         }
         hasAppliedConfig = true
+    }
+
+    /// Asks on a worker whether Pith may press ⌘V, at launch and each time the clipboard opens: access can be given in
+    /// System Settings at any time.
+    private func checkAccessibility() {
+        Task {
+            let allowed = await runInBackground(qos: .userInitiated) { Accessibility.isAllowed }
+            panel?.launcher.canPaste = allowed
+            publishClipboardNotices()
+        }
+    }
+
+    private func publishClipboardNotices() {
+        guard let launcher = panel?.launcher else { return }
+        var notices: [ClipboardNotice] = []
+        if !canReadClipboard { notices.append(.cannotRead) }
+        if !launcher.canPaste { notices.append(.needsAccessibility) }
+        launcher.clipboardNotices = notices
     }
 
     private func publishProblems() {

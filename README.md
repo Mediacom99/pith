@@ -98,7 +98,7 @@ bar icon.
 | ⌘P | Open or close the launcher, from any app |
 | ⌘⇧V, or `c ` in the launcher | Open the clipboard history; ⌫ on its empty field goes back to the launcher |
 | ↑ ↓ or ⌃K ⌃J | Move the selection |
-| ⏎ | Open the selected item, or run the selected action |
+| ⏎ | Open the selected item, run the selected action, or paste the selected clip into the app you were in |
 | ⌘K | Show the selected item's actions, or go back to the search |
 | ⎋ | Back one level, or close |
 | ⌘Y, or Space with an empty field | Quick Look the selected file |
@@ -115,6 +115,10 @@ make install    # builds, copies to ~/Applications and launches
 
 Then press ⌘P. The launcher takes ⌘P from every app, including Print; you can change the hotkey in the config.
 `make uninstall` quits it and removes it.
+
+The clipboard pastes into the app you were in, which needs Accessibility access (System Settings, Privacy & Security).
+Run `make certificate` once before `make install`: it creates a local signing certificate (macOS asks for your
+password), so the access you give survives reinstalls.
 
 ## Configuration
 

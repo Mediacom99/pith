@@ -11,6 +11,8 @@ enum Row: Equatable {
     case problem(String)
     /// An entry of the clipboard history.
     case clip(Clip)
+    /// A ⌘K action for the clip the actions list is for.
+    case clipAction(ClipAction)
     /// Above the clipboard's clips: recording paused, or the clipboard not readable.
     case notice(ClipboardNotice)
 }
@@ -21,6 +23,8 @@ enum Sublist: Equatable {
     case actions(Item)
     /// The apps that can open a file, from Open With….
     case openWith(file: Item, apps: [Item])
+    /// A clip's actions.
+    case clipActions(Clip)
 }
 
 /// The search field, the tile under it and the list under that: the empty state before you type, search results while
@@ -58,23 +62,38 @@ final class LauncherViewController: NSViewController {
     var notifier: Notifier?
     /// Says that an action failed after the panel closed: what failed, the item, and why (decision 32). Tests swap it
     /// out, so they never post a notification.
-    lazy var reportFailure: (_ title: String, _ item: URL, _ reason: String) -> Void = { [weak self] in
+    lazy var reportFailure: (_ title: String, _ item: URL?, _ reason: String) -> Void = { [weak self] in
         self?.notifier?.failed($0, item: $1, reason: $2)
     }
     /// The time, for "opened today at 14:05". Snapshots fix it.
     var now: () -> Date = { .now }
     /// The clipboard history, and what it says above its clips.
     var clipboard: ClipboardHistory? {
-        didSet { clipboardChanged() }
+        didSet {
+            clipboard?.onChange = { [weak self] in self?.clipboardChanged() }
+            clipboardChanged()
+        }
     }
     var clipboardNotices: [ClipboardNotice] = [] {
         didSet { if clipboardNotices != oldValue, mode == .clipboard { refresh() } }
     }
     /// Deals with a notice: resumes recording, or opens the setting.
     var resolveNotice: (ClipboardNotice) -> Void = { _ in }
-    /// Puts a clip back on the clipboard: what ⏎ does until pasting arrives (milestone 3 step 5). Tests swap it out, so
-    /// they never touch the clipboard.
-    lazy var copyClip: (Clip) -> Void = { [weak self] clip in self?.writeToClipboard(clip) }
+    /// Whether Pith may press ⌘V for you (Accessibility access): ⏎ pastes, or only copies.
+    var canPaste = false {
+        didSet { if canPaste != oldValue, mode == .clipboard { refresh() } }
+    }
+    /// The first ⏎ without Accessibility access asks for it.
+    var askForAccessibility: () -> Void = {}
+    /// Called as the clipboard is shown, to check access again.
+    var onShowClipboard: () -> Void = {}
+    /// Puts a clip back on the clipboard, and pastes it. Tests swap it out, so they never touch the clipboard or type.
+    lazy var deliverClip: (Clip, ClipDelivery) -> Void = { [weak self] in self?.deliver($0, $1) }
+    /// Where Save as File puts a clip (decision 39), and the notification that says so. Tests swap both.
+    var saveFolder = URL.downloadsDirectory
+    lazy var reportSaved: (URL) -> Void = { [weak self] in self?.notifier?.saved($0) }
+    /// `[open_links]`, resolved: URL scheme → app (decision 16). Other links open in their default app.
+    var openLinks: [String: URL] = [:]
     /// Whether a copied file is still there, and its size, read on a worker. Snapshots fix them.
     var fileFacts: @Sendable (String) -> (exists: Bool, bytes: Int?) = { path in
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: path) else { return (false, nil) }
@@ -111,6 +130,10 @@ final class LauncherViewController: NSViewController {
     /// What `fileFacts` said, by path.
     private var facts: [String: (exists: Bool, bytes: Int?)] = [:]
     private var factsLoading: Set<String> = []
+    /// The app each link scheme opens in, once looked up, for "Open in Safari".
+    private var linkApps: [String: (url: URL?, name: String?)] = [:]
+    /// After pinning or deleting, the clip (or the place in the list) to keep selected.
+    private var keepSelection: (id: Int64, position: Int)?
     private let history: HistoryStore
     private let running: RunningApps
     private let files: FileSearchEngine
@@ -129,8 +152,9 @@ final class LauncherViewController: NSViewController {
     private(set) var sublist: Sublist?
     /// What ⎋ goes back to, innermost last: each level's sublist (nil for the search), query, rows and selection.
     private var backStack: [(sublist: Sublist?, query: String, rows: [Row], selection: Int)] = []
-    /// Force Quit is waiting for its second ⏎ (decision 28). ⎋, typing or moving the selection cancels it.
-    private(set) var confirmingForceQuit = false
+    /// Force Quit, or deleting a pinned clip, is waiting for its second ⏎ (decision 28). ⎋, typing or moving the
+    /// selection cancels it.
+    private(set) var confirming = false
 
     private var panel: LauncherPanel? { viewIfLoaded?.window as? LauncherPanel }
 
@@ -226,6 +250,7 @@ final class LauncherViewController: NSViewController {
             self.mode = mode
             applyMode()
         }
+        if mode == .clipboard { onShowClipboard() }
         refresh()
     }
 
@@ -234,7 +259,7 @@ final class LauncherViewController: NSViewController {
         guard new != mode else { return }
         sublist = nil
         backStack = []
-        confirmingForceQuit = false
+        confirming = false
         mode = new
         applyMode()
         setQuery("")
@@ -260,7 +285,7 @@ final class LauncherViewController: NSViewController {
     func reset() {
         sublist = nil
         backStack = []
-        confirmingForceQuit = false
+        confirming = false
         if mode != .launcher {
             mode = .launcher
             applyMode()
@@ -282,7 +307,13 @@ final class LauncherViewController: NSViewController {
         if let sublist {
             update(rows(for: sublist, matching: query), selecting: 0, keystroke: keystroke)
         } else if mode == .clipboard {
-            let (rows, selection) = clipRows(matching: query)
+            var (rows, selection) = clipRows(matching: query)
+            if let keep = keepSelection {
+                keepSelection = nil
+                selection =
+                    rows.firstIndex { if case .clip(let clip) = $0 { clip.id == keep.id } else { false } }
+                    ?? min(keep.position, max(0, rows.count - 1))
+            }
             update(rows, selecting: selection, keystroke: keystroke)
         } else if query.allSatisfy(\.isWhitespace) {
             let (rows, selection) = emptyStateRows()
@@ -362,6 +393,8 @@ final class LauncherViewController: NSViewController {
                 }
             case .openWith(_, let apps):
                 apps.map { (.item($0), $0.name) }
+            case .clipActions(let clip):
+                ClipAction.available(for: clip, canPaste: canPaste).map { (.clipAction($0), title(of: $0, for: clip)) }
             }
         var matcher = FuzzyMatcher(query: query)
         guard !matcher.isEmpty else { return candidates.map(\.row) }
@@ -439,7 +472,7 @@ final class LauncherViewController: NSViewController {
             }
         case .action(let action):
             if case .actions(let item) = sublist {
-                isDanger = action == .forceQuit && confirmingForceQuit
+                isDanger = action == .forceQuit && confirming
                 cell.title = isDanger ? Action.forceQuitConfirmation(for: item) : action.title(for: item)
             }
             cell.icon.image = icons.symbol(action.symbol, tint: isDanger ? .danger : .quiet)
@@ -467,6 +500,12 @@ final class LauncherViewController: NSViewController {
             cell.title = Self.noticeTitle(notice)
             cell.icon.image =
                 notice == .paused ? icons.symbol(Symbols.paused) : icons.symbol(Symbols.problem, tint: .warning)
+        case .clipAction(let action):
+            if case .clipActions(let clip) = sublist {
+                isDanger = action == .delete && confirming
+                cell.title = isDanger ? ClipAction.deleteConfirmation : title(of: action, for: clip)
+            }
+            cell.icon.image = icons.symbol(action.symbol, tint: isDanger ? .danger : .quiet)
         }
         cell.detail = detail
         cell.trailingTag = tag
@@ -508,14 +547,14 @@ final class LauncherViewController: NSViewController {
     }
 
     /// Puts a Force Quit that's waiting for its second ⏎ back to normal.
-    private func cancelForceQuit() {
-        guard confirmingForceQuit else { return }
-        confirmingForceQuit = false
+    private func cancelConfirmation() {
+        guard confirming else { return }
+        confirming = false
         refreshVisibleRows()
     }
 
     private func select(row: Int) {
-        cancelForceQuit()
+        cancelConfirmation()
         tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         tableView.scrollRowToVisible(row)
         previewSelectionChanged()
@@ -532,7 +571,7 @@ final class LauncherViewController: NSViewController {
     /// The field's placeholder: the item a sublist is for is on the tile, so it only says what you're filtering.
     private func placeholder(for sublist: Sublist?) -> String {
         switch sublist {
-        case .actions?: "Filter actions"
+        case .actions?, .clipActions?: "Filter actions"
         case .openWith?: "Filter apps"
         case nil: mode == .clipboard ? "Search clipboard" : "Search"
         }
@@ -554,7 +593,7 @@ final class LauncherViewController: NSViewController {
         case .actions(let item)?:
             var content = stageContent(for: item)
             guard case .action(let action) = row else { return }
-            if action == .forceQuit, confirmingForceQuit {
+            if action == .forceQuit, confirming {
                 content.primary = action.title(for: item)
                 content.isDanger = true
                 content.secondary = StageView.Key(words: "Cancel", caps: ["esc"])
@@ -568,6 +607,16 @@ final class LauncherViewController: NSViewController {
             guard case .item(let app) = row else { return }
             content.primary = "Open in \(app.name)"
             content.secondary = back
+            stage.content = content
+        case .clipActions(let clip)?:
+            var content = stageContent(for: clip)
+            guard case .clipAction(let action) = row else { return }
+            content.primary = title(of: action, for: clip)
+            content.secondary = back
+            if action == .delete, confirming {
+                content.isDanger = true
+                content.secondary = StageView.Key(words: "Cancel", caps: ["esc"])
+            }
             stage.content = content
         case nil:
             switch row {
@@ -586,7 +635,7 @@ final class LauncherViewController: NSViewController {
                     icon: notice == .paused
                         ? icons.symbol(Symbols.paused, size: .tile)
                         : icons.symbol(Symbols.problem, tint: .warning, size: .tile))
-            case .action:
+            case .action, .clipAction:
                 break
             }
         }
@@ -676,7 +725,7 @@ final class LauncherViewController: NSViewController {
             case .files: return ClipText.paths(of: clip).first.map { URL(filePath: $0) }
             case .text, .richText, .link: return nil
             }
-        case .action, .problem, .notice:
+        case .action, .problem, .notice, .clipAction:
             return nil
         }
     }
@@ -739,9 +788,14 @@ final class LauncherViewController: NSViewController {
             return
         }
         let selection = tableView.selectedRow
-        guard rows.indices.contains(selection), case .item(let item) = rows[selection],
-            !Action.available(for: item, running: false).isEmpty
-        else { return }
+        guard rows.indices.contains(selection) else { return }
+        if case .clip(let clip) = rows[selection] {
+            enter(.clipActions(clip))
+            return
+        }
+        guard case .item(let item) = rows[selection], !Action.available(for: item, running: false).isEmpty else {
+            return
+        }
         enter(.actions(item))
     }
 
@@ -780,8 +834,8 @@ final class LauncherViewController: NSViewController {
         case (.item(let item), _):
             open(item)
         case (.action(let action), .actions(let item)?):
-            if action == .forceQuit, !confirmingForceQuit {
-                confirmingForceQuit = true
+            if action == .forceQuit, !confirming {
+                confirming = true
                 refreshVisibleRows()
                 return
             }
@@ -792,10 +846,13 @@ final class LauncherViewController: NSViewController {
             panel?.dismiss()
             runCommand(.openConfig)
         case (.clip(let clip), _):
-            panel?.dismiss()
-            copyClip(clip)
+            perform(canPaste ? .paste : .copy, on: clip)
+        case (.clipAction(let action), .clipActions(let clip)?):
+            perform(action, on: clip)
+        case (.clipAction, _):
+            break
         case (.notice(let notice), _):
-            if notice == .cannotRead { panel?.dismiss() }
+            if notice != .paused { panel?.dismiss() }
             resolveNotice(notice)
         }
     }
@@ -838,9 +895,13 @@ final class LauncherViewController: NSViewController {
     }
 
     /// An action that failed after the panel closed: logged, and reported (decision 32).
-    private func failed(_ title: String, _ item: URL, _ error: any Error) {
-        Log.app.error("\(title, privacy: .public) (\(item.path, privacy: .public)): \(error, privacy: .public)")
-        reportFailure(title, item, error.localizedDescription)
+    private func failed(_ title: String, _ item: URL?, _ error: any Error) {
+        failed(title, item, reason: error.localizedDescription)
+    }
+
+    fileprivate func failed(_ title: String, _ item: URL?, reason: String) {
+        Log.app.error("\(title, privacy: .public) (\(item?.path ?? "", privacy: .public)): \(reason, privacy: .public)")
+        reportFailure(title, item, reason)
     }
 
     private func perform(_ action: Action, on item: Item) {
@@ -938,11 +999,11 @@ extension LauncherViewController {
         return (notices + clips, clips.isEmpty ? 0 : notices.count)
     }
 
-    /// A new copy, or clips dropped: ready the newest images, and show the change if the clipboard is on screen.
+    /// A new copy, or clips pinned or dropped: ready the newest images, and show the change if the clipboard is up.
     func clipboardChanged() {
         guard let clipboard else { return }
         clipImages.preload(clipboard.index, store: clipboard.store)
-        if mode == .clipboard, sublist == nil, panel?.isVisible == true || viewIfLoaded?.window != nil { refresh() }
+        if mode == .clipboard, sublist == nil { refresh() }
     }
 
     /// The app a text or link was copied from, or the kind's symbol when there's no such app; nil while it's looked up,
@@ -958,10 +1019,12 @@ extension LauncherViewController {
     var isResolvingApps: Bool { icons.isResolvingApps }
 
     /// The tile for a clip (docs/BRIEF-CLIPBOARD.md §5): a text as it will paste, an image in its box, a link or files
-    /// as an item. ⏎ copies it back for now; pasting comes with step 5.
+    /// as an item. ⏎ pastes it, or copies it without Accessibility access.
     fileprivate func stageContent(for clip: Clip) -> StageView.Content {
         let source = clip.source.flatMap { icons.appName(forBundleID: $0) }
         let now = now()
+        let primary = canPaste ? "Paste" : "Copy"
+        let actions = StageView.Key(words: "Actions", caps: ["⌘", "K"])
         switch clip.kind {
         case .text, .richText:
             let preview = ClipText.preview(of: clip)
@@ -971,19 +1034,20 @@ extension LauncherViewController {
                 kind: ClipText.about(
                     [ClipText.kindName(clip.kind), ClipText.detail(of: clip), size], copied: clip.copied, from: source,
                     now: now),
-                primary: "Copy", preview: .text(preview, isBlank: preview.allSatisfy(\.isWhitespace)))
+                primary: primary, secondary: actions,
+                preview: .text(preview, isBlank: preview.allSatisfy(\.isWhitespace)))
         case .link:
             return StageView.Content(
                 icon: sourceIcon(of: clip, size: .tile), name: ClipText.host(of: clip), place: clip.text,
-                kind: ClipText.about(["Link"], copied: clip.copied, from: source, now: now), primary: "Copy",
-                placeLines: 3)
+                kind: ClipText.about(["Link"], copied: clip.copied, from: source, now: now), primary: primary,
+                secondary: actions, placeLines: 3)
         case .image:
             let image = clipboard.flatMap { clipImages.preview(clip, store: $0.store) }
             let when = ClipText.copied(clip.copied, now: now) + (source.map { " from \($0)" } ?? "")
             return StageView.Content(
                 name: "Image",
                 place: "\(ClipText.detail(of: clip)) · PNG · \(ClipText.bytes(clip.size))",
-                kind: when.prefix(1).uppercased() + when.dropFirst(), primary: "Copy",
+                kind: when.prefix(1).uppercased() + when.dropFirst(), primary: primary, secondary: actions,
                 preview: .image(image, size: ClipText.previewSize(of: clip)))
         case .files:
             let paths = ClipText.paths(of: clip)
@@ -998,7 +1062,7 @@ extension LauncherViewController {
                 place: gone ? "No longer in \(ClipText.folders(of: clip))" : ClipText.folders(of: clip),
                 kind: ClipText.about(
                     [kind, bytes.map(ClipText.bytes) ?? ""], copied: clip.copied, from: source, now: now),
-                primary: "Copy")
+                primary: primary, secondary: actions)
         }
     }
 
@@ -1021,6 +1085,7 @@ extension LauncherViewController {
         switch notice {
         case .paused: "Recording is paused"
         case .cannotRead: "Pith can't read the clipboard"
+        case .needsAccessibility: "Paste needs Accessibility access"
         }
     }
 
@@ -1033,33 +1098,157 @@ extension LauncherViewController {
             StageView.Content(
                 icon: icon, name: noticeTitle(notice), place: "macOS is set to deny it, so copies aren't saved",
                 kind: "System Settings, Privacy & Security", primary: "Open Settings")
+        case .needsAccessibility:
+            StageView.Content(
+                icon: icon, name: noticeTitle(notice), place: "Until it's allowed, ⏎ copies instead of pasting",
+                kind: "System Settings, Privacy & Security, Accessibility", primary: "Open Settings")
         }
     }
 
-    /// Puts everything the clip was copied with back on the clipboard, on a worker, naming the app it came from so
-    /// the history keeps it.
-    fileprivate func writeToClipboard(_ clip: Clip) {
-        guard let store = clipboard?.store else { return }
+    /// A clip's ⌘K action's name: "Paste", "Open in Safari"…
+    fileprivate func title(of action: ClipAction, for clip: Clip) -> String {
+        action.title(canPaste: canPaste, linkApp: action == .openLink ? linkApp(for: clip)?.name : nil)
+    }
+
+    /// Runs a clip action (docs/BRIEF-CLIPBOARD.md §6). Pinning and deleting keep the panel open and go back to the
+    /// list; everything else closes it first, so a paste lands in the app you were in.
+    fileprivate func perform(_ action: ClipAction, on clip: Clip) {
+        switch action {
+        case .pin, .unpin:
+            keepSelection = (clip.id, backStack.last?.selection ?? tableView.selectedRow)
+            if sublist != nil { goBack() }
+            Task { await clipboard?.setPinned(action == .pin, for: clip.id) }
+            return
+        case .delete:
+            if clip.pinned, !confirming {
+                confirming = true
+                refreshVisibleRows()
+                return
+            }
+            keepSelection = (-1, backStack.last?.selection ?? tableView.selectedRow)
+            if sublist != nil { goBack() }
+            Task { await clipboard?.delete(clip.id) }
+            return
+        default:
+            break
+        }
+        panel?.dismiss()
+        switch action {
+        case .paste: deliverClip(clip, .paste)
+        case .copy:
+            deliverClip(clip, .copy)
+            // The first ⏎ without access asks for it.
+            if !canPaste { askForAccessibility() }
+        case .pastePlainText: deliverClip(clip, canPaste ? .pastePlainText : .copyPlainText)
+        case .openLink:
+            if let url = URL(string: clip.text) { open(url, with: linkApp(for: clip)?.url) }
+        case .reveal: reveal(clip)
+        case .save: save(clip)
+        case .pin, .unpin, .delete: break
+        }
+    }
+
+    /// Puts the clip back on the clipboard, then presses ⌘V for a paste. Plain text is the clip itself, so it's marked
+    /// for the history to skip, and the clip moves to the top as a copy would.
+    fileprivate func deliver(_ clip: Clip, _ delivery: ClipDelivery) {
+        guard let clipboard else { return }
+        let store = clipboard.store
         Task {
             do throws(ClipboardStore.Failure) {
-                let items = try await store.items(of: clip.id)
-                await runInBackground(qos: .userInitiated) {
-                    let pasteboard = NSPasteboard.general
-                    pasteboard.clearContents()
-                    let objects = items.map { representations in
-                        let item = NSPasteboardItem()
-                        for representation in representations {
-                            item.setData(representation.data, forType: .init(representation.type))
-                        }
-                        return item
+                if delivery.isPlainText {
+                    let text = try await store.text(of: clip.id)
+                    let plain = [
+                        [Representation(type: NSPasteboard.PasteboardType.string.rawValue, data: Data(text.utf8))]
+                    ]
+                    await runInBackground(qos: .userInitiated) {
+                        Paster.write(plain, source: clip.source, transient: true)
+                        if delivery.presses { Paster.pressCommandV() }
                     }
-                    if let source = clip.source {
-                        objects.first?.setString(source, forType: .init(ClipReading.sourceMarker))
+                    await clipboard.moveToTop(clip.id)
+                } else {
+                    let items = try await store.items(of: clip.id)
+                    await runInBackground(qos: .userInitiated) {
+                        Paster.write(items, source: clip.source, transient: false)
+                        if delivery.presses { Paster.pressCommandV() }
                     }
-                    pasteboard.writeObjects(objects)
                 }
             } catch {
-                Log.app.error("Couldn't copy a clip back: \(error.description, privacy: .public)")
+                failed(
+                    delivery.presses ? "Couldn't paste the clip" : "Couldn't copy the clip", nil,
+                    reason: error.description)
+            }
+        }
+    }
+
+    /// The app a link opens in: `[open_links]`'s for its scheme, else the default, looked up on a worker the first
+    /// time; nil until then.
+    private func linkApp(for clip: Clip) -> (url: URL?, name: String?)? {
+        guard let url = URL(string: clip.text), let scheme = url.scheme?.lowercased() else { return nil }
+        if let known = linkApps[scheme] { return known }
+        linkApps[scheme] = (nil, nil)
+        let configured = openLinks[scheme]
+        Task {
+            let app = await runInBackground(qos: .userInitiated) { () -> (url: URL?, name: String?) in
+                guard let app = configured ?? NSWorkspace.shared.urlForApplication(toOpen: url) else {
+                    return (nil, nil)
+                }
+                let name = FileManager.default.displayName(atPath: app.path)
+                return (app, name.hasSuffix(".app") ? String(name.dropLast(4)) : name)
+            }
+            linkApps[scheme] = app
+            refreshVisibleRows()
+        }
+        return nil
+    }
+
+    /// Shows the clip's files in Finder, or says they're gone.
+    private func reveal(_ clip: Clip) {
+        let urls = ClipText.paths(of: clip).map { URL(filePath: $0) }
+        let read = fileFacts
+        Task {
+            let present = await runInBackground(qos: .userInitiated) { () -> [URL] in
+                let present = urls.filter { read($0.path).exists }
+                if !present.isEmpty { NSWorkspace.shared.activateFileViewerSelecting(present) }
+                return present
+            }
+            if present.isEmpty, let first = urls.first {
+                failed(
+                    "Couldn't reveal \(first.lastPathComponent)", nil,
+                    reason: "It was moved or deleted since it was copied")
+            }
+        }
+    }
+
+    /// Saves a text or an image to `saveFolder` with a dated name, then says where (decision 39).
+    private func save(_ clip: Clip) {
+        guard let store = clipboard?.store else { return }
+        let folder = saveFolder
+        let date = now()
+        Task {
+            do throws(ClipboardStore.Failure) {
+                let data: Data
+                let ext: String
+                if clip.kind == .image {
+                    let file = store.imageFile(of: clip.id)
+                    guard let image = await runInBackground(qos: .userInitiated, { try? Data(contentsOf: file) }) else {
+                        throw ClipboardStore.Failure(description: "the image is no longer in the history")
+                    }
+                    (data, ext) = (image, "png")
+                } else {
+                    (data, ext) = (Data(try await store.text(of: clip.id).utf8), "txt")
+                }
+                let saved = await runInBackground(qos: .userInitiated) { () -> Result<URL, ClipboardStore.Failure> in
+                    let file = ClipFiles.destination(in: folder, at: date, extension: ext)
+                    do {
+                        try data.write(to: file, options: .withoutOverwriting)
+                        return .success(file)
+                    } catch {
+                        return .failure(ClipboardStore.Failure(description: error.localizedDescription))
+                    }
+                }
+                reportSaved(try saved.get())
+            } catch {
+                failed("Couldn't save the clip", nil, reason: error.description)
             }
         }
     }
@@ -1090,8 +1279,8 @@ extension LauncherViewController: NSTextFieldDelegate {
         case #selector(NSResponder.cancelOperation(_:)):
             if isPreviewing {
                 closePreview()
-            } else if confirmingForceQuit {
-                cancelForceQuit()
+            } else if confirming {
+                cancelConfirmation()
             } else if sublist != nil {
                 goBack()
             } else {
@@ -1120,7 +1309,7 @@ extension LauncherViewController: NSTableViewDataSource, NSTableViewDelegate {
 
     /// A click on another row also cancels a Force Quit waiting for its second ⏎.
     func tableViewSelectionDidChange(_ notification: Notification) {
-        cancelForceQuit()
+        cancelConfirmation()
     }
 }
 

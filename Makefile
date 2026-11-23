@@ -7,22 +7,38 @@ BINARY   := $(APP)/Contents/MacOS/$(APP_NAME)
 INSTALLED := $(HOME)/Applications/$(APP_NAME).app
 # Matches both the dev copy and the installed one.
 PROCESS  := $(APP_NAME).app/Contents/MacOS/$(APP_NAME)
+# The local certificate (`make certificate`, decision 41) when it's in the keychain, otherwise ad hoc. A stable signature
+# keeps macOS's permissions (Accessibility, for paste) across reinstalls; an ad hoc one changes with every build.
+CERTIFICATE := Pith Local Signing
+SIGN_AS  = $(shell security find-certificate -c "$(CERTIFICATE)" >/dev/null 2>&1 && echo "$(CERTIFICATE)" || echo -)
 
 .DEFAULT_GOAL := help
-.PHONY: help build app run install uninstall stop logs stats test bench snapshots lint format clean
+.PHONY: help build app certificate run install uninstall stop logs stats test bench snapshots lint format clean
 
 help: ## List the targets
-	@awk 'BEGIN { FS = ":.*## " } /^[a-z]+:.*## / { printf "  make %-9s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN { FS = ":.*## " } /^[a-z]+:.*## / { printf "  make %-11s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 build: ## Compile (CONFIG=release by default, CONFIG=debug for a debug build)
 	swift build -c $(CONFIG)
 
-app: build ## Assemble .build/Pith.app and sign it ad hoc
+app: build ## Assemble .build/Pith.app and sign it (with the local certificate, if there is one)
 	rm -rf $(APP)
 	mkdir -p $(APP)/Contents/MacOS
 	cp Support/Info.plist $(APP)/Contents/Info.plist
 	cp .build/$(CONFIG)/$(APP_NAME) $(BINARY)
-	codesign --force --sign - $(APP)
+	codesign --force --sign "$(SIGN_AS)" $(APP)
+
+certificate: ## Once: create the self-signed certificate that keeps Pith's permissions across reinstalls (asks for your password)
+	@if security find-certificate -c "$(CERTIFICATE)" >/dev/null 2>&1; then echo "$(CERTIFICATE) is already in the keychain"; exit 0; fi; \
+	dir=$$(mktemp -d); \
+	/usr/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=$(CERTIFICATE)" \
+		-addext "keyUsage=critical,digitalSignature" -addext "extendedKeyUsage=critical,codeSigning" \
+		-keyout $$dir/key.pem -out $$dir/cert.pem 2>/dev/null \
+	&& /usr/bin/openssl pkcs12 -export -passout pass:pith -inkey $$dir/key.pem -in $$dir/cert.pem -out $$dir/cert.p12 \
+	&& security import $$dir/cert.p12 -k login.keychain-db -P pith -T /usr/bin/codesign \
+	&& security add-trusted-cert -r trustRoot -p codeSign -k login.keychain-db $$dir/cert.pem; \
+	status=$$?; rm -rf $$dir; \
+	if [ $$status -eq 0 ]; then echo "$(CERTIFICATE) created: make install signs with it from now on"; fi; exit $$status
 
 run: app stop ## Build and launch the dev copy; it takes ⌘P system-wide
 	open $(APP)

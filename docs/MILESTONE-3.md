@@ -112,9 +112,8 @@ Status: **done** (core library and the app's model; the panel shows it from step
 
 ## 4. Clipboard mode in the panel
 
-Status: **in review**. Built from the brief (§3, §5, §7) and checked on 14 snapshots (`clipboard-*` in
-`docs/snapshots/`, 7 states, light and dark). Until step 5, ⏎ copies the clip back to the clipboard and the tile says
-"Copy", the brief's state for no Accessibility access.
+Status: **in review**. Built from the brief (§3, §5, §7) and checked on the `clipboard-*` snapshots in
+`docs/snapshots/`, light and dark. ⏎ pastes since step 5.
 - **Built:**
   - `LauncherViewController.Mode` (launcher or clipboard) on the same panel.
   - `[hotkeys] clipboard` (⌘⇧V by default) is registered like the launcher's. A taken hotkey becomes a problem row.
@@ -160,28 +159,27 @@ Status: **in review**. Built from the brief (§3, §5, §7) and checked on 14 sn
 
 ## 5. Paste and the ⌘K actions
 
-Status: **todo**.
-- **⏎ pastes into the previous app:**
-  - the panel closes, the entry goes back on the clipboard with all its types, and a ⌘V is posted as a CoreGraphics
-    event;
-  - this needs Accessibility access, and the first ⏎ asks for it;
-  - until it's granted, the key reads "Copy" and a problem row opens the setting.
-- **⌘K:**
-  - Copy to Clipboard
-  - Paste as Plain Text
-  - Open in … (`[open_links]`, decision 16)
-  - Reveal in Finder
-  - Save as File (to Downloads with a dated name, then a notification, decision 39)
-  - Pin / Unpin
-  - Delete (a second ⏎ for a pinned item)
-  - Quick Look (⌘Y)
-- **Failures** post a notification (decision 32).
-- **A stable signing identity:** macOS ties the Accessibility grant to the app's signature, and the ad hoc signature
-  changes on every `make install`.
-  - The fix is a self-signed certificate in the login keychain, used by `make app`.
-  - I'll ask Edoardo before creating it, since it goes into his keychain.
-- Tests cover which actions each kind gets and the second ⏎. Paste and the clipboard actions aren't exercised, so
-  tests never type into your apps.
+Status: **in review**. Built and tested; paste itself, which types into another app, needs Edoardo's run. Three new
+snapshots: `clipboard-actions`, `clipboard-delete-pinned`, `clipboard-accessibility`.
+- **Built:**
+  - ⏎ pastes, or copies without Accessibility access and asks for it once per launch.
+  - Access is checked on a worker at launch and on each ⌘⇧V, since it can be given in System Settings at any time.
+  - Without access, the notice "Paste needs Accessibility access" comes first, and ⏎ on it opens the setting.
+  - A paste writes everything the clip was copied with, naming its source app (`org.nspasteboard.source`), so the
+    recorder moves the clip to the top instead of recording it again.
+  - Paste as Plain Text writes the text alone, marked transient so the history skips it, and moves the clip to the
+    top itself.
+  - Pin and Delete keep the panel open, go back to the list and keep the clip, or its place, selected.
+  - Open in… names the app (`[open_links]`'s once step 6 parses it, else the default), looked up on a worker.
+  - Save as File writes `Clipboard 2026-11-23 at 14.05.txt` or `.png` in Downloads, numbered when taken, then posts
+    "Saved to Downloads".
+  - Reveal says when the files are gone.
+  - Failures post a notification (decision 32).
+  - Force Quit's second ⏎ is now a general one (`confirming`).
+- **Signing:** `make certificate` creates the "Pith Local Signing" certificate once (decision 41), and `make app`
+  signs with it when it's there. Edoardo runs it, since macOS asks for his password.
+- Tests cover which actions each kind gets, ⏎ pasting or copying, pin, delete's second ⏎ and Save as File, with
+  delivery swapped out, so tests never type into your apps or touch the clipboard.
 
 ## 6. Commands and config
 

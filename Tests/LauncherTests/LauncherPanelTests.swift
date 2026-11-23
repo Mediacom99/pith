@@ -49,6 +49,7 @@ private func names(_ rows: [Row], for item: Item? = nil) -> [String] {
         case .problem(let message): message
         case .clip(let clip): ClipText.title(of: clip).text
         case .notice(let notice): LauncherViewController.noticeTitle(notice)
+        case .clipAction(let action): action.title(canPaste: false, linkApp: nil)
         }
     }
 }
@@ -304,7 +305,7 @@ struct LauncherPanelTests {
         press(#selector(NSResponder.insertNewline(_:)), in: panel)
         press(#selector(NSResponder.moveUp(_:)), in: panel)
         press(#selector(NSResponder.moveDown(_:)), in: panel)
-        #expect(!panel.launcher.confirmingForceQuit, "moving the selection cancels it too")
+        #expect(!panel.launcher.confirming, "moving the selection cancels it too")
 
         press(#selector(NSResponder.insertNewline(_:)), in: panel)
         press(#selector(NSResponder.insertNewline(_:)), in: panel)
