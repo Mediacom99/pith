@@ -455,8 +455,10 @@ real folder prompts (4) on a first install.
     30. **Fixed:** what was just opened is never the one forgotten; a test covers it. What it was: with 200 items
         remembered, a newly opened one could be forgotten at once, as older ones with many opens outranked it.
     31. Recents on a drive that isn't mounted at launch are forgotten for good.
-    32. Hidden files under `~` (`.zsh_history`, `.cache`) wake Pith on every write: only path rules are left out of
-        FSEvents.
+    32. **Fixed, mostly:** FSEvents also leaves out the folders right in a root that its rules skip by name
+        (`.cache`, `.npm`, `node_modules`), the most recently changed first, up to its 8; a test covers which. A hidden
+        file such as `.zsh_history` can't be left out (FSEvents takes folders), so its writes still wake Pith, and are
+        dropped at once. What it was: hidden folders under `~` woke Pith on every write.
     33. The file-type icon cache never shrinks (about 43 KB per extension seen).
   - **Config:**
     34. **Fixed:** a hotkey that's an editing key is a problem and stays as it was; a test covers it. What it was:

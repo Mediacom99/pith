@@ -60,6 +60,14 @@ public final class FileSearchEngine: @unchecked Sendable {
         let generation = rebuilds.wrappingAdd(1, ordering: .relaxed).newValue
         // Asked first, so the folders already answered are in this scan; one whose prompt is up joins later.
         await ask(about: rules.protectedFolders, waiting: .milliseconds(100))
+        let planned = await run { [self] () -> FileRules? in
+            guard rebuilds.load(ordering: .relaxed) == generation else { return nil }
+            return rules.deferring(Set(rules.protectedFolders.filter { access[$0] != .allowed }))
+        }
+        guard let planned else { return }
+        let excluded = await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async { continuation.resume(returning: planned.watchExclusions()) }
+        }
         let scanned = await run { [self] () -> FileRules? in
             guard rebuilds.load(ordering: .relaxed) == generation else { return nil }
             requested = rules
@@ -68,7 +76,7 @@ public final class FileSearchEngine: @unchecked Sendable {
             self.rules = scanned
             pendingEvents = []
             watcher = DirectoryWatcher(
-                paths: scanned.roots, excluding: scanned.excludedPaths, fileEvents: true, latency: 0.5, queue: queue
+                paths: scanned.roots, excluding: excluded, fileEvents: true, latency: 0.5, queue: queue
             ) { [weak self] events in self?.receive(events) }
             return scanned
         }

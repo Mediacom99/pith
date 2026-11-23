@@ -65,6 +65,29 @@ public struct FileRules: Sendable, Equatable {
     var excludedPaths: [String] {
         ignore.paths.filter { path in !roots.contains { IgnoreRules.holds(path, $0) } }
     }
+
+    /// What FSEvents leaves out, at most `limit` folders (its own limit is 8): `excludedPaths`, then the folders right
+    /// in a root that its rules skip by name (`.cache`, `.npm`, `node_modules` in `~`), the most recently changed
+    /// first, so writes there never wake Pith. Reads each root's folder: call on a worker.
+    func watchExclusions(limit: Int = 8) -> [String] {
+        var excluded = Array(excludedPaths.prefix(limit))
+        var skipped: [(path: String, changed: Int)] = []
+        for (root, ignore) in zip(roots, ignoreInRoots) {
+            guard let names = try? FileManager.default.contentsOfDirectory(atPath: root) else { continue }
+            for name in names {
+                let path = root == "/" ? "/" + name : root + "/" + name
+                var info = stat()
+                // A folder that is a root or holds one (a nested root counts as skipped in the outer one) stays.
+                guard ignore.ignores(name: name, path: path), !roots.contains(where: { IgnoreRules.holds(path, $0) }),
+                    lstat(path, &info) == 0, info.st_mode & S_IFMT == S_IFDIR,
+                    !excluded.contains(where: { IgnoreRules.holds($0, path) })
+                else { continue }
+                skipped.append((path, info.st_mtimespec.tv_sec))
+            }
+        }
+        excluded += skipped.sorted { $0.changed > $1.changed }.prefix(max(0, limit - excluded.count)).map(\.path)
+        return excluded
+    }
 }
 
 /// Ignore patterns. A pattern starting with `~/` or `/` skips that exact path and everything under it. Any other

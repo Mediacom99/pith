@@ -125,6 +125,26 @@ struct FileScannerTests {
                 name: "Caches", path: home.url.path + "/Library/Caches"))
     }
 
+    /// FSEvents leaves out the ignored paths, then the skipped folders right in a root, most recently changed first:
+    /// never a file, a folder searched, or one that's a root itself.
+    @Test func watchingLeavesOutTheFoldersRootsSkip() throws {
+        let home = try TemporaryDirectory()
+        for folder in [".cache", ".npm", "node_modules", "Documents", "dev", "Library"] { try home.makeFolder(folder) }
+        try home.makeFile(".zsh_history")
+        let path = home.url.path
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date.now - 3600], ofItemAtPath: path + "/.npm")
+        let rules = FileRules(
+            roots: [path, path + "/dev"], ignore: IgnoreRules([".*", "~/Library", "node_modules", "dev"], home: path),
+            maxDepth: 6)
+        let excluded = rules.watchExclusions()
+        #expect(excluded.first == path + "/Library")
+        #expect(Set(excluded) == [path + "/Library", path + "/.cache", path + "/.npm", path + "/node_modules"])
+        let three = rules.watchExclusions(limit: 3)
+        #expect(three.count == 3 && three.first == path + "/Library")
+        #expect(!three.contains(path + "/.npm"), "the least recently changed is left to the events")
+    }
+
     /// A pasted paragraph finds no file, without a score per word and entry.
     @Test func aQueryOfManyWordsFindsNoFile() throws {
         let root = try TemporaryDirectory()
