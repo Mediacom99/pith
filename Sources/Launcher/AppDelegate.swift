@@ -33,6 +33,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let notifier = Notifier()
     private let updater = Updater()
     private lazy var files = FileSearchEngine { [weak self] removed in
+        // Hashed here, on the engine's queue: a deleted build folder can be tens of thousands of paths.
+        let removed = Set(removed)
         Task { @MainActor in self?.history.forget(paths: removed) }
     }
     private let clipboard = ClipboardHistory(store: ClipboardStore(folder: ClipboardStore.defaultFolder))

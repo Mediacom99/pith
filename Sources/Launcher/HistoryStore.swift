@@ -37,7 +37,7 @@ final class HistoryStore {
     }
 
     /// Forgets deleted files and folders, saving only if that changed anything.
-    func forget(paths: [String]) {
+    func forget(paths: Set<String>) {
         var updated = history
         updated.forget(paths: paths)
         guard updated != history else { return }

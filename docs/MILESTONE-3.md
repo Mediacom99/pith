@@ -409,9 +409,12 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
       - global hotkeys and the paste's ⌘V used US key positions, so on Dvorak or Colemak ⌘P and ⌘V landed on other
         keys, and custom hotkeys did on QWERTZ and AZERTY;
       - the field's ⌘V and ⌘C failed on Cyrillic and Greek layouts.
-  17. **Main-thread stalls:**
-      - Deleting tens of thousands of indexed files (`cargo clean`) checks the history against every path.
-      - A pasted 2,000-word query allocates about 800 MB per keystroke.
+  17. **Fixed:** the history looks up each remembered path and its folders in a set of the deleted ones, hashed on
+      the engine's queue: 50,000 deleted paths took 421 ms on the main thread, now 0.4 ms there plus 2.1 ms on the
+      queue (release). A file search of more than 16 words finds nothing at once; the clipboard still takes a pasted
+      sentence. 2 tests. What it was, **stalls**: deleting tens of thousands of indexed files (`cargo clean`) checked
+      the history against every path on the main thread, and a pasted 2,000-word query allocated about 800 MB per
+      keystroke on the file index's queue.
 - **Low:**
   - **The clipboard:**
     - an image-only RTFD from TextEdit or Notes shows "￼" (suspect);

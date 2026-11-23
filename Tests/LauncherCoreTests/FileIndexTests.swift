@@ -125,6 +125,17 @@ struct FileScannerTests {
                 name: "Caches", path: home.url.path + "/Library/Caches"))
     }
 
+    /// A pasted paragraph finds no file, without a score per word and entry.
+    @Test func aQueryOfManyWordsFindsNoFile() throws {
+        let root = try TemporaryDirectory()
+        try root.makeFile("a b c/notes.md")
+        var index = FileIndex()
+        FileScanner.scan(FileRules(roots: [root.url.path], ignore: IgnoreRules([]), maxDepth: 6), into: &index)
+        #expect(index.search("a notes", limit: 5).count == 1)
+        let paragraph = Array(repeating: "a", count: FileIndex.maxWords) + ["notes"]
+        #expect(index.search(paragraph.joined(separator: " "), limit: 5).isEmpty)
+    }
+
     /// Overlapping folders, or one given twice, index each file once.
     @Test func overlappingFoldersIndexEachFileOnce() throws {
         let home = try TemporaryDirectory()

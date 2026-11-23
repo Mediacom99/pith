@@ -40,12 +40,21 @@ public struct History: Sendable, Codable, Equatable {
         entries[id] = nil
     }
 
-    /// Forgets files and folders that were deleted: each path, and for folders everything under it.
-    public mutating func forget(paths: [String]) {
+    /// Forgets files and folders that were deleted: each path, and for folders everything under it. Each remembered
+    /// path and the folders above it are looked up in `paths`, so tens of thousands deleted at once cost no more than
+    /// a few.
+    public mutating func forget(paths: Set<String>) {
         guard !paths.isEmpty else { return }
         for id in Array(entries.keys) {
-            guard let path = Item(fileID: id)?.url?.path else { continue }
-            if paths.contains(where: { path == $0 || path.hasPrefix($0 + "/") }) { entries[id] = nil }
+            guard var path = Item(fileID: id)?.url?.path[...] else { continue }
+            while !path.isEmpty {
+                if paths.contains(String(path)) {
+                    entries[id] = nil
+                    break
+                }
+                guard let slash = path.lastIndex(of: "/") else { break }
+                path = path[..<slash]
+            }
         }
     }
 

@@ -77,6 +77,17 @@ struct HistoryTests {
         #expect(Set(history.recent(limit: 10)) == ["file:/u/Docs2/c.txt", "/Applications/X.app"])
     }
 
+    /// A deleted build folder reports every file in it: the history checks its own paths, not each deleted one.
+    @Test func forgettingTensOfThousandsOfPathsIsQuick() {
+        var history = History()
+        for item in 0..<History.capacity { history.record("file:/u/dev/Acme/src/module\(item)/file.swift", at: now) }
+        let deleted = Set((0..<50_000).map { "/u/dev/Acme/build/out/object\($0).o" } + ["/u/dev/Acme/src/module7"])
+        let clock = ContinuousClock()
+        let took = clock.measure { history.forget(paths: deleted) }
+        #expect(history.recent(limit: 1000).count == History.capacity - 1)
+        #expect(took < .milliseconds(20), "\(took)")
+    }
+
     @Test func fileBoostsAreByPath() {
         var history = History()
         history.record("file:/u/a.txt", at: now)
