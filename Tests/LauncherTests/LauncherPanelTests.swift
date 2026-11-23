@@ -655,6 +655,33 @@ struct LauncherPanelTests {
             ])
     }
 
+    /// Open With…'s apps arrive from a worker: closing the panel meanwhile drops them, and a second ⏎ doesn't add a
+    /// second level.
+    @Test func openWithsAppsLandOnlyWhereTheyWereAskedFor() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFile("letter.txt")
+        let files = FileSearchEngine()
+        await files.rebuild(FileRules(roots: [folder.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        let panel = makePanel(items: [], files: files)
+        await type("letter", in: panel)
+        panel.launcher.toggleActions()
+        await type("with", in: panel)
+        press("return", in: panel)
+        panel.launcher.reset()
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(panel.launcher.sublist == nil, "closed before the apps came")
+
+        await type("letter", in: panel)
+        panel.launcher.toggleActions()
+        await type("with", in: panel)
+        press("return", in: panel)
+        press("return", in: panel)
+        #expect(await eventually { if case .openWith? = panel.launcher.sublist { true } else { false } })
+        try await Task.sleep(for: .milliseconds(300))
+        press("escape", in: panel)
+        #expect(names(panel) == ["Open With…"], "one ⎋ back to the actions")
+    }
+
     @Test func openWithListsAppsAndEscapeStepsBack() async throws {
         let folder = try TemporaryDirectory()
         try folder.makeFile("letter.txt")

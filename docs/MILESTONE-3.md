@@ -390,7 +390,9 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
   12. **Fixed:** a clip with nothing left to put back (an image clip whose file is gone, a clip deleted meanwhile)
       fails, so a paste posts "Couldn't paste the clip" and leaves the clipboard as it is; a test covers it. What it
       was: such a paste emptied the clipboard, with no notification.
-  13. Open With… applies its app list even after the panel closed, so the next ⌘P opens on it.
+  13. **Fixed:** Open With…'s apps land only if the panel is still where it was chosen, and a restored selection is
+      never below 0; a test covers it. What it was: Open With… applied its app list even after the panel closed, so
+      the next ⌘P opened on it, and a second ⏎ added a second level.
   14. Opening Pith.app again does nothing. A launcher hotkey that never fires (a system shortcut wins) leaves no way
       in.
   15. **The file index:**

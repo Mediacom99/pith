@@ -489,7 +489,7 @@ final class LauncherViewController: NSViewController {
                     tableView.removeRows(at: IndexSet(rows.count..<old), withAnimation: [])
                 }
             }
-            select(row: min(selection, rows.count - 1))
+            select(row: max(0, min(selection, rows.count - 1)))
         }
         // Only the search bar while there's nothing to list.
         let expanded = shouldExpand(rows)
@@ -1045,8 +1045,11 @@ final class LauncherViewController: NSViewController {
         guard let url = item.url else { return }
         if action == .openWith {
             let apps = knownApps
+            let from = (sublist, backStack.count)
             Task {
                 let choices = await runInBackground(qos: .userInitiated) { AppResolver.apps(toOpen: url, among: apps) }
+                // Only if the panel is still where Open With… was chosen: not closed, left or already in it.
+                guard sublist == from.0, backStack.count == from.1 else { return }
                 enter(.openWith(file: item, apps: choices))
             }
             return
