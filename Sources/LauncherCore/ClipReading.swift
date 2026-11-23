@@ -46,7 +46,7 @@ public enum ClipReading {
         }
 
         let text = Self.text(in: all)
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = text.trimmingCharacters(in: blank)
         if trimmed.isEmpty, let image = imageOrder.lazy.compactMap({ type in all.first { $0.type == type } }).first {
             guard let png = isPNG(image.data) ? image.data : Self.png(image.data) else { return nil }
             return ClipContent(kind: .image, text: "", items: withoutImages, image: png)
@@ -64,9 +64,12 @@ public enum ClipReading {
     /// read (decision 61), since reading a type makes the app that copied render it.
     public static func needsImage(_ items: [[Representation]]) -> Bool {
         let all = items.joined()
-        return !all.contains { $0.type == fileURL }
-            && text(in: all).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return !all.contains { $0.type == fileURL } && text(in: all).trimmingCharacters(in: blank).isEmpty
     }
+
+    /// What doesn't count as text: spaces, line breaks, and the stand-in for an attachment (U+FFFC), which is all the
+    /// plain text of a picture copied from TextEdit or Notes.
+    static let blank = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "\u{FFFC}"))
 
     /// The plain text a copy carries: its UTF-8 representation, else its UTF-16 one.
     static func text(in representations: some Sequence<Representation>) -> String {

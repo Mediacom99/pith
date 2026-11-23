@@ -101,6 +101,30 @@ struct ClipboardRecorderTests {
         #expect(link.kind == .link && link.text == "https://acme.example/quarterly")
     }
 
+    /// A picture copied from TextEdit or Notes comes only inside rich text, whose plain text is the attachment's stand-in
+    /// (U+FFFC): it's an image, and a paste still puts back the rich text.
+    @Test func aPictureCopiedFromATextViewIsAnImage() async throws {
+        let folder = try TemporaryDirectory()
+        let pasteboard = privatePasteboard()
+        defer { pasteboard.releaseGlobally() }
+        let store = ClipboardStore(folder: folder.url)
+        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: store) { _ in }
+        await recorder.start(timer: false)
+
+        let attachment = NSTextAttachment()
+        attachment.image = NSImage(data: try flatPNG(width: 30, height: 20))
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 200, height: 100))
+        textView.textStorage?.setAttributedString(NSAttributedString(attachment: attachment))
+        textView.selectAll(nil)
+        pasteboard.clearContents()
+        #expect(textView.writeSelection(to: pasteboard, types: textView.writablePasteboardTypes))
+
+        let clip = try #require(await recorder.check())
+        #expect(clip.kind == .image && clip.pixelWidth > 0)
+        let types = try await store.items(of: clip.id).joined().map(\.type)
+        #expect(types.first == "public.png" && types.contains("com.apple.flat-rtfd"))
+    }
+
     @Test func richTextWithoutPlainTextGetsItsText() async throws {
         let folder = try TemporaryDirectory()
         let pasteboard = privatePasteboard()

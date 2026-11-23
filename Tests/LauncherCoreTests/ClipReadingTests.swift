@@ -75,8 +75,9 @@ struct ClipReadingTests {
         #expect(content.items == [[rtfd, plain("Chart for Acme")]], "a cell's picture isn't kept (decision 61)")
     }
 
-    /// The image is read only when there's no text and no file (decision 61).
+    /// The image is read only when there's no text and no file (decision 61); an attachment's stand-in isn't text.
     @Test func anImageIsReadOnlyWithoutTextOrFiles() {
+        #expect(ClipReading.needsImage([[plain("\u{FFFC}")]]))
         let html = Representation(type: "public.html", data: Data("<img src=chart.png>".utf8))
         #expect(ClipReading.needsImage([[html]]))
         #expect(ClipReading.needsImage([[plain(" \n")]]))

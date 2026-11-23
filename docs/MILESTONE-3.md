@@ -65,7 +65,8 @@ history can't be seen until step 4 shows it.
 - **Classifying** (`ClipReading`, core library):
   - files win over everything, since Finder's copies also carry the name as text and the icon as an image;
   - an image counts only without text (screenshots, Copy Image), and is converted to PNG unless it already is one;
-    text and files keep no image (decision 61);
+    text and files keep no image (decision 61); a picture copied from TextEdit or Notes, which comes only inside its
+    rich text, is taken out of it;
   - text that is one URL (http, https, mailto, ftp, ssh…) is a link;
   - text with RTF or HTML is rich text, and rich text with no plain text gets the pasteboard's conversion;
   - a copy with none of these is skipped.
@@ -423,7 +424,10 @@ real folder prompts (4) on a first install.
       keystroke on the file index's queue.
 - **Low** (numbered on from the others):
   - **The clipboard:**
-    18. An image-only RTFD from TextEdit or Notes is a rich-text clip titled "￼", not an image (suspect).
+    18. **Confirmed and fixed:** a picture copied from a text view comes only inside RTFD, its plain text the
+        attachment's stand-in (U+FFFC). That character no longer counts as text, and the recorder takes the first
+        attachment's image out of the RTFD, so it's an image clip that still pastes its rich text; a test copies one
+        from a real NSTextView. What it was: a rich-text clip titled "￼".
     19. **Fixed:** files keep about 2,500 paths in memory, none cut short, and the title counts the whole list; a
         test covers 3,000 files. What it was: a copy of hundreds of files was cut at 4,096 characters, so the title
         said "and ~50 more", Reveal selected only those, and the last path was cut.

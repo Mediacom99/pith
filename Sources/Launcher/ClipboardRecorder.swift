@@ -167,19 +167,37 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
             representations[0].append(
                 Representation(type: NSPasteboard.PasteboardType.string.rawValue, data: Data(text.utf8)))
         }
-        // No text and no files: the image, in one format, the first in ClipReading's order an item has.
-        if ClipReading.needsImage(representations),
-            let (position, type) = ClipReading.imageOrder.lazy.compactMap({ type in
+        // No text and no files: the image, in one format, the first in ClipReading's order an item has; or a picture
+        // copied from TextEdit or Notes, which comes only inside its rich text.
+        if ClipReading.needsImage(representations) {
+            if let (position, type) = ClipReading.imageOrder.lazy.compactMap({ type in
                 items.firstIndex { $0.types.contains(.init(type)) }.map { ($0, type) }
             }).first,
-            let data = items[position].data(forType: .init(type))
-        {
-            representations[position].append(Representation(type: type, data: data))
+                let data = items[position].data(forType: .init(type))
+            {
+                representations[position].append(Representation(type: type, data: data))
+            } else if let rtfd = representations.joined().first(where: { $0.type == "com.apple.flat-rtfd" }),
+                let image = Self.firstImage(inRTFD: rtfd.data)
+            {
+                representations[0].append(Representation(type: "public.tiff", data: image))
+            }
         }
         // A copy made while this one was read (a password manager's, say) would mix into it, unchecked for markers:
         // this one is dropped, and the next look reads the new copy from the start.
         guard pasteboard.changeCount == change else { return nil }
         return ClipReading.content(of: representations).map { ($0, source, Date()) }
+    }
+
+    /// The first attachment's image in rich text with attachments, as its file's data (any format ImageIO reads).
+    private nonisolated static func firstImage(inRTFD data: Data) -> Data? {
+        guard let text = NSAttributedString(rtfd: data, documentAttributes: nil) else { return nil }
+        var image: Data?
+        text.enumerateAttribute(.attachment, in: NSRange(location: 0, length: text.length)) { value, _, stop in
+            guard let attachment = value as? NSTextAttachment else { return }
+            image = attachment.fileWrapper?.regularFileContents ?? attachment.image?.tiffRepresentation
+            if image != nil { stop.pointee = true }
+        }
+        return image
     }
 
     // MARK: Storing
