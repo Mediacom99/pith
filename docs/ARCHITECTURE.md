@@ -94,13 +94,16 @@ Sources/
     LauncherPanel.swift    the NSPanel: show/hide, collapse/expand, key routing (⌃K/⌃J, ⌘K), the search field's editor
     LauncherViewController.swift  rows, merged app + file search, empty state, ⌘K sublists, keyboard, opening
     Actions.swift          ⌘K actions per kind, the SF Symbols rows use, AppResolver (config app names, Open With…)
-    IconStore.swift        app, symbol and file-type icons as exact-size bitmaps rendered off the main thread
+    IconStore.swift        app, symbol and file-type icons as exact-size bitmaps rendered off the main thread; apps
+                           by bundle id (a clip's source), looked up on a worker
     ResultViews.swift      one-line cell (name, folder, "running", ↩), the tile (StageView) and its keys, bitmap IconView,
                            row view (the quiet selection)
     Palette.swift          the few colors the system doesn't have: quiet gray, fills, edge, red and orange
     Notifier.swift         notifications for a finished Zip and failed actions, reveal on click
     ClipboardRecorder.swift  the pasteboard's change count on a timer; each new copy read, classified and stored
     ClipboardHistory.swift the ClipboardIndex, loaded at launch and updated by each recorded copy
+    ClipboardPresentation.swift  a clip's words in its row and on the tile: titles, ages, sizes, notices
+    ClipImages.swift       copied images' thumbnails as bitmaps, read on a worker, the newest ready ahead of time
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement), copied in by `make app`
 ```
 
@@ -127,7 +130,8 @@ and only for a copy in an Applications folder.
 **⌘P.** The Carbon handler runs on the main thread with the key press's timestamp. The view controller fills in the
 empty state first, so the panel appears at its final size. The panel is then moved to the screen under the mouse
 pointer and made key without activating the app. The time from the key press to the panel being drawn goes to the
-`perf` log.
+`perf` log. ⌘⇧V does the same in clipboard mode: its rows come from the in-memory `ClipboardIndex`, and the newest
+images' thumbnails are already decoded. Either hotkey closes the panel in its own mode and switches the other.
 
 **Empty state.** `recent` lists the latest opens from the history that are still in the index, up to 8. `running`
 lists open apps in most-recently-used order, including apps outside the indexed folders, then every other indexed
@@ -246,6 +250,9 @@ is in `docs/snapshots/` (`make snapshots`).
 | Commands, actions, problems | SF Symbols in the quiet gray in place of an icon: gearshape, arrow.clockwise, power for commands; arrow.up.forward.app, folder, link, square.grid.2x2, terminal, doc.on.doc, doc.zipper, trash, xmark.circle, xmark.octagon for actions; exclamationmark.triangle for problems. A problem row reads "Config problem, line N: …"; on the tile, "Config problem, line N" over the problem, capitalized unless it starts with a setting's name. A file that isn't valid TOML adds "so every setting is at its default". Commands say "Pith command" on the tile. | Claude |
 | ⌘K | Sublists replace the list in place; the item stays on the tile. ⎋ steps back one level as it was; ⌘K goes back to the search. | Claude |
 | Motion | None: the panel appears and disappears without animation. | Claude |
+| Clipboard mode | The same panel and height (docs/BRIEF-CLIPBOARD.md). The bar shows `doc.on.clipboard` and "Search clipboard". The tile grows to 188 pt (92 + 3 rows), so five whole rows fit under it. Everything in the tall tile hangs from the top, keys included, so nothing moves from one kind to the next. | Claude |
+| Clipboard preview | A text: its first 8 lines in SF Mono 12 pt, label color, wrapped, the 8th ending in "…" when there's more; under it, at the bottom, "Text · 10 lines · copied today at 14:28 from Terminal". An image: fitted into a box up to 320 × 156 pt, never past its own pixels, 6 pt corners, on a checkerboard of 6 pt squares (selection fill) for transparency, with "Image", its size and when it was copied beside it. A link or files: the launcher's tile, the URL wrapped over up to 3 lines and cut in the middle past them. | Claude |
+| Clipboard rows | The source app's icon for texts and links (the kind's symbol when the app isn't installed), a 20 pt thumbnail with 4 pt corners for images, the file's icon for files. Text titles are the first line, cut at the end; links and files are cut in the middle. At the end, the age in the quiet gray ("now", "5 min", "14:05", "yesterday", "Tue", "Oct 31"), after `pin.fill` at 10 pt for a pinned clip. | Claude |
 
 ## Libraries
 

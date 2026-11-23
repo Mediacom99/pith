@@ -112,7 +112,39 @@ Status: **done** (core library and the app's model; the panel shows it from step
 
 ## 4. Clipboard mode in the panel
 
-Status: **todo**. As in the brief, §3, §5 and §7.
+Status: **in review**. Built from the brief (§3, §5, §7) and checked on 14 snapshots (`clipboard-*` in
+`docs/snapshots/`, 7 states, light and dark). Until step 5, ⏎ copies the clip back to the clipboard and the tile says
+"Copy", the brief's state for no Accessibility access.
+- **Built:**
+  - `LauncherViewController.Mode` (launcher or clipboard) on the same panel.
+  - `[hotkeys] clipboard` (⌘⇧V by default) is registered like the launcher's. A taken hotkey becomes a problem row.
+  - Each hotkey opens the panel in its mode, closes it in its own mode, and switches it from the other.
+  - Rows per kind: `ClipText` gives the words, `ClipImages` the thumbnails, decoded on a worker, with the 12 newest
+    clips' ready ahead of time. `IconStore` finds a source app by bundle id on a worker, and shows the kind's
+    symbol only once the app is known to be missing, so a row never flips from symbol to icon.
+  - The tile in the clipboard (`StageView.Preview`): a text in SF Mono, an image in its box on a checkerboard, a link
+    or files as items.
+  - A file's existence and size are read on a worker.
+  - A long URL wraps over three lines and is cut in the middle past them.
+  - States: the empty history (the tile alone), "Pith can't read the clipboard" in orange with ⏎ opening Privacy &
+    Security (from step 2's permission check), and "Recording is paused" (its command comes in step 6).
+  - Quick Look (⌘Y, Space) previews an image or the first file.
+- **Small departures from the brief:**
+  - Dates read "Oct 31", as the launcher's "opened Oct 31" does, rather than "31 Oct".
+  - Sizes follow the Mac's region format, as Finder's do.
+- **Speed** (`make bench`, release, in-process, 1,000 clips): showing the clipboard 1.0–1.1 ms (the launcher's recent
+  list: 0.3 ms); a keystroke 0.09 ms to update. On screen in step 7.
+- **Tests:** 11 tests, real panels never put on screen, ⏎ swapped out so they never touch the clipboard:
+  - newest first under the 188 pt tile, and five whole rows;
+  - pins first when typing;
+  - a search with no match is only the bar;
+  - the empty history shows the tile alone;
+  - `c ` and ⌫ switch modes;
+  - ⏎ takes the selected clip;
+  - notices come first, but the newest clip is selected;
+  - reset goes back to the launcher;
+  - each kind's words;
+  - the ages.
 - **Opening it:**
   - ⌘⇧V (`[hotkeys] clipboard`, decision 34) opens it, switches to it, or closes it;
   - `c ` as the whole query switches to it from the launcher;

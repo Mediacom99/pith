@@ -9,6 +9,10 @@ enum Row: Equatable {
     case action(Action)
     /// Something wrong in config.toml; ⏎ opens the file.
     case problem(String)
+    /// An entry of the clipboard history.
+    case clip(Clip)
+    /// Above the clipboard's clips: recording paused, or the clipboard not readable.
+    case notice(ClipboardNotice)
 }
 
 /// A list shown in place of the search, from ⌘K.
@@ -28,6 +32,11 @@ enum Sublist: Equatable {
 /// Everything is laid out with fixed frames, pinned to the top: the panel is only the search bar while there's nothing
 /// to list, then grows downward.
 final class LauncherViewController: NSViewController {
+    /// What the panel searches: apps, files and commands, or the clipboard history (decision 34, docs/BRIEF-CLIPBOARD.md).
+    enum Mode {
+        case launcher, clipboard
+    }
+
     var index = SearchIndex.empty {
         didSet {
             boosts = history.history.boosts(for: index)
@@ -54,12 +63,31 @@ final class LauncherViewController: NSViewController {
     }
     /// The time, for "opened today at 14:05". Snapshots fix it.
     var now: () -> Date = { .now }
+    /// The clipboard history, and what it says above its clips.
+    var clipboard: ClipboardHistory? {
+        didSet { clipboardChanged() }
+    }
+    var clipboardNotices: [ClipboardNotice] = [] {
+        didSet { if clipboardNotices != oldValue, mode == .clipboard { refresh() } }
+    }
+    /// Deals with a notice: resumes recording, or opens the setting.
+    var resolveNotice: (ClipboardNotice) -> Void = { _ in }
+    /// Puts a clip back on the clipboard: what ⏎ does until pasting arrives (milestone 3 step 5). Tests swap it out, so
+    /// they never touch the clipboard.
+    lazy var copyClip: (Clip) -> Void = { [weak self] clip in self?.writeToClipboard(clip) }
+    /// Whether a copied file is still there, and its size, read on a worker. Snapshots fix them.
+    var fileFacts: @Sendable (String) -> (exists: Bool, bytes: Int?) = { path in
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: path) else { return (false, nil) }
+        return (true, (attributes[.size] as? NSNumber)?.intValue)
+    }
     /// Quits or force-quits a running app. Tests swap it out, so they never quit a real one.
     var quitApp: (NSRunningApplication, _ force: Bool) -> Void = { app, force in
         if force { app.forceTerminate() } else { app.terminate() }
     }
 
     private static let resultLimit = 50
+    /// How many clips the clipboard lists: five show, the rest scroll.
+    private static let clipLimit = 100
     private static let recentLimit = Int(Layout.visibleRows)
     /// Added to app scores when merging with files (decision 19): about one and a half well-placed characters, so
     /// "saf" gives Safari before safari-notes.md, while a clearly better or habitual file still wins.
@@ -74,7 +102,15 @@ final class LauncherViewController: NSViewController {
             height: Layout.tileHeight))
     private let separator = NSBox()
     private let scrollView = OverlayScrollView()
+    private let searchIcon = NSImageView()
     private let icons = IconStore()
+    let clipImages = ClipImages()
+    private(set) var mode = Mode.launcher
+    /// Whether the panel shows more than the search bar.
+    private var isExpanded = false
+    /// What `fileFacts` said, by path.
+    private var facts: [String: (exists: Bool, bytes: Int?)] = [:]
+    private var factsLoading: Set<String> = []
     private let history: HistoryStore
     private let running: RunningApps
     private let files: FileSearchEngine
@@ -104,6 +140,7 @@ final class LauncherViewController: NSViewController {
         self.files = files
         super.init(nibName: nil, bundle: nil)
         icons.onChange = { [weak self] in self?.refreshVisibleRows() }
+        clipImages.onChange = { [weak self] in self?.refreshVisibleRows() }
         running.onChange = { [weak self] membership in self?.runningAppsChanged(membership: membership) }
     }
 
@@ -115,8 +152,8 @@ final class LauncherViewController: NSViewController {
         let root = PanelView(frame: NSRect(x: 0, y: 0, width: Layout.width, height: Layout.barHeight))
         let barMidY = Layout.barHeight / 2
 
-        let searchIcon = NSImageView(
-            frame: NSRect(x: Layout.iconX + (Layout.iconSize - 20) / 2, y: barMidY - 10, width: 20, height: 20))
+        searchIcon.frame = NSRect(
+            x: Layout.iconX + (Layout.iconSize - 20) / 2, y: barMidY - 10, width: 20, height: 20)
         searchIcon.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
         searchIcon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 16, weight: .regular)
         searchIcon.contentTintColor = Palette.quiet
@@ -178,13 +215,41 @@ final class LauncherViewController: NSViewController {
 
     // MARK: Showing and hiding
 
-    /// Fills in the empty state, so the panel appears with its final size and content.
-    func prepareToShow() {
+    /// Fills in the empty state, so the panel appears with its final size and content: the launcher's, or the
+    /// clipboard's (⌘⇧V).
+    func prepareToShow(_ mode: Mode = .launcher) {
         // Catches an app that quit without us noticing, so no row shows a stale running dot.
         if running.sync() { loadIcons() }
         boosts = history.history.boosts(for: index)
         files.setBoosts(history.history.fileBoosts())
+        if mode != self.mode {
+            self.mode = mode
+            applyMode()
+        }
         refresh()
+    }
+
+    /// Switches between the launcher and the clipboard while the panel is showing, from an empty field.
+    func switchMode(to new: Mode) {
+        guard new != mode else { return }
+        sublist = nil
+        backStack = []
+        confirmingForceQuit = false
+        mode = new
+        applyMode()
+        setQuery("")
+        refresh()
+    }
+
+    /// The tile's height, where the list starts, the bar's symbol and its placeholder, for the mode.
+    private func applyMode() {
+        let clipboard = mode == .clipboard
+        stage.frame.size.height = clipboard ? Layout.clipboardTileHeight : Layout.tileHeight
+        let top = clipboard ? Layout.clipboardListTop : Layout.listTop
+        scrollView.frame = NSRect(x: 0, y: top, width: Layout.width, height: Layout.expandedHeight - top)
+        searchIcon.image = NSImage(
+            systemSymbolName: clipboard ? Symbols.clipboard : "magnifyingglass", accessibilityDescription: nil)
+        searchField.placeholderString = placeholder(for: sublist)
     }
 
     func focusSearchField() {
@@ -196,9 +261,13 @@ final class LauncherViewController: NSViewController {
         sublist = nil
         backStack = []
         confirmingForceQuit = false
-        searchField.placeholderString = Self.placeholder(for: nil)
+        if mode != .launcher {
+            mode = .launcher
+            applyMode()
+        }
+        searchField.placeholderString = placeholder(for: nil)
         setQuery("")
-        if !rows.isEmpty { show([], selecting: 0) }
+        if !rows.isEmpty || isExpanded { show([], selecting: 0) }
     }
 
     // MARK: The list
@@ -212,6 +281,9 @@ final class LauncherViewController: NSViewController {
         let query = searchField.stringValue
         if let sublist {
             update(rows(for: sublist, matching: query), selecting: 0, keystroke: keystroke)
+        } else if mode == .clipboard {
+            let (rows, selection) = clipRows(matching: query)
+            update(rows, selecting: selection, keystroke: keystroke)
         } else if query.allSatisfy(\.isWhitespace) {
             let (rows, selection) = emptyStateRows()
             update(rows, selecting: selection, keystroke: keystroke)
@@ -230,7 +302,7 @@ final class LauncherViewController: NSViewController {
     private func update(
         _ new: [Row], selecting selection: Int, keystroke: (event: TimeInterval, handled: TimeInterval)?
     ) {
-        if new != rows { show(new, selecting: selection) }
+        if new != rows || isExpanded != shouldExpand(new) { show(new, selecting: selection) }
         if let keystroke {
             let updated = ProcessInfo.processInfo.systemUptime
             view.window?.displayIfNeeded()
@@ -300,8 +372,17 @@ final class LauncherViewController: NSViewController {
             .map(\.0)
     }
 
+    /// Rows show the tile, and so does the clipboard with nothing in it yet; otherwise it's only the search bar.
+    private func shouldExpand(_ rows: [Row]) -> Bool {
+        !rows.isEmpty || showsEmptyClipboard
+    }
+
+    private var showsEmptyClipboard: Bool {
+        mode == .clipboard && sublist == nil && searchField.stringValue.allSatisfy(\.isWhitespace)
+            && (clipboard?.index.count ?? 0) == 0 && clipboardNotices.isEmpty
+    }
+
     private func show(_ new: [Row], selecting selection: Int) {
-        let wasEmpty = rows.isEmpty
         rows = new
         if !rows.isEmpty {
             if tableRows.isEmpty {
@@ -324,18 +405,24 @@ final class LauncherViewController: NSViewController {
             select(row: min(selection, rows.count - 1))
         }
         // Only the search bar while there's nothing to list.
-        if rows.isEmpty != wasEmpty {
-            separator.isHidden = rows.isEmpty
-            stage.isHidden = rows.isEmpty
-            scrollView.isHidden = rows.isEmpty
-            panel?.setResultsVisible(!rows.isEmpty)
+        let expanded = shouldExpand(rows)
+        if expanded != isExpanded {
+            isExpanded = expanded
+            separator.isHidden = !expanded
+            stage.isHidden = !expanded
+            panel?.setResultsVisible(expanded)
         }
+        scrollView.isHidden = rows.isEmpty
         updateStage()
     }
 
     private func configure(_ cell: ResultCell, for row: Row) {
         var detail = ""
-        var isRunning = false
+        var tag = ""
+        var isPinned = false
+        var cutsAtTheEnd = false
+        var isQuietTitle = false
+        var corner: CGFloat = 0
         var isDanger = false
         switch row {
         case .item(let item):
@@ -343,7 +430,7 @@ final class LauncherViewController: NSViewController {
             switch item.kind {
             case .app(let url):
                 cell.icon.image = icons.icon(for: url)
-                isRunning = running.isRunning(item.id)
+                if running.isRunning(item.id) { tag = "running" }
             case .file(let url), .folder(let url):
                 cell.icon.image = icons.icon(forFile: url)
                 detail = Self.folder(of: url)
@@ -359,9 +446,34 @@ final class LauncherViewController: NSViewController {
         case .problem(let message):
             cell.title = "Config problem, \(message)"
             cell.icon.image = icons.symbol(Symbols.problem, tint: .warning)
+        case .clip(let clip):
+            let title = ClipText.title(of: clip, query: searchField.stringValue)
+            cell.title = title.text
+            isQuietTitle = title.isQuiet
+            cutsAtTheEnd = clip.kind == .text || clip.kind == .richText
+            detail = ClipText.detail(of: clip)
+            tag = ClipText.age(clip.copied, now: now())
+            isPinned = clip.pinned
+            switch clip.kind {
+            case .image:
+                cell.icon.image = clipboard.flatMap { clipImages.row(clip, store: $0.store) }
+                corner = 4
+            case .files:
+                cell.icon.image = ClipText.paths(of: clip).first.flatMap { icons.icon(forFile: URL(filePath: $0)) }
+            case .text, .richText, .link:
+                cell.icon.image = sourceIcon(of: clip, size: .row)
+            }
+        case .notice(let notice):
+            cell.title = Self.noticeTitle(notice)
+            cell.icon.image =
+                notice == .paused ? icons.symbol(Symbols.paused) : icons.symbol(Symbols.problem, tint: .warning)
         }
         cell.detail = detail
-        cell.isRunning = isRunning
+        cell.trailingTag = tag
+        cell.isPinned = isPinned
+        cell.cutsAtTheEnd = cutsAtTheEnd
+        cell.isQuietTitle = isQuietTitle
+        cell.icon.cornerRadius = corner
         cell.isDanger = isDanger
     }
 
@@ -418,17 +530,23 @@ final class LauncherViewController: NSViewController {
     // MARK: The tile
 
     /// The field's placeholder: the item a sublist is for is on the tile, so it only says what you're filtering.
-    private static func placeholder(for sublist: Sublist?) -> String {
+    private func placeholder(for sublist: Sublist?) -> String {
         switch sublist {
         case .actions?: "Filter actions"
         case .openWith?: "Filter apps"
-        case nil: "Search"
+        case nil: mode == .clipboard ? "Search clipboard" : "Search"
         }
     }
 
     /// Shows what ⏎ acts on: the selected row, or in ⌘K the item the list is for, with the selected action or app as
     /// the primary key.
     private func updateStage() {
+        if rows.isEmpty, showsEmptyClipboard {
+            stage.content = StageView.Content(
+                icon: icons.symbol(Symbols.clipboard, size: .tile), name: "Nothing copied yet",
+                place: "Copy text, a link, an image or a file and it shows up here", primary: "")
+            return
+        }
         guard rows.indices.contains(tableView.selectedRow) else { return }
         let row = rows[tableView.selectedRow]
         let back = StageView.Key(words: "Back", caps: ["esc"])
@@ -460,6 +578,14 @@ final class LauncherViewController: NSViewController {
                 stage.content = StageView.Content(
                     icon: icons.symbol(Symbols.problem, tint: .warning, size: .tile), name: title, place: detail,
                     kind: (ConfigStore.file.path as NSString).abbreviatingWithTildeInPath, primary: "Open Config")
+            case .clip(let clip):
+                stage.content = stageContent(for: clip)
+            case .notice(let notice):
+                stage.content = Self.noticeTile(
+                    notice,
+                    icon: notice == .paused
+                        ? icons.symbol(Symbols.paused, size: .tile)
+                        : icons.symbol(Symbols.problem, tint: .warning, size: .tile))
             case .action:
                 break
             }
@@ -533,13 +659,25 @@ final class LauncherViewController: NSViewController {
 
     // MARK: Quick Look
 
-    /// The selected file or folder, which Quick Look previews (FEATURES.md §4.2).
+    /// The selected file or folder, which Quick Look previews (FEATURES.md §4.2), or the clipboard's image or first
+    /// file.
     var previewURL: URL? {
         let row = tableView.selectedRow
-        guard sublist == nil, rows.indices.contains(row), case .item(let item) = rows[row] else { return nil }
-        switch item.kind {
-        case .file(let url), .folder(let url): return url
-        case .app, .command: return nil
+        guard sublist == nil, rows.indices.contains(row) else { return nil }
+        switch rows[row] {
+        case .item(let item):
+            switch item.kind {
+            case .file(let url), .folder(let url): return url
+            case .app, .command: return nil
+            }
+        case .clip(let clip):
+            switch clip.kind {
+            case .image: return clipboard?.store.imageFile(of: clip.id)
+            case .files: return ClipText.paths(of: clip).first.map { URL(filePath: $0) }
+            case .text, .richText, .link: return nil
+            }
+        case .action, .problem, .notice:
+            return nil
         }
     }
 
@@ -611,7 +749,7 @@ final class LauncherViewController: NSViewController {
     private func enter(_ new: Sublist) {
         backStack.append((sublist, searchField.stringValue, rows, tableView.selectedRow))
         sublist = new
-        searchField.placeholderString = Self.placeholder(for: new)
+        searchField.placeholderString = placeholder(for: new)
         setQuery("")
         refresh()
     }
@@ -621,7 +759,7 @@ final class LauncherViewController: NSViewController {
         guard let previous = backStack.popLast() else { return }
         sublist = previous.sublist
         searchGeneration += 1  // a search still in flight would overwrite the restored rows
-        searchField.placeholderString = Self.placeholder(for: previous.sublist)
+        searchField.placeholderString = placeholder(for: previous.sublist)
         setQuery(previous.query)
         show(previous.rows, selecting: previous.selection)
     }
@@ -653,6 +791,12 @@ final class LauncherViewController: NSViewController {
         case (.problem, _):
             panel?.dismiss()
             runCommand(.openConfig)
+        case (.clip(let clip), _):
+            panel?.dismiss()
+            copyClip(clip)
+        case (.notice(let notice), _):
+            if notice == .cannotRead { panel?.dismiss() }
+            resolveNotice(notice)
         }
     }
 
@@ -781,8 +925,153 @@ final class LauncherViewController: NSViewController {
     }
 }
 
+// MARK: The clipboard
+
+extension LauncherViewController {
+    /// The notices, then the clips matching `query` (newest first, pinned first once you type: decision 33), with
+    /// the newest clip selected.
+    fileprivate func clipRows(matching query: String) -> (rows: [Row], selection: Int) {
+        guard let clipboard else { return ([], 0) }
+        let notices = query.allSatisfy(\.isWhitespace) ? clipboardNotices.map(Row.notice) : []
+        let index = clipboard.index
+        let clips = index.search(query, limit: Self.clipLimit).map { Row.clip(index.clips[$0]) }
+        return (notices + clips, clips.isEmpty ? 0 : notices.count)
+    }
+
+    /// A new copy, or clips dropped: ready the newest images, and show the change if the clipboard is on screen.
+    func clipboardChanged() {
+        guard let clipboard else { return }
+        clipImages.preload(clipboard.index, store: clipboard.store)
+        if mode == .clipboard, sublist == nil, panel?.isVisible == true || viewIfLoaded?.window != nil { refresh() }
+    }
+
+    /// The app a text or link was copied from, or the kind's symbol when there's no such app; nil while it's looked up,
+    /// so a row doesn't show the symbol, then the app.
+    fileprivate func sourceIcon(of clip: Clip, size: IconSize) -> CGImage? {
+        if let source = clip.source, !icons.isMissing(bundleID: source) {
+            return icons.icon(forBundleID: source, size: size)
+        }
+        return icons.symbol(clip.kind == .link ? Symbols.link : Symbols.text, size: size)
+    }
+
+    /// Source apps still being looked up, for snapshots to wait on.
+    var isResolvingApps: Bool { icons.isResolvingApps }
+
+    /// The tile for a clip (docs/BRIEF-CLIPBOARD.md §5): a text as it will paste, an image in its box, a link or files
+    /// as an item. ⏎ copies it back for now; pasting comes with step 5.
+    fileprivate func stageContent(for clip: Clip) -> StageView.Content {
+        let source = clip.source.flatMap { icons.appName(forBundleID: $0) }
+        let now = now()
+        switch clip.kind {
+        case .text, .richText:
+            let preview = ClipText.preview(of: clip)
+            let size = clip.textBytes >= ClipText.longText ? ClipText.bytes(clip.textBytes) : ""
+            return StageView.Content(
+                name: "",
+                kind: ClipText.about(
+                    [ClipText.kindName(clip.kind), ClipText.detail(of: clip), size], copied: clip.copied, from: source,
+                    now: now),
+                primary: "Copy", preview: .text(preview, isBlank: preview.allSatisfy(\.isWhitespace)))
+        case .link:
+            return StageView.Content(
+                icon: sourceIcon(of: clip, size: .tile), name: ClipText.host(of: clip), place: clip.text,
+                kind: ClipText.about(["Link"], copied: clip.copied, from: source, now: now), primary: "Copy",
+                placeLines: 3)
+        case .image:
+            let image = clipboard.flatMap { clipImages.preview(clip, store: $0.store) }
+            let when = ClipText.copied(clip.copied, now: now) + (source.map { " from \($0)" } ?? "")
+            return StageView.Content(
+                name: "Image",
+                place: "\(ClipText.detail(of: clip)) · PNG · \(ClipText.bytes(clip.size))",
+                kind: when.prefix(1).uppercased() + when.dropFirst(), primary: "Copy",
+                preview: .image(image, size: ClipText.previewSize(of: clip)))
+        case .files:
+            let paths = ClipText.paths(of: clip)
+            let known = paths.compactMap(fileFact)
+            let gone = paths.count == 1 && known.first?.exists == false
+            let bytes = known.count == paths.count ? known.compactMap(\.bytes).reduce(0, +) : nil
+            let first = paths.first.map { URL(filePath: $0) }
+            let kind =
+                paths.count > 1 ? "\(paths.count) files" : first.flatMap { icons.typeName(forFile: $0) } ?? ""
+            return StageView.Content(
+                icon: first.flatMap { icons.icon(forFile: $0, size: .tile) }, name: ClipText.title(of: clip).text,
+                place: gone ? "No longer in \(ClipText.folders(of: clip))" : ClipText.folders(of: clip),
+                kind: ClipText.about(
+                    [kind, bytes.map(ClipText.bytes) ?? ""], copied: clip.copied, from: source, now: now),
+                primary: "Copy")
+        }
+    }
+
+    /// Whether a copied file is still there and its size, once read on a worker; the tile updates when it is.
+    private func fileFact(_ path: String) -> (exists: Bool, bytes: Int?)? {
+        if let fact = facts[path] { return fact }
+        if factsLoading.insert(path).inserted {
+            let read = fileFacts
+            Task {
+                let fact = await runInBackground(qos: .userInitiated) { read(path) }
+                factsLoading.remove(path)
+                facts[path] = fact
+                updateStage()
+            }
+        }
+        return nil
+    }
+
+    static func noticeTitle(_ notice: ClipboardNotice) -> String {
+        switch notice {
+        case .paused: "Recording is paused"
+        case .cannotRead: "Pith can't read the clipboard"
+        }
+    }
+
+    fileprivate static func noticeTile(_ notice: ClipboardNotice, icon: CGImage?) -> StageView.Content {
+        switch notice {
+        case .paused:
+            StageView.Content(
+                icon: icon, name: noticeTitle(notice), place: "Copies aren't saved until you resume", primary: "Resume")
+        case .cannotRead:
+            StageView.Content(
+                icon: icon, name: noticeTitle(notice), place: "macOS is set to deny it, so copies aren't saved",
+                kind: "System Settings, Privacy & Security", primary: "Open Settings")
+        }
+    }
+
+    /// Puts everything the clip was copied with back on the clipboard, on a worker, naming the app it came from so
+    /// the history keeps it.
+    fileprivate func writeToClipboard(_ clip: Clip) {
+        guard let store = clipboard?.store else { return }
+        Task {
+            do throws(ClipboardStore.Failure) {
+                let items = try await store.items(of: clip.id)
+                await runInBackground(qos: .userInitiated) {
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    let objects = items.map { representations in
+                        let item = NSPasteboardItem()
+                        for representation in representations {
+                            item.setData(representation.data, forType: .init(representation.type))
+                        }
+                        return item
+                    }
+                    if let source = clip.source {
+                        objects.first?.setString(source, forType: .init(ClipReading.sourceMarker))
+                    }
+                    pasteboard.writeObjects(objects)
+                }
+            } catch {
+                Log.app.error("Couldn't copy a clip back: \(error.description, privacy: .public)")
+            }
+        }
+    }
+}
+
 extension LauncherViewController: NSTextFieldDelegate {
     func controlTextDidChange(_ notification: Notification) {
+        // `c ` in the launcher's field opens the clipboard (FEATURES.md §4).
+        if mode == .launcher, sublist == nil, searchField.stringValue == "c " {
+            switchMode(to: .clipboard)
+            return
+        }
         let handled = ProcessInfo.processInfo.systemUptime
         refresh(keystroke: NSApp.currentEvent.map { ($0.timestamp, handled) })
     }
@@ -794,6 +1083,10 @@ extension LauncherViewController: NSTextFieldDelegate {
         case #selector(NSResponder.moveUp(_:)): moveSelection(by: -1)
         case #selector(NSResponder.moveDown(_:)): moveSelection(by: 1)
         case #selector(NSResponder.insertNewline(_:)): activate(row: tableView.selectedRow)
+        case #selector(NSResponder.deleteBackward(_:))
+        where mode == .clipboard && sublist == nil && searchField.stringValue.isEmpty:
+            // ⌫ on the clipboard's empty field goes back to the launcher.
+            switchMode(to: .launcher)
         case #selector(NSResponder.cancelOperation(_:)):
             if isPreviewing {
                 closePreview()

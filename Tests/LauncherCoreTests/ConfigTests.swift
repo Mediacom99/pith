@@ -14,6 +14,7 @@ struct ConfigTests {
         let (config, problems) = Config.parse("")
         #expect(problems.isEmpty)
         #expect(config.launcherHotkey.description == "cmd+p")
+        #expect(config.clipboardHotkey.description == "shift+cmd+v", "the modifiers in macOS order")
         #expect(config.emptyState == .recent)
         #expect(config.launchAtLogin)
     }

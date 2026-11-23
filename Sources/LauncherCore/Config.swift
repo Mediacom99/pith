@@ -13,6 +13,8 @@ public struct Config: Sendable, Equatable {
     }
 
     public var launcherHotkey = Hotkey("cmd+p")!
+    /// Opens the panel straight in the clipboard (decision 34).
+    public var clipboardHotkey = Hotkey("cmd+shift+v")!
     public var emptyState = EmptyState.recent
     /// Applies to the copy installed in an Applications folder (decision 14).
     public var launchAtLogin = true
@@ -62,11 +64,11 @@ public struct Config: Sendable, Equatable {
                 let name = table.isEmpty ? key : "\(table).\(key)"
                 func problem(_ message: String) { problems.append((entry.line, "line \(entry.line): \(message)")) }
                 switch (name, entry.value) {
-                case ("hotkeys.launcher", .string(let text)):
+                case ("hotkeys.launcher", .string(let text)), ("hotkeys.clipboard", .string(let text)):
                     if let hotkey = Hotkey(text) {
-                        config.launcherHotkey = hotkey
+                        if key == "launcher" { config.launcherHotkey = hotkey } else { config.clipboardHotkey = hotkey }
                     } else {
-                        problem("hotkeys.launcher \"\(text)\" isn't a shortcut like \"cmd+p\"")
+                        problem("\(name) \"\(text)\" isn't a shortcut like \"cmd+p\"")
                     }
                 case ("launcher.empty_state", .string(let text)):
                     if let emptyState = EmptyState(rawValue: text) {
@@ -95,7 +97,8 @@ public struct Config: Sendable, Equatable {
                     config.openWith[key.lowercased().trimmingPrefix(".").description] = app
                 case (_, _) where table == "open_with":
                     problem("open_with.\(key) should be an app name in quotes")
-                case ("hotkeys.launcher", _), ("launcher.empty_state", _), ("actions.terminal", _):
+                case ("hotkeys.launcher", _), ("hotkeys.clipboard", _), ("launcher.empty_state", _),
+                    ("actions.terminal", _):
                     problem("\(name) should be a string in quotes")
                 case ("launcher.launch_at_login", _):
                     problem("launcher.launch_at_login should be true or false")
@@ -118,6 +121,9 @@ public struct Config: Sendable, Equatable {
         [hotkeys]
         # Opens the launcher from anywhere: modifiers (cmd, shift, alt, ctrl) + one key.
         launcher = "cmd+p"
+        # Opens the clipboard history. It takes the key from every app: cmd+shift+v is Paste and Match Style in many,
+        # and the clipboard's Paste as Plain Text does the same.
+        clipboard = "cmd+shift+v"
 
         [launcher]
         # What the launcher shows before you type:

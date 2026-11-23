@@ -69,6 +69,51 @@ extension UIBenchmark {
     }
 }
 
+extension UIBenchmark {
+    /// What ⌘⇧V does in-process with 1,000 clips (texts, links and a few images): fill the rows and the preview, lay
+    /// out, draw. Then typing in the clipboard, update and draw.
+    @Test func showClipboard() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: "PithBench-clipboard-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        var clips: [(content: ClipContent, source: String?, minutesAgo: Double)] = []
+        for number in 0..<1_000 {
+            let body =
+                "docker compose -f deploy/acme-\(number).yml up --build\nservices:\n  web:\n    image: acme/site:\(number)\n"
+            clips.append((text(body), number % 3 == 0 ? "com.apple.Terminal" : nil, Double(1_000 - number)))
+        }
+        let panel = try await clipboardPanel(folder, clips)
+        let clock = ContinuousClock()
+        var total = Duration.zero
+        let rounds = 50
+        for round in 0...rounds {
+            let start = clock.now
+            panel.launcher.prepareToShow(.clipboard)
+            panel.displayIfNeeded()
+            if round > 0 { total += clock.now - start }
+            panel.launcher.reset()
+        }
+        print("show clipboard (\(clips.count) clips): \((total / rounds).ms)")
+
+        panel.launcher.prepareToShow(.clipboard)
+        var update = Duration.zero
+        var draw = Duration.zero
+        let typing = ["d", "do", "doc", "dock", "docker", "", "a", "ac", "acme", "acme-4", "acme-42", ""]
+        for round in 0...10 {
+            for query in typing {
+                let start = clock.now
+                await type(query, in: panel)
+                let updated = clock.now
+                panel.displayIfNeeded()
+                guard round > 0 else { continue }
+                update += updated - start
+                draw += clock.now - updated
+            }
+        }
+        let count = 10 * typing.count
+        print("clipboard keystroke: update \((update / count).ms), draw \((draw / count).ms)")
+    }
+}
+
 extension Duration {
     fileprivate var ms: String {
         let (seconds, attoseconds) = components

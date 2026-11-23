@@ -287,14 +287,16 @@ public final class ClipboardStore: @unchecked Sendable {
         return database
     }
 
-    private static let clipColumns = "id, kind, copied, source, pinned, size, substr(text, 1, ?), lines, width, height"
+    /// `octet_length` reads the text's size from the row without loading the text.
+    private static let clipColumns =
+        "id, kind, copied, source, pinned, size, substr(text, 1, ?), lines, width, height, octet_length(text)"
 
     private static func clip(_ row: SQLiteDatabase.Statement) -> Clip {
         Clip(
             id: row.integer(0), kind: Clip.Kind(rawValue: row.text(1)) ?? .text,
             copied: Date(timeIntervalSince1970: row.real(2)), source: row.isNull(3) ? nil : row.text(3),
             pinned: row.integer(4) != 0, size: Int(row.integer(5)), text: row.text(6), lines: Int(row.integer(7)),
-            pixelWidth: Int(row.integer(8)), pixelHeight: Int(row.integer(9)))
+            textBytes: Int(row.integer(10)), pixelWidth: Int(row.integer(8)), pixelHeight: Int(row.integer(9)))
     }
 
     private func clip(_ id: Int64, in database: SQLiteDatabase) throws(Failure) -> Clip {

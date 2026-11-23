@@ -27,15 +27,16 @@ public struct Clip: Sendable, Equatable, Identifiable {
     /// The start of its text (`textLimit` characters): the text itself, a link's URL, or the files' paths one per
     /// line. Empty for an image.
     public var text: String
-    /// How many lines the whole text has.
+    /// How many lines the whole text has, and its size in bytes.
     public var lines: Int
+    public var textBytes: Int
     /// An image's size in pixels, upright; zero for other kinds.
     public var pixelWidth: Int
     public var pixelHeight: Int
 
     public init(
         id: Int64, kind: Kind, copied: Date, source: String?, pinned: Bool, size: Int, text: String, lines: Int,
-        pixelWidth: Int = 0, pixelHeight: Int = 0
+        textBytes: Int? = nil, pixelWidth: Int = 0, pixelHeight: Int = 0
     ) {
         self.id = id
         self.kind = kind
@@ -45,6 +46,7 @@ public struct Clip: Sendable, Equatable, Identifiable {
         self.size = size
         self.text = text
         self.lines = lines
+        self.textBytes = textBytes ?? text.utf8.count
         self.pixelWidth = pixelWidth
         self.pixelHeight = pixelHeight
     }

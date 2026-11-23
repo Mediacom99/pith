@@ -35,16 +35,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in self?.history.forget(paths: removed) }
     }
     private let clipboard = ClipboardHistory(store: ClipboardStore(folder: ClipboardStore.defaultFolder))
-    private lazy var recorder = ClipboardRecorder(store: clipboard.store) { [weak self] clip, removed in
-        self?.clipboard.recorded(clip, removed: removed)
-    }
+    private lazy var recorder = ClipboardRecorder(
+        store: clipboard.store,
+        onRecord: { [weak self] clip, removed in self?.clipboard.recorded(clip, removed: removed) },
+        onAccessChange: { [weak self] allowed in
+            self?.panel?.launcher.clipboardNotices = allowed ? [] : [.cannotRead]
+        })
     private var fileRules: FileRules?
     private var panel: LauncherPanel?
-    private var launcherHotkey: (hotkey: Hotkey, id: HotKeyCenter.ID)?
+    /// Each global hotkey as registered (`launcher`, `clipboard`), and the problem if the configured one is taken.
+    private var hotkeys: [String: (current: (hotkey: Hotkey, id: HotKeyCenter.ID)?, problem: String?)] = [:]
     private var appsWatcher: DirectoryWatcher?
     private var indexGeneration = 0
     private var hasAppliedConfig = false
-    private var hotkeyProblem: String?
     /// Apps in config.toml that don't resolve to an installed app.
     private var appProblems: [String] = []
     private var resolveGeneration = 0
@@ -53,6 +56,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Built now, so the hotkey only has to show it.
         let launcher = LauncherViewController(history: history, running: RunningApps(), files: files)
         launcher.runCommand = { [weak self] in self?.run($0) }
+        launcher.clipboard = clipboard
+        clipboard.onChange = { [weak launcher] in launcher?.clipboardChanged() }
+        launcher.resolveNotice = { notice in
+            switch notice {
+            case .cannotRead:
+                // Privacy & Security, where macOS lists the apps that may read the clipboard.
+                if let settings = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy") {
+                    NSWorkspace.shared.open(settings)
+                }
+            case .paused:
+                break
+            }
+        }
         launcher.notifier = notifier
         notifier.install()
         panel = LauncherPanel(launcher: launcher)
@@ -85,18 +101,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let panel else { return }
         let config = configStore.config
 
-        if launcherHotkey?.hotkey != config.launcherHotkey {
-            if let id = hotKeys.register(
-                config.launcherHotkey, action: { [weak panel] in panel?.toggle(pressedAt: $0) })
-            {
-                if let old = launcherHotkey { hotKeys.unregister(old.id) }
-                launcherHotkey = (config.launcherHotkey, id)
-                hotkeyProblem = nil
-            } else {
-                let fallback = launcherHotkey.map { ", so it's still \"\($0.hotkey)\"" } ?? ""
-                hotkeyProblem = "hotkeys.launcher \"\(config.launcherHotkey)\" is taken by another app\(fallback)"
-            }
-        }
+        register("launcher", config.launcherHotkey) { [weak panel] in panel?.toggle(pressedAt: $0) }
+        register("clipboard", config.clipboardHotkey) { [weak panel] in panel?.toggleClipboard(pressedAt: $0) }
         panel.launcher.emptyState = config.emptyState
         publishProblems()
         resolveApps()
@@ -114,7 +120,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func publishProblems() {
-        panel?.launcher.problems = configStore.problems + [hotkeyProblem].compactMap(\.self) + appProblems
+        let taken = ["launcher", "clipboard"].compactMap { hotkeys[$0]?.problem }
+        panel?.launcher.problems = configStore.problems + taken + appProblems
+    }
+
+    /// Registers the hotkey `name` as configured, if it changed. The new one is registered before the old one is let
+    /// go, so if it's taken, the old one keeps working and the problem says so.
+    private func register(_ name: String, _ hotkey: Hotkey, action: @escaping (TimeInterval) -> Void) {
+        var slot = hotkeys[name] ?? (nil, nil)
+        guard slot.current?.hotkey != hotkey else { return }
+        if let id = hotKeys.register(hotkey, action: action) {
+            if let old = slot.current { hotKeys.unregister(old.id) }
+            slot = ((hotkey, id), nil)
+        } else {
+            let fallback = slot.current.map { ", so it's still \"\($0.hotkey)\"" } ?? ""
+            slot.problem = "hotkeys.\(name) \"\(hotkey)\" is taken by another app\(fallback)"
+        }
+        hotkeys[name] = slot
     }
 
     /// Resolves the apps config.toml names (`[open_with]`, the terminal) on a worker, once the index knows the

@@ -16,6 +16,8 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
     private let store: ClipboardStore
     private let retention: ClipboardStore.Retention
     private let onRecord: @MainActor @Sendable (Clip, _ removed: [Int64]) -> Void
+    /// Whether macOS lets Pith read the clipboard, when that changes (false: denied in Privacy & Security).
+    private let onAccessChange: @MainActor @Sendable (_ allowed: Bool) -> Void
     /// The app in front: where a copy that doesn't name its source came from. Updated on the main thread.
     private let frontmostApp = Mutex<String?>(nil)
     private var observers: [any NSObjectProtocol] = []
@@ -30,12 +32,14 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
 
     init(
         pasteboard: NSPasteboard = .general, store: ClipboardStore, retention: ClipboardStore.Retention = .standard,
-        onRecord: @escaping @MainActor @Sendable (Clip, _ removed: [Int64]) -> Void
+        onRecord: @escaping @MainActor @Sendable (Clip, _ removed: [Int64]) -> Void,
+        onAccessChange: @escaping @MainActor @Sendable (_ allowed: Bool) -> Void = { _ in }
     ) {
         self.pasteboard = pasteboard
         self.store = store
         self.retention = retention
         self.onRecord = onRecord
+        self.onAccessChange = onAccessChange
     }
 
     /// Starts watching from the clipboard as it is now. Without `timer`, only `check()` reads it (for tests).
@@ -113,13 +117,15 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
         guard change != lastChange else { return nil }
         lastChange = change
 
-        // Denied in Privacy & Security, a read would get nothing: say so once instead of failing silently.
-        if pasteboard.accessBehavior == .alwaysDeny {
-            if !denied { Log.app.error("Not allowed to read the clipboard: copies aren't recorded") }
-            denied = true
-            return nil
+        // Denied in Privacy & Security, a read would get nothing: say so instead of failing silently.
+        let isDenied = pasteboard.accessBehavior == .alwaysDeny
+        if isDenied != denied {
+            denied = isDenied
+            if isDenied { Log.app.error("Not allowed to read the clipboard: copies aren't recorded") }
+            let onAccessChange = self.onAccessChange
+            Task { @MainActor in onAccessChange(!isDenied) }
         }
-        denied = false
+        if isDenied { return nil }
 
         guard let items = pasteboard.pasteboardItems, !items.isEmpty else { return nil }
         // Only the types are read here, so a password's data is never fetched.

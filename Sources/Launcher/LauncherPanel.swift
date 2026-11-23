@@ -17,6 +17,10 @@ enum Layout {
     /// Where the list starts: under the bar, its separator and the tile.
     static let listTop = barHeight + 1 + tileMargin * 2 + tileHeight
     static let expandedHeight = listTop + visibleRows * rowHeight + listBottomInset
+    /// In the clipboard the tile is the preview: three rows taller, so five whole rows fit under it and the panel keeps
+    /// its height (docs/BRIEF-CLIPBOARD.md).
+    static let clipboardTileHeight = tileHeight + 3 * rowHeight
+    static let clipboardListTop = listTop + 3 * rowHeight
     static let iconSize: CGFloat = 20
     /// The selection's distance from the panel's sides (the tile's margin, so the two line up), and its corners.
     static let selectionInset: CGFloat = tileMargin
@@ -92,20 +96,32 @@ final class LauncherPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
-    /// `pressedAt` is the hotkey's timestamp, in seconds since boot, for the latency log.
+    /// The launcher's hotkey (⌘P): opens the launcher, closes it, or switches to it from the clipboard. `pressedAt` is
+    /// the hotkey's timestamp, in seconds since boot, for the latency log.
     func toggle(pressedAt: TimeInterval) {
-        if isVisible {
+        toggle(.launcher, pressedAt: pressedAt)
+    }
+
+    /// The clipboard's hotkey (⌘⇧V, decision 34): the same, for the clipboard.
+    func toggleClipboard(pressedAt: TimeInterval) {
+        toggle(.clipboard, pressedAt: pressedAt)
+    }
+
+    private func toggle(_ mode: LauncherViewController.Mode, pressedAt: TimeInterval) {
+        if !isVisible {
+            present(mode, pressedAt: pressedAt)
+        } else if launcher.mode == mode {
             dismiss()
         } else {
-            present(pressedAt: pressedAt)
+            launcher.switchMode(to: mode)
         }
     }
 
     /// Puts the panel on the screen under the mouse pointer and gives it the keyboard, without activating the app.
     /// The expanded panel would be centered; the search bar is its top edge and stays there.
-    private func present(pressedAt: TimeInterval) {
+    private func present(_ mode: LauncherViewController.Mode, pressedAt: TimeInterval) {
         let handled = ProcessInfo.processInfo.systemUptime
-        launcher.prepareToShow()
+        launcher.prepareToShow(mode)
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
         guard let area = screen?.visibleFrame else { return }
@@ -115,7 +131,9 @@ final class LauncherPanel: NSPanel {
         launcher.focusSearchField()
         let updated = ProcessInfo.processInfo.systemUptime
         displayIfNeeded()
-        Log.latency("⌘P → panel drawn", event: pressedAt, handled: handled, updated: updated)
+        Log.latency(
+            mode == .clipboard ? "⌘⇧V → panel drawn" : "⌘P → panel drawn", event: pressedAt, handled: handled,
+            updated: updated)
     }
 
     /// Hides the panel (and its Quick Look preview) and empties it for next time.

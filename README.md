@@ -96,6 +96,7 @@ bar icon.
 | Key | What it does |
 |---|---|
 | ⌘P | Open or close the launcher, from any app |
+| ⌘⇧V, or `c ` in the launcher | Open the clipboard history; ⌫ on its empty field goes back to the launcher |
 | ↑ ↓ or ⌃K ⌃J | Move the selection |
 | ⏎ | Open the selected item, or run the selected action |
 | ⌘K | Show the selected item's actions, or go back to the search |
@@ -123,6 +124,7 @@ changes apply right away. A mistake shows up as a row at the top of the launcher
 ```toml
 [hotkeys]
 launcher = "cmd+p"
+clipboard = "cmd+shift+v"
 
 [launcher]
 empty_state = "recent"      # "recent", "running" or "none"
@@ -160,8 +162,8 @@ How it gets there:
 
 - [x] Launcher: apps, files, folders, ⌘K actions, Quick Look, Zip
 - [x] Stage, the visual design: the tile, compact rows, light and dark
-- [ ] Clipboard manager: history with previews, pinned items, search, paste into the previous app, an in-panel text
-      editor (⌘⇧V)
+- [ ] Clipboard manager (⌘⇧V, in progress): history with previews, pinned items, search, paste into the previous app
+- [ ] The clipboard's text editor and Edit Image (after the clipboard, decisions 36 and 40)
 - [ ] Calculator: math, units, currency and programmer expressions, inline as the top result
 - [ ] On-screen latency down to the targets
 

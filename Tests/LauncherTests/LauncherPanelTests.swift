@@ -47,6 +47,8 @@ private func names(_ rows: [Row], for item: Item? = nil) -> [String] {
         case .item(let item): item.name
         case .action(let action): item.map(action.title(for:)) ?? "\(action)"
         case .problem(let message): message
+        case .clip(let clip): ClipText.title(of: clip).text
+        case .notice(let notice): LauncherViewController.noticeTitle(notice)
         }
     }
 }
