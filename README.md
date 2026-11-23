@@ -109,7 +109,16 @@ These are the defaults: every one of them can be changed in the config, under `[
 
 ## Install
 
-Download [Pith.dmg](https://pith.edoardobertoli.xyz/Pith.dmg) (macOS 26 Tahoe or later, Apple Silicon) and open it. In
+In Terminal (macOS 26 Tahoe or later, Apple Silicon):
+
+```sh
+curl -fsSL https://pith.edoardobertoli.xyz/install.sh | sh
+```
+
+It downloads Pith, checks that it's signed with Pith's certificate, puts it in Applications and opens it. A file curl
+downloads isn't marked as coming from the internet, so macOS doesn't stop Pith the first time (decision 57).
+
+Or download [Pith.dmg](https://pith.edoardobertoli.xyz/Pith.dmg) and open it. In
 the window that opens, drag Pith onto Applications. Pith isn't notarized, so macOS stops it the first time you open it:
 press Done, then in System Settings, Privacy & Security, press Open Anyway and confirm. Then press ⌘P. The first paste
 from the clipboard history asks for Accessibility, which pasting needs. Pith starts at login and updates itself from

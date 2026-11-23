@@ -307,4 +307,9 @@ release with them, for Edoardo to install as a new user would.
   Changing a setting (type "config", Open Config, save) and Updates (daily, Update Pith, Check for Updates). The config
   file stays pinned and scrolls inside itself: 705 px in an 813 px window, its 931 px of lines scrolling, and
   lighting a setting scrolls its line into view without moving the page. Checked at 1440 × 900 and 390 × 844.
-- **Still open** (FEATURES §11): asking each permission only when its feature first needs it, and a Homebrew cask.
+- **One line in Terminal** (decision 57): `site/install.sh`, served beside the page, downloads Pith.dmg with curl
+  (so nothing is quarantined), mounts it hidden, refuses a Pith not signed with the local certificate, replaces and
+  quits a copy already there, and opens it from /Applications (~/Applications if that isn't writable). Tested into a
+  scratch folder: installed 0.3.5 with no quarantine flag; a wrong certificate installs nothing.
+- **Still open** (FEATURES §11): asking each permission only when its feature first needs it. A Homebrew cask
+  wouldn't avoid the dialog: Homebrew marks what it installs as downloaded too.

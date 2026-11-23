@@ -345,9 +345,28 @@ button.k.down { background: var(--action); color: var(--on-action); border-color
 .next strong { color: var(--label); font-weight: 600; }
 
 /* Install */
+/* One line in Terminal (decision 57): the command on a panel surface, with a key-cap Copy. */
+.oneline { margin-top: 40px; max-width: 46rem; }
+.oneline h3, .or { font-size: 1.1875rem; letter-spacing: -0.015em; }
+.oneline p { margin-top: 8px; color: var(--quiet); }
+.command {
+  margin-top: 16px; display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 18px;
+  border-radius: 10px; background: var(--panel); box-shadow: var(--panel-shadow);
+}
+.command code { flex: 1; min-width: 0; font: 400 0.9375rem/1.5 var(--mono); color: var(--label); overflow-wrap: anywhere; user-select: all; }
+.copy {
+  flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 6px 8px; border: 0; border-radius: 7px;
+  background: none; font: 500 0.9375rem/1 var(--sans); color: var(--quiet); cursor: pointer;
+  transition: background-color 160ms var(--ease);
+}
+.copy kbd { font-size: 0.8125rem; min-width: 1.7rem; height: 1.7rem; }
+.copy span { margin-left: 4px; }
+.copy:hover, .copy.done { background: var(--fill); }
+.copy.done span { color: var(--label); }
+.or { margin-top: clamp(40px, 5vw, 56px); }
 /* Each step is its number, title, words and what to look for; a subgrid lines the four rows up across the steps. */
 .steps {
-  margin: 40px 0 0; padding: 0; list-style: none; counter-reset: step;
+  margin: 24px 0 0; padding: 0; list-style: none; counter-reset: step;
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 36px clamp(24px, 3vw, 44px);
 }
 .steps li { counter-increment: step; display: grid; grid-row: span 4; grid-template-rows: subgrid; row-gap: 0; align-content: start; }
@@ -424,6 +443,9 @@ footer a { color: var(--quiet); }
 }
 @media (max-width: 600px) {
   .steps, .after { grid-template-columns: 1fr; }
+  .command { flex-wrap: wrap; padding: 14px 12px 10px 16px; }
+  .command code { flex-basis: 100%; }
+  .copy { margin-left: auto; }
 }
 @media (max-width: 520px) {
   .reasons { grid-template-columns: 1fr; }
@@ -472,7 +494,7 @@ footer a { color: var(--quiet); }
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12"/></svg>
           Download for Mac
         </a>
-        <p class="note">Free · macOS 26 Tahoe or later · Apple Silicon · <a href="#install">setting it up</a></p>
+        <p class="note">Free · macOS 26 Tahoe or later · Apple Silicon · <a href="#install">or install from Terminal</a></p>
       </div>
 
       <div class="stage">
@@ -712,8 +734,17 @@ footer a { color: var(--quiet); }
     <div class="wrap">
       <div class="head">
         <h2 id="install-title">Set it up once.</h2>
-        <p>Pith isn’t notarized by Apple, so the first time you open it, macOS asks you to trust it. After that it starts at login and updates itself.</p>
+        <p>Pith isn’t notarized by Apple. Paste one line in Terminal, or use the installer and trust Pith once when macOS asks. After that it starts at login and updates itself.</p>
       </div>
+      <div class="oneline">
+        <h3>One line in Terminal</h3>
+        <p>It downloads Pith, checks that it’s signed with Pith’s certificate, puts it in Applications and opens it. macOS doesn’t stop it, so there’s no Open Anyway. <a href="install.sh">Read the script</a> first if you like.</p>
+        <div class="command">
+          <code id="command">curl -fsSL https://pith.edoardobertoli.xyz/install.sh | sh</code>
+          <button type="button" class="copy" data-copy="command" aria-label="Copy the command"><kbd>⌘</kbd><kbd>C</kbd><span>Copy</span></button>
+        </div>
+      </div>
+      <h3 class="or">Or with the installer</h3>
       <ol class="steps">
         <li>
           <h3>Download</h3>
@@ -971,6 +1002,23 @@ footer a { color: var(--quiet); }
     const caps = [...shot.closest('.feature').querySelectorAll('h2 kbd')];
     before.hidden = false; after.hidden = true;
     once(shot, 0.6, () => wait(450).then(() => chord(caps, null, () => { before.hidden = true; after.hidden = false; }, 150, 300)));
+  }
+
+  // Copy puts the install command on the clipboard, says so, and presses its keys.
+  for (const button of document.querySelectorAll('.copy')) {
+    const word = button.querySelector('span');
+    button.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(document.getElementById(button.dataset.copy).textContent);
+      } catch {
+        getSelection().selectAllChildren(document.getElementById(button.dataset.copy));
+        return;
+      }
+      if (!calm) chord([...button.querySelectorAll('kbd')], null, null, 60, 180);
+      button.classList.add('done');
+      word.textContent = 'Copied';
+      setTimeout(() => { button.classList.remove('done'); word.textContent = 'Copy'; }, 1600);
+    });
   }
 
   // The config file is pinned beside the settings and scrolls inside itself (CSS).
