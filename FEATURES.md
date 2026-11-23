@@ -87,7 +87,7 @@ A key without ⌘, ⌥ or ⌃ that types (a letter, Space, ⌫) works only while
 
 ### 4.2 Files
 
-- Indexed from a **configured list of folders** only (e.g. `~/Desktop`, `~/Documents`, `~/dev`).
+- Indexed from the **configured folders**: the home folder by default (decision 22), or a list (`~/Documents`, `~/dev`).
 - Skips noise: `.git`, `node_modules`, `.build`, caches, hidden files (configurable ignore patterns). A configured
   folder is searched even inside one the patterns skip (Dropbox in `~/Library/CloudStorage`, `~/.config`).
 - Kept fresh via FSEvents; index lives in memory.
@@ -217,8 +217,8 @@ to_launcher = "backspace"
 empty_state = "recent"   # recent | running | none
 clipboard_alias = "c"    # "c" lists Clipboard History first; "c " opens the clipboard
 launch_at_login = true
-folders = ["~/Desktop", "~/Documents", "~/Downloads", "~/dev"]
-ignore  = [".git", "node_modules", ".build", "*.photoslibrary"]
+folders = ["~"]          # the home folder (decision 22); also searched inside an ignored one
+ignore  = [".*", "~/Library", "node_modules", ".build", "*.photoslibrary"]
 max_depth = 6
 
 [actions]
@@ -238,8 +238,8 @@ mailto = "Mail"
 max_size_gb = 2
 max_age_days = 30
 
-[calculator]
-currency_refresh_hours = 24
+# [calculator]           # with the calculator (§6), a later milestone: not read yet
+# currency_refresh_hours = 24
 ```
 
 ---

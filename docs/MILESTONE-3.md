@@ -468,7 +468,8 @@ real folder prompts (4) on a first install.
         it was: a config.toml that's a symlink (stow, dotfiles managers) didn't reload when its target was saved.
     37. **Confirmed and fixed:** only events for config.toml itself (or its target) reload it; the same test writes
         a swap file. What it was: any file written in its folder reloaded it, vim's swap file included.
-    38. FEATURES §8's example is out of date: `folders` and `ignore`, and `[calculator]`, an unknown setting today.
+    38. **Fixed:** FEATURES §8 and §4.2 show today's `folders` and `ignore`, and `[calculator]` as not read yet. What
+        it was: the example was out of date, `[calculator]` an unknown setting today.
   - **Install:**
     39. The Terminal line stops Pith with a signal. If an update was waiting, Sparkle's installer may then put that
         older build over the new copy (suspect).
