@@ -54,7 +54,7 @@ struct ClipboardStoreTests {
     @Test func imagesAreFilesWithThumbnailsAtTheirExactSizes() async throws {
         let folder = try TemporaryDirectory()
         let store = ClipboardStore(folder: folder.url)
-        let png = try image(width: 1000, height: 500)
+        let png = try flatPNG(width: 1000, height: 500)
         let html = Representation(type: "public.html", data: Data("<img src=chart.png>".utf8))
         let clip = try await store.add(
             ClipContent(kind: .image, text: "", items: [[html]], image: png), from: nil, at: start)
@@ -68,7 +68,7 @@ struct ClipboardStoreTests {
 
         // A small image fills its row thumbnail but is never scaled up in the preview.
         let icon = try await store.add(
-            ClipContent(kind: .image, text: "", items: [], image: try image(width: 16, height: 16)), from: nil,
+            ClipContent(kind: .image, text: "", items: [], image: try flatPNG(width: 16, height: 16)), from: nil,
             at: start)
         #expect(try pixels(of: store.rowThumbnail(of: icon.id)) == [40, 40])
         #expect(try pixels(of: store.previewThumbnail(of: icon.id)) == [16, 16])
@@ -105,7 +105,7 @@ struct ClipboardStoreTests {
         let folder = try TemporaryDirectory()
         let store = ClipboardStore(folder: folder.url)
         let clip = try await store.add(
-            ClipContent(kind: .image, text: "", items: [], image: try image(width: 80, height: 60)), from: nil,
+            ClipContent(kind: .image, text: "", items: [], image: try flatPNG(width: 80, height: 60)), from: nil,
             at: start)
         let files = [
             store.imageFile(of: clip.id), store.rowThumbnail(of: clip.id), store.previewThumbnail(of: clip.id),
@@ -137,7 +137,7 @@ struct ClipboardStoreTests {
             let clip = try await store.add(text("Acme"), from: "com.apple.Safari", at: start)
             try await store.setPinned(true, for: clip.id)
             _ = try await store.add(
-                ClipContent(kind: .image, text: "", items: [], image: try image(width: 30, height: 20)), from: nil,
+                ClipContent(kind: .image, text: "", items: [], image: try flatPNG(width: 30, height: 20)), from: nil,
                 at: start + 60)
             saved = try await store.load()
         }
@@ -171,7 +171,7 @@ struct ClipboardStoreTests {
         let folder = try TemporaryDirectory()
         let store = ClipboardStore(folder: folder.url)
         let clip = try await store.add(
-            ClipContent(kind: .image, text: "", items: [], image: try image(width: 30, height: 20)), from: nil,
+            ClipContent(kind: .image, text: "", items: [], image: try flatPNG(width: 30, height: 20)), from: nil,
             at: start)
         let orphan = store.imageFile(of: clip.id + 1)
         try Data("left over".utf8).write(to: orphan)
@@ -195,23 +195,6 @@ struct ClipboardStoreTests {
         ClipContent(
             kind: .text, text: string,
             items: [[Representation(type: "public.utf8-plain-text", data: Data(string.utf8))]])
-    }
-
-    /// A PNG of one flat color.
-    private func image(width: Int, height: Int) throws -> Data {
-        let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
-        let context = try #require(
-            CGContext(
-                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
-                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        context.setFillColor(CGColor(srgbRed: 0.2, green: 0.4, blue: 0.8, alpha: 1))
-        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
-        let data = NSMutableData()
-        let destination = try #require(
-            CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil))
-        CGImageDestinationAddImage(destination, try #require(context.makeImage()), nil)
-        #expect(CGImageDestinationFinalize(destination))
-        return data as Data
     }
 
     /// An image file's width and height in pixels.

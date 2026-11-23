@@ -16,7 +16,17 @@ final class ClipImages {
     private var previews: [Int64: CGImage] = [:]
     /// Most recently used last.
     private var previewOrder: [Int64] = []
-    private var loading: Set<String> = []
+    private var loading: Set<Key> = []
+    /// Thumbnails that couldn't be read (a file gone): asked for once, so a row that redraws doesn't ask again.
+    private var failed: Set<Key> = []
+
+    private struct Key: Hashable {
+        var id: Int64
+        var preview: Bool
+    }
+
+    /// Whether thumbnails are being read.
+    var isLoading: Bool { !loading.isEmpty }
 
     /// Called on the main thread when new bitmaps are ready.
     var onChange: (() -> Void)?
@@ -43,6 +53,7 @@ final class ClipImages {
         rows = rows.filter { ids.contains($0.key) }
         previews = previews.filter { ids.contains($0.key) }
         previewOrder.removeAll { !ids.contains($0) }
+        failed = failed.filter { ids.contains($0.id) }
         let newest = index.clips.prefix(Self.preloaded).filter { $0.kind == .image }
         load(newest, previews: false, store: store)
         load(newest.prefix(3), previews: true, store: store)
@@ -50,19 +61,25 @@ final class ClipImages {
 
     private func load(_ clips: some Collection<Clip>, previews wantPreviews: Bool, store: ClipboardStore) {
         let missing = clips.filter { clip in
-            clip.kind == .image && (wantPreviews ? previews[clip.id] : rows[clip.id]) == nil
-                && !loading.contains(Self.key(clip.id, preview: wantPreviews))
+            let key = Key(id: clip.id, preview: wantPreviews)
+            return clip.kind == .image && (wantPreviews ? previews[clip.id] : rows[clip.id]) == nil
+                && !loading.contains(key) && !failed.contains(key)
         }
         guard !missing.isEmpty else { return }
-        let keys = missing.map { Self.key($0.id, preview: wantPreviews) }
+        let keys = missing.map { Key(id: $0.id, preview: wantPreviews) }
         loading.formUnion(keys)
         let files = missing.map { wantPreviews ? store.previewThumbnail(of: $0.id) : store.rowThumbnail(of: $0.id) }
-        let ids = missing.map(\.id)
         Task {
             let images = await runInBackground(qos: .userInitiated) { files.map(Self.decode) }
             loading.subtract(keys)
-            for (id, image) in zip(ids, images) {
-                guard let image else { continue }
+            var loaded = false
+            for (key, image) in zip(keys, images) {
+                guard let image else {
+                    failed.insert(key)
+                    continue
+                }
+                loaded = true
+                let id = key.id
                 if wantPreviews {
                     previews[id] = image
                     previewOrder.append(id)
@@ -71,11 +88,10 @@ final class ClipImages {
                 }
             }
             while previewOrder.count > Self.previewsKept { previews[previewOrder.removeFirst()] = nil }
-            onChange?()
+            // Only when there's something new to draw: a redraw asks for the rows' thumbnails again.
+            if loaded { onChange?() }
         }
     }
-
-    private static func key(_ id: Int64, preview: Bool) -> String { "\(id)\(preview ? "p" : "r")" }
 
     /// The file's image, decoded now rather than when first drawn.
     private nonisolated static func decode(_ file: URL) -> CGImage? {

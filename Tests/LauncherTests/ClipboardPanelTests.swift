@@ -377,6 +377,33 @@ struct ClipboardPanelTests {
         for _ in 0..<row { press("down", in: panel) }
     }
 
+    /// A thumbnail that can't be read is asked for once and draws nothing new: a redraw would ask again, forever,
+    /// with a core busy until Pith quits.
+    @Test func anUnreadableThumbnailIsAskedForOnce() async throws {
+        let folder = try TemporaryDirectory()
+        let store = ClipboardStore(folder: folder.url)
+        let clip = try await store.add(
+            ClipContent(kind: .image, text: "", items: [], image: try flatPNG(width: 30, height: 20)), from: nil,
+            at: .now)
+        try FileManager.default.removeItem(at: store.rowThumbnail(of: clip.id))
+        let images = ClipImages()
+        var redraws = 0
+        images.onChange = { redraws += 1 }
+
+        #expect(images.row(clip, store: store) == nil)
+        #expect(images.isLoading)
+        for _ in 0..<200 where images.isLoading { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(!images.isLoading)
+        #expect(images.row(clip, store: store) == nil)
+        #expect(!images.isLoading, "not read again")
+        #expect(redraws == 0)
+
+        #expect(images.preview(clip, store: store) == nil)
+        for _ in 0..<200 where images.isLoading { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(images.preview(clip, store: store) != nil, "the preview, still there, loads")
+        #expect(redraws == 1)
+    }
+
     private func pinned(_ panel: LauncherPanel) -> [String] {
         panel.launcher.rows.compactMap { if case .clip(let clip) = $0, clip.pinned { clip.text } else { nil } }
     }

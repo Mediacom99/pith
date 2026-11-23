@@ -351,9 +351,10 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
   2. **Fixed:** switching to the clipboard checks Accessibility again, as ⌘⇧V on a closed panel does; a test covers
      `c `. What it was: **access given after the first paste wasn't seen when the clipboard opened from the
      launcher** (`c `, Clipboard History, or ⌘⇧V with the launcher open), so ⏎ kept copying until a relaunch.
-  3. **A clip's thumbnail that can't be read is asked for forever, and one core stays busy until Pith quits.**
-     - A failed decode still calls `onChange`, which redraws the rows, and each row asks again.
-     - Triggers: a missing thumbnail file, or an image clip pruned while its row is still in the closed panel.
+  3. **Fixed:** `ClipImages` remembers a thumbnail it couldn't read and redraws only when one loaded; a test covers
+     it. What it was: **a clip's thumbnail that couldn't be read was asked for forever, with one core busy until Pith
+     quit.** A failed decode still called `onChange`, which redrew the rows, and each row asked again. Triggers: a
+     missing thumbnail file, or an image clip pruned while its row was still in the closed panel.
   4. **The first scan of `~`:**
      - There are no file results until every privacy prompt (Desktop, Documents, Downloads) is answered.
      - A folder allowed later in System Settings is never rescanned.
