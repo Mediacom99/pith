@@ -1428,7 +1428,8 @@ extension LauncherViewController {
 
         init(_ event: NSEvent) {
             let flags = event.modifierFlags.intersection([.command, .option, .control, .shift])
-            keyCode = UInt32(event.keyCode)
+            // The keypad's Enter (and fn+Return on a laptop) is Return.
+            keyCode = event.keyCode == kVK_ANSI_KeypadEnter ? UInt32(kVK_Return) : UInt32(event.keyCode)
             modifiers =
                 (flags.contains(.command) ? UInt32(cmdKey) : 0) | (flags.contains(.shift) ? UInt32(shiftKey) : 0)
                 | (flags.contains(.option) ? UInt32(optionKey) : 0)

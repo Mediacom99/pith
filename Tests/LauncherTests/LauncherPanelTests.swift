@@ -299,6 +299,20 @@ struct LauncherPanelTests {
         #expect(panel.launcher.searchField.stringValue.isEmpty)
     }
 
+    /// The keypad's Enter (and fn+Return) does what Return does.
+    @Test func keypadEnterIsReturn() async {
+        let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))
+        var run: [Command] = []
+        panel.launcher.runCommand = { run.append($0) }
+        await type("quit pith", in: panel)
+        let enter = NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: .numericPad, timestamp: 0,
+            windowNumber: panel.windowNumber, context: nil, characters: "\u{3}", charactersIgnoringModifiers: "\u{3}",
+            isARepeat: false, keyCode: UInt16(kVK_ANSI_KeypadEnter))!
+        #expect(panel.handleKey(enter))
+        #expect(run == [.quit])
+    }
+
     @Test func clearClipboardHistoryWaitsForASecondReturn() async {
         let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))
         var run: [Command] = []
