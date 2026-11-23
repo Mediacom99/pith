@@ -32,7 +32,7 @@
 	<key>SUFeedURL</key>
 	<string>https://pith.edoardobertoli.xyz/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string></string>
+	<string>eYAos7Zf96ZLAgLRB6GhYvIdHDtUeYccfLlGSGK6SLw=</string>
 	<key>SUEnableAutomaticChecks</key>
 	<false/>
 	<key>SUAllowsAutomaticUpdates</key>

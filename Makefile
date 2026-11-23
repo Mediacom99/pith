@@ -72,10 +72,11 @@ publish: package ## Put the packaged build and its update feed on pith.edoardobe
 	WRANGLER_SEND_METRICS=false npx --yes wrangler@4.166.0 deploy --config Support/wrangler.toml
 	@echo "Published $(VERSION): $(FEED)/$(APP_NAME).zip"
 
+# Only the key's value changes in Info.plist: PlistBuddy would rewrite the whole file and drop its comments.
 update-key: ## Once: create the key that signs updates (in the login keychain) and put its public half in Info.plist
 	@$(TOOLS)/generate_keys --account pith > /dev/null
 	@key=$$($(TOOLS)/generate_keys --account pith -p) && \
-	/usr/libexec/PlistBuddy -c "Set :SUPublicEDKey $$key" Support/Info.plist && \
+	perl -0pi -e "s|(<key>SUPublicEDKey</key>\\s*<string>)[^<]*(</string>)|\$${1}$$key\$${2}|" Support/Info.plist && \
 	echo "Support/Info.plist now checks updates against $$key"
 
 certificate: ## Once: create the self-signed certificate that keeps Pith's permissions across reinstalls (asks for your password)
