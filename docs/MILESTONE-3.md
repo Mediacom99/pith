@@ -373,7 +373,9 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
      could paste another clip than the one chosen (the recorder sees a copy up to 0.75 s late).
   7. **Fixed:** the keypad's Enter (and fn+Return) is Return; a test covers it. What it was: they did nothing,
      since `open` matched only Return's key code and, since step 10, the field swallows `insertNewline:`.
-  8. A click selects a row, but the tile and Quick Look stay on the old one, while ⏎ opens the clicked row.
+  8. **Fixed:** the tile and Quick Look follow a click, and a click below the rows keeps the selection; a test covers
+     it. What it was: a click selected a row, but the tile and Quick Look stayed on the old one while ⏎ opened the
+     clicked row.
   9. **Images kept beside text and files.**
      - A text or files copy keeps every image the app offered: a spreadsheet cell keeps its rendered image, a
        Finder copy keeps the icon.

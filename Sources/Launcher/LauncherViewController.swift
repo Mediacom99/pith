@@ -167,6 +167,8 @@ final class LauncherViewController: NSViewController {
     private var linkApps: [String: (url: URL?, name: String?)] = [:]
     /// After pinning or deleting, the clip (or the place in the list) to keep selected.
     private var keepSelection: (id: Int64, position: Int)?
+    /// While `select(row:)` selects, which updates the tile itself; otherwise a selection change is a click.
+    private var isSelecting = false
     private let history: HistoryStore
     private let running: RunningApps
     private let files: FileSearchEngine
@@ -612,7 +614,9 @@ final class LauncherViewController: NSViewController {
 
     private func select(row: Int) {
         cancelConfirmation()
+        isSelecting = true
         tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        isSelecting = false
         tableView.scrollRowToVisible(row)
         previewSelectionChanged()
         updateStage()
@@ -1527,9 +1531,18 @@ extension LauncherViewController: NSTableViewDataSource, NSTableViewDelegate {
         tableView.makeView(withIdentifier: ResultRowView.identifier, owner: nil) as? ResultRowView ?? ResultRowView()
     }
 
-    /// A click on another row also cancels a Force Quit waiting for its second ⏎.
+    /// A click on another row also cancels a Force Quit waiting for its second ⏎, and the tile and Quick Look follow
+    /// it, as they follow the keys (`select(row:)`).
     func tableViewSelectionDidChange(_ notification: Notification) {
         cancelConfirmation()
+        guard !isSelecting else { return }
+        previewSelectionChanged()
+        updateStage()
+    }
+
+    /// A click on the empty space below the rows keeps the selection, so ⏎ and ⌘K always have a row.
+    func tableView(_ tableView: NSTableView, selectionIndexesForProposedSelection proposed: IndexSet) -> IndexSet {
+        proposed.isEmpty && !rows.isEmpty ? tableView.selectedRowIndexes : proposed
     }
 }
 

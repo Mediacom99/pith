@@ -299,6 +299,18 @@ struct LauncherPanelTests {
         #expect(panel.launcher.searchField.stringValue.isEmpty)
     }
 
+    /// A click selects a row, and the tile follows it; a click below the rows keeps the selection.
+    @Test func theTileFollowsAClick() async {
+        let panel = makePanel(items: apps)
+        await type("g", in: panel)
+        #expect(panel.launcher.stage.content.name == names(panel.launcher.rows)[0])
+        let table = panel.launcher.tableView
+        table.selectRowIndexes(IndexSet(integer: 1), byExtendingSelection: false)
+        #expect(panel.launcher.stage.content.name == names(panel.launcher.rows)[1])
+        let kept = panel.launcher.tableView(table, selectionIndexesForProposedSelection: IndexSet())
+        #expect(kept == IndexSet(integer: 1))
+    }
+
     /// The keypad's Enter (and fn+Return) does what Return does.
     @Test func keypadEnterIsReturn() async {
         let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))
