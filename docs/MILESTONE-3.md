@@ -434,7 +434,10 @@ real folder prompts (4) on a first install.
     20. Pins over `max_size_gb` drop every new copy right after it's recorded.
     21. **Fixed:** the tables and the version are created in one transaction. What it was: a crash during the very
         first launch broke the history for good ("table already exists").
-    22. A copy recorded during Clear can come back as a row whose clip is gone (suspect: a narrow window).
+    22. **Confirmed in theory, made impossible:** the copy's notice reaches the main thread through another executor
+        than Clear's result, so it could land after it, though in practice Clear takes milliseconds longer. The
+        history now ignores a notice for a clip it removed (ids are never reused); a test covers it. What it was: a
+        copy recorded during Clear could come back as a row whose clip is gone.
     23. **Fixed:** a copy whose change count moved while it was read is dropped, and the next look reads the new copy
         from the start, markers checked. What it was: a password copied in the instant between the concealed check and
         the rich-text fallback's read could be recorded as text.

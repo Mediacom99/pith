@@ -14,6 +14,9 @@ final class ClipboardHistory {
         didSet { if retention != oldValue { Task { await prune() } } }
     }
     private var isLoaded = false
+    /// Clips removed (cleared, deleted, pruned): a copy whose notice comes in after its removal isn't put back. Ids are
+    /// never reused.
+    private var removed: Set<Int64> = []
 
     init(store: ClipboardStore) {
         self.store = store
@@ -38,10 +41,9 @@ final class ClipboardHistory {
     func prune() async {
         guard isLoaded, let retention else { return }
         do throws(ClipboardStore.Failure) {
-            let removed = try await store.prune(retention, now: .now)
-            guard !removed.isEmpty else { return }
-            index.remove(removed)
-            onChange?()
+            let pruned = try await store.prune(retention, now: .now)
+            guard !pruned.isEmpty else { return }
+            remove(pruned)
         } catch {
             Log.app.error("Couldn't prune the clipboard history: \(error.description, privacy: .public)")
         }
@@ -49,8 +51,7 @@ final class ClipboardHistory {
 
     /// Deletes every clip that isn't pinned (Clear Clipboard History).
     func clear() async throws(ClipboardStore.Failure) {
-        index.remove(try await store.clear())
-        onChange?()
+        remove(try await store.clear())
     }
 
     func setPinned(_ pinned: Bool, for id: Int64) async {
@@ -66,8 +67,7 @@ final class ClipboardHistory {
     func delete(_ id: Int64) async {
         do throws(ClipboardStore.Failure) {
             try await store.delete(id)
-            index.remove([id])
-            onChange?()
+            remove([id])
         } catch {
             Log.app.error("Couldn't delete a clip: \(error.description, privacy: .public)")
         }
@@ -83,8 +83,15 @@ final class ClipboardHistory {
         }
     }
 
+    private func remove(_ ids: [Int64]) {
+        removed.formUnion(ids)
+        index.remove(ids)
+        onChange?()
+    }
+
     /// A copy the recorder stored; older clips may have to go to make room.
     func recorded(_ clip: Clip) {
+        guard !removed.contains(clip.id) else { return }
         index.insert(clip)
         onChange?()
         Task { await prune() }

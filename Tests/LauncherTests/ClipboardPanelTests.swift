@@ -391,6 +391,18 @@ struct ClipboardPanelTests {
         for _ in 0..<row { press("down", in: panel) }
     }
 
+    /// A copy whose notice comes in after Clear removed it isn't put back as a row whose clip is gone.
+    @Test func aCopyClearedBeforeItsNoticeStaysGone() async throws {
+        let folder = try TemporaryDirectory()
+        let store = ClipboardStore(folder: folder.url)
+        let history = ClipboardHistory(store: store)
+        await history.load()
+        let late = try await store.add(text("copied as Clear ran"), from: nil, at: .now)
+        try await history.clear()
+        history.recorded(late)
+        #expect(history.index.count == 0)
+    }
+
     /// A copy of many files lists them, not the first 4,096 characters' worth: the count is the whole list's, and no
     /// path is cut.
     @Test func aCopyOfManyFilesKeepsItsPaths() async throws {
