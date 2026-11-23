@@ -61,6 +61,55 @@ final class HotKeyCenter {
     }
 }
 
+/// The configured global hotkeys by name (`launcher`, `clipboard`: `[hotkeys]`, decision 55), registered with a
+/// `HotKeyCenter`, and the problem for each one that couldn't be.
+final class GlobalHotkeys {
+    private let center: HotKeyCenter
+    /// In the order they were first applied.
+    private var names: [String] = []
+    private var slots: [String: (current: (hotkey: Shortcut, id: HotKeyCenter.ID)?, problem: String?)] = [:]
+
+    init(center: HotKeyCenter = HotKeyCenter()) {
+        self.center = center
+    }
+
+    /// The key `name` is registered with, if any.
+    func current(_ name: String) -> Shortcut? {
+        slots[name]?.current?.hotkey
+    }
+
+    /// The hotkeys that couldn't be registered as configured.
+    var problems: [String] {
+        names.compactMap { slots[$0]?.problem }
+    }
+
+    /// Registers each hotkey as wanted. Those that changed are let go first, so two can swap keys or one can take
+    /// another's. One that another app holds gets its old key back when it can, and its problem says so; nil lets go
+    /// of it. One that didn't change keeps its key, and no longer has a problem.
+    func apply(_ wanted: [(name: String, hotkey: Shortcut?, action: (TimeInterval) -> Void)]) {
+        for (name, _, _) in wanted where !names.contains(name) { names.append(name) }
+        let changed = wanted.filter { current($0.name) != $0.hotkey }
+        for (name, _, _) in wanted where !changed.contains(where: { $0.name == name }) {
+            slots[name]?.problem = nil
+        }
+        let old = changed.map { current($0.name) }
+        for (name, _, _) in changed {
+            if let current = slots[name]?.current { center.unregister(current.id) }
+            slots[name] = (nil, nil)
+        }
+        for ((name, hotkey, action), old) in zip(changed, old) {
+            guard let hotkey else { continue }
+            if let id = center.register(hotkey, action: action) {
+                slots[name] = ((hotkey, id), nil)
+                continue
+            }
+            let kept = old.flatMap { old in center.register(old, action: action).map { (hotkey: old, id: $0) } }
+            let fallback = kept.map { ", so it's still \"\($0.hotkey)\"" } ?? ""
+            slots[name] = (kept, "hotkeys.\(name) \"\(hotkey)\" is taken by another app\(fallback)")
+        }
+    }
+}
+
 /// Carbon delivers hotkey events on the main thread.
 private nonisolated func hotKeyPressed(
     _: EventHandlerCallRef?,

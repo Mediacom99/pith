@@ -114,7 +114,7 @@ Sources/
     HistoryStore.swift     the History, loaded and saved as JSON on workers
     RunningApps.swift      open apps in MRU order: runningApplications re-read on launch/quit and on show
     LoginItem.swift        SMAppService registration, for a copy in an Applications folder only
-    HotKeyCenter.swift     global hotkeys via Carbon RegisterEventHotKey, registered and replaced at runtime
+    HotKeyCenter.swift     global hotkeys via Carbon RegisterEventHotKey; GlobalHotkeys, the configured ones by name
     LauncherPanel.swift    the NSPanel: show/hide, collapse/expand, key events to the panel's keys, the search field's editor
     LauncherViewController.swift  rows, merged app + file search, empty state, ⌘K sublists, the keys' lookup, opening
     Actions.swift          ⌘K actions per kind, the SF Symbols rows use, AppResolver (config app names, Open With…)

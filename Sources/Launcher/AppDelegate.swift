@@ -29,7 +29,7 @@ nonisolated enum Log {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let configStore = ConfigStore()
     private let history = HistoryStore()
-    private let hotKeys = HotKeyCenter()
+    private let hotkeys = GlobalHotkeys()
     private let notifier = Notifier()
     private let updater = Updater()
     private lazy var files = FileSearchEngine { [weak self] removed in
@@ -50,8 +50,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var askedForAccessibility = false
     private var fileRules: FileRules?
     private var panel: LauncherPanel?
-    /// Each global hotkey as registered (`launcher`, `clipboard`), and the problem if the configured one is taken.
-    private var hotkeys: [String: (current: (hotkey: Shortcut, id: HotKeyCenter.ID)?, problem: String?)] = [:]
     private var appsWatcher: DirectoryWatcher?
     private var indexGeneration = 0
     private var hasAppliedConfig = false
@@ -125,9 +123,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let panel else { return }
         let config = configStore.config
 
-        register("launcher", config.launcherHotkey) { [weak panel] in panel?.toggle(pressedAt: $0) }
-        register("clipboard", config.clipboardHotkey) { [weak panel] in panel?.toggleClipboard(pressedAt: $0) }
-        panel.launcher.clipboardHotkey = hotkeys["clipboard"]?.current?.hotkey.symbols
+        hotkeys.apply([
+            ("launcher", config.launcherHotkey, { [weak panel] in panel?.toggle(pressedAt: $0) }),
+            ("clipboard", config.clipboardHotkey, { [weak panel] in panel?.toggleClipboard(pressedAt: $0) }),
+        ])
+        panel.launcher.clipboardHotkey = hotkeys.current("clipboard")?.symbols
         panel.launcher.keys = config.keys
         panel.launcher.clipboardAlias = config.clipboardAlias
         panel.launcher.emptyState = config.emptyState
@@ -197,28 +197,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func publishProblems() {
-        let taken = ["launcher", "clipboard"].compactMap { hotkeys[$0]?.problem }
-        panel?.launcher.problems = configStore.problems + taken + appProblems
-    }
-
-    /// Registers the hotkey `name` as configured, if it changed. The new one is registered before the old one is let
-    /// go, so if it's taken, the old one keeps working and the problem says so. Nil lets go of it (decision 55).
-    private func register(_ name: String, _ hotkey: Shortcut?, action: @escaping (TimeInterval) -> Void) {
-        var slot = hotkeys[name] ?? (nil, nil)
-        guard let hotkey else {
-            if let old = slot.current { hotKeys.unregister(old.id) }
-            hotkeys[name] = (nil, nil)
-            return
-        }
-        guard slot.current?.hotkey != hotkey else { return }
-        if let id = hotKeys.register(hotkey, action: action) {
-            if let old = slot.current { hotKeys.unregister(old.id) }
-            slot = ((hotkey, id), nil)
-        } else {
-            let fallback = slot.current.map { ", so it's still \"\($0.hotkey)\"" } ?? ""
-            slot.problem = "hotkeys.\(name) \"\(hotkey)\" is taken by another app\(fallback)"
-        }
-        hotkeys[name] = slot
+        panel?.launcher.problems = configStore.problems + hotkeys.problems + appProblems
     }
 
     /// Resolves the apps config.toml names (`[open_with]`, `[open_links]`, the terminal) on a worker, once the index

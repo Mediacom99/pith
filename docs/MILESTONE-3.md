@@ -384,9 +384,9 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
   10. **Fixed, needs Edoardo's run** (focus can't change off screen): with Quick Look up, the launcher closes when the
       keyboard goes anywhere but the launcher or the preview, also when the preview had it. What it was: with Quick
       Look open, the panel didn't close when another app took focus.
-  11. **Hotkey changes.**
-      - Moving a hotkey onto the other's key, or swapping them, fails as "taken by another app".
-      - A "taken" row stays after going back to the old key.
+  11. **Fixed:** `GlobalHotkeys` lets go of every hotkey that changed before registering, and one that didn't change
+      loses its problem; two tests cover it, on F18 and F19. What it was: moving a hotkey onto the other's key, or
+      swapping them, failed as "taken by another app", and a "taken" row stayed after going back to the old key.
   12. An image clip whose PNG is gone empties the clipboard on paste, with no notification.
   13. Open With… applies its app list even after the panel closed, so the next ⌘P opens on it.
   14. Opening Pith.app again does nothing. A launcher hotkey that never fires (a system shortcut wins) leaves no way
