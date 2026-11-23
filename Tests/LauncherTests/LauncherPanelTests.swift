@@ -251,8 +251,10 @@ struct LauncherPanelTests {
 
     @Test func commandsAreSearchable() async {
         let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))
+        panel.launcher.version = "0.3.0"
         await type("quit", in: panel)
         #expect(panel.launcher.rows.first == .item(Item(command: .quit)))
+        #expect(panel.launcher.stage.content.kind == "Pith 0.3.0", "the version, for whoever tries a build")
     }
 
     @Test func cOrClipboardPutsClipboardHistoryFirstAndReturnOpensIt() async {

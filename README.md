@@ -123,10 +123,14 @@ password), so the access you give survives reinstalls.
 
 ### Sending it to someone
 
-`make package` zips the release build into `.build/Pith-<version>-<commit>.zip`, signed with the local certificate.
-It isn't notarized, so the first time they open each build macOS blocks it, and they press Open Anyway in System
+`make package` zips the release build into `.build/Pith-<version>.zip`, signed with the local certificate, and tags
+the commit `v<version>`. Versions are 0.\<milestone\>.\<patch\>: raise the one in `Support/Info.plist` before a new
+build goes out, and commit first. The Quit Pith tile shows the version, so whoever tries it can say which build they
+have.
+
+Pith isn't notarized, so the first time they open each build macOS blocks it, and they press Open Anyway in System
 Settings, Privacy & Security. Their Mac needs macOS 26 and Apple Silicon too. Each build you send keeps the same
-signature, so the Accessibility access they gave carries over.
+signature, so the Accessibility access they gave, their settings and their history carry over.
 
 ## Configuration
 

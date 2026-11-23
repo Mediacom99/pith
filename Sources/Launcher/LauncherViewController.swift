@@ -101,6 +101,8 @@ final class LauncherViewController: NSViewController {
     }
     /// The clipboard's hotkey as menus show it (`⇧⌘V`), for the Clipboard History command's tile.
     var clipboardHotkey: String?
+    /// Pith's version, on the Quit Pith tile, so whoever tries a build can say which one it is (decision 47).
+    var version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
     /// ⌘ plus these run a ⌘K list's actions, the first to the seventh: the top row under the left hand (decision 43).
     static let shortcutLetters = ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"]
     /// Whether a copied file is still there, and its size, read on a worker. Snapshots fix them.
@@ -706,7 +708,7 @@ final class LauncherViewController: NSViewController {
         case .command(let command):
             return StageView.Content(
                 icon: icons.symbol(Symbols.command(command), size: .tile), name: item.name, place: "Pith command",
-                primary: "Run")
+                kind: command == .quit ? version.map { "Pith \($0)" } ?? "" : "", primary: "Run")
         }
     }
 

@@ -11,9 +11,9 @@ PROCESS  := $(APP_NAME).app/Contents/MacOS/$(APP_NAME)
 # keeps macOS's permissions (Accessibility, for paste) across reinstalls; an ad hoc one changes with every build.
 CERTIFICATE := Pith Local Signing
 SIGN_AS  = $(shell security find-certificate -c "$(CERTIFICATE)" >/dev/null 2>&1 && echo "$(CERTIFICATE)" || echo -)
-# What `make package` writes: the version from Info.plist and the commit it was built from.
+# The version in Info.plist, 0.<milestone>.<patch> (decision 47): `make package` names the zip and the tag after it.
 VERSION  = $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Support/Info.plist)
-PACKAGE  = .build/$(APP_NAME)-$(VERSION)-$(shell git rev-parse --short HEAD).zip
+PACKAGE  = .build/$(APP_NAME)-$(VERSION).zip
 
 .DEFAULT_GOAL := help
 .PHONY: help build app package certificate run install uninstall stop logs stats test bench snapshots lint format clean
@@ -28,14 +28,21 @@ app: build ## Assemble .build/Pith.app and sign it (with the local certificate, 
 	rm -rf $(APP)
 	mkdir -p $(APP)/Contents/MacOS
 	cp Support/Info.plist $(APP)/Contents/Info.plist
+	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $$(date +%Y%m%d%H%M)" $(APP)/Contents/Info.plist
 	cp .build/$(CONFIG)/$(APP_NAME) $(BINARY)
 	codesign --force --sign "$(SIGN_AS)" $(APP)
 
-package: app ## Zip the app to send to someone: signed with the local certificate, not notarized
+# A build that goes out comes from a commit, tagged v<version>; a version already tagged elsewhere has to be raised.
+package: ## Zip the app to send to someone and tag it v<version>: signed with the local certificate, not notarized
 	@[ "$(SIGN_AS)" != "-" ] || { echo "Run make certificate first: an ad hoc signature loses their permissions at every update"; exit 1; }
+	@[ -z "$$(git status --porcelain)" ] || { echo "Commit first: the build is tagged v$(VERSION)"; exit 1; }
+	@tagged=$$(git rev-parse -q --verify "refs/tags/v$(VERSION)^{commit}"); \
+	[ -z "$$tagged" ] || [ "$$tagged" = "$$(git rev-parse HEAD)" ] || { echo "v$(VERSION) is an earlier build: raise the version in Support/Info.plist"; exit 1; }
+	$(MAKE) app
 	rm -f $(PACKAGE)
 	ditto -c -k --keepParent $(APP) $(PACKAGE)
-	@echo "$(PACKAGE)"
+	@git rev-parse -q --verify "refs/tags/v$(VERSION)" > /dev/null || git tag "v$(VERSION)"
+	@echo "$(PACKAGE), tagged v$(VERSION)"
 
 certificate: ## Once: create the self-signed certificate that keeps Pith's permissions across reinstalls (asks for your password)
 	@if security find-certificate -c "$(CERTIFICATE)" >/dev/null 2>&1; then echo "$(CERTIFICATE) is already in the keychain"; exit 0; fi; \
