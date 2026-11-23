@@ -162,7 +162,7 @@ launch: the first time the panel closes, it starts and checks for an update. If 
 it's read on a worker and a notification says how it went. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
 the launcher itself. The new `SearchIndex` goes to the view controller, which has `IconStore` render the icons it
 doesn't have yet. FSEvents streams trigger a rescan when the app folders change (unless the change is inside a bundle)
-and a reload when the config's folder changes. The newest rescan or reload always wins. The file index's first scan
+and a reload when config.toml changes (its target too, when it's a symlink; not an editor's swap file beside it). The newest rescan or reload always wins. The file index's first scan
 leaves out the folders whose privacy prompt isn't answered yet, each read on a worker of its own, and is rebuilt as
 each is allowed (decision 60).
 

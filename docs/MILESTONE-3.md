@@ -462,8 +462,10 @@ real folder prompts (4) on a first install.
     34. **Fixed:** a hotkey that's an editing key is a problem and stays as it was; a test covers it. What it was:
         `clipboard = "cmd+v"` was accepted and took ⌘V from every app, Pith's own paste included.
     35. A ⏎ or ⎋ given back to `open` or `back` isn't marked taken, so another key setting can list it silently.
-    36. A config.toml that's a symlink (stow, dotfiles managers) doesn't reload when its target is saved.
-    37. Any file written in its folder reloads it, vim's swap file included (harmless, some wakeups).
+    36. **Fixed:** the target's folder is watched too, again when the symlink points elsewhere; a test covers it. What
+        it was: a config.toml that's a symlink (stow, dotfiles managers) didn't reload when its target was saved.
+    37. **Confirmed and fixed:** only events for config.toml itself (or its target) reload it; the same test writes
+        a swap file. What it was: any file written in its folder reloaded it, vim's swap file included.
     38. FEATURES §8's example is out of date: `folders` and `ignore`, and `[calculator]`, an unknown setting today.
   - **Install:**
     39. The Terminal line stops Pith with a signal. If an update was waiting, Sparkle's installer may then put that
