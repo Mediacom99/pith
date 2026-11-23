@@ -1,4 +1,5 @@
 import AppKit
+import Quartz
 
 /// Panel geometry. Visual decisions, recorded in docs/ARCHITECTURE.md (decision 29).
 enum Layout {
@@ -60,6 +61,14 @@ final class LauncherPanel: NSPanel {
         contentViewController = launcher
         setContentSize(NSSize(width: Layout.width, height: Layout.barHeight))
         displayIfNeeded()
+        // The Quick Look preview losing the keyboard to another app closes the launcher too, as the launcher losing it
+        // does (`resignKey`).
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didResignKeyNotification, object: nil, queue: .main
+        ) { [weak self] notification in
+            guard notification.object is QLPreviewPanel else { return }
+            MainActor.assumeIsolated { self?.dismissUnlessFocused() }
+        }
     }
 
     @available(*, unavailable)
@@ -160,8 +169,21 @@ final class LauncherPanel: NSPanel {
     /// Clicking elsewhere, or opening an app, closes the launcher; clicking into its Quick Look preview doesn't.
     override func resignKey() {
         super.resignKey()
-        if launcher.isPreviewing { return }
-        dismiss()
+        if launcher.isPreviewing {
+            dismissUnlessFocused()
+        } else {
+            dismiss()
+        }
+    }
+
+    /// With Quick Look up, the keyboard can move between the launcher and the preview; anywhere else, both close. Asked
+    /// once the window taking the keyboard has it.
+    private func dismissUnlessFocused() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, isVisible, !isKeyWindow else { return }
+            if launcher.isPreviewing, QLPreviewPanel.shared()?.isKeyWindow == true { return }
+            dismiss()
+        }
     }
 
     /// The panel's keys (`[keys]`, decision 55) come before the field editor and the editing keys, unless an input

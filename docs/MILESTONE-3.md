@@ -381,7 +381,9 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
        Finder copy keeps the icon.
      - Every image type is read, so a 5K screenshot also renders a TIFF of about 59 MB, which is then dropped.
      - Memory spikes, and the 2 GB fills sooner. This needs measuring.
-  10. With Quick Look open, the panel doesn't close when another app takes focus.
+  10. **Fixed, needs Edoardo's run** (focus can't change off screen): with Quick Look up, the launcher closes when the
+      keyboard goes anywhere but the launcher or the preview, also when the preview had it. What it was: with Quick
+      Look open, the panel didn't close when another app took focus.
   11. **Hotkey changes.**
       - Moving a hotkey onto the other's key, or swapping them, fails as "taken by another app".
       - A "taken" row stays after going back to the old key.
