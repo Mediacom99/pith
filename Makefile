@@ -57,8 +57,8 @@ app: build ## Assemble .build/Pith.app and sign it (with the local certificate, 
 	codesign --force --sign "$(SIGN_AS)" $(APP)
 
 # The icon's source is Support/AppIcon.svg (decision 54). Chrome draws it at 1024 px on a transparent canvas; sips and
-# iconutil make the sizes macOS wants, and actool compiles the same sizes into Assets.car: macOS 26 draws an app's icon
-# from its asset catalog in places such as notifications, and shows a blank square without one. The installer's
+# iconutil make the sizes macOS wants, and actool compiles the same sizes into Assets.car, the asset catalog macOS 26
+# apps name their icon in (CFBundleIconName). The installer's
 # background (decision 56) is drawn at 1x and 2x. All are committed, so building doesn't need Chrome.
 CHROME := /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 icon: ## Redraw Support/AppIcon.icns and the installer's background from their SVGs (needs Google Chrome)

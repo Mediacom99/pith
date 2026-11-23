@@ -311,5 +311,10 @@ release with them, for Edoardo to install as a new user would.
   (so nothing is quarantined), mounts it hidden, refuses a Pith not signed with the local certificate, replaces and
   quits a copy already there, and opens it from /Applications (~/Applications if that isn't writable). Tested into a
   scratch folder: installed 0.3.5 with no quarantine flag; a wrong certificate installs nothing.
+- **The notification icon:** Pith's banners show a blank square on Edoardo's Mac. macOS draws Pith's icon correctly
+  (`NSWorkspace`, from `/Applications/Pith.app`), its LaunchServices record is the one copy in `/Applications`, and
+  0.3.6 added an asset catalog; restarting Notification Center and `usernoted` changed nothing. The notification
+  system's record of Pith dates from 2026-11-22, before Pith had an icon. A throwaway app with a new bundle id and
+  the same icon tells whether a first install gets the icon.
 - **Still open** (FEATURES §11): asking each permission only when its feature first needs it. A Homebrew cask
   wouldn't avoid the dialog: Homebrew marks what it installs as downloaded too.
