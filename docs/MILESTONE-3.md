@@ -332,7 +332,9 @@ release with them, for Edoardo to install as a new user would.
 
 ## 12. Bug check before friends
 
-Status: **in progress**. The check is done; the fixes are next, one at a time with Edoardo, most severe first.
+Status: **in progress**. The check is done, and 1–17 are fixed and published in 0.3.7 (2026-11-23): checked live with
+the Terminal line into a scratch folder (0.3.7, signed, the folder prompts' text in). The low ones are next. Edoardo's
+run: Check for Updates to 0.3.7, then 10 and 14, and the real folder prompts (4) on a first install.
 - **How it was checked:**
   - Read every source file, the install script, the Makefile and the landing page.
   - `make lint test` (197 tests), `make bench`, `make snapshots` and `make page` pass. A keystroke takes 2.2 ms to
