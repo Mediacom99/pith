@@ -51,6 +51,19 @@ struct ClipboardStoreTests {
         #expect(try await store.items(of: clip.id) == rich.items)
     }
 
+    /// A clip with nothing left to put back fails, rather than empty the clipboard on paste.
+    @Test func aClipWithNothingToPutBackFails() async throws {
+        let folder = try TemporaryDirectory()
+        let store = ClipboardStore(folder: folder.url)
+        let image = try await store.add(
+            ClipContent(kind: .image, text: "", items: [], image: try flatPNG(width: 30, height: 20)), from: nil,
+            at: start)
+        #expect(try await store.items(of: image.id).count == 1)
+        try FileManager.default.removeItem(at: store.imageFile(of: image.id))
+        await #expect(throws: ClipboardStore.Failure.self) { try await store.items(of: image.id) }
+        await #expect(throws: ClipboardStore.Failure.self) { try await store.items(of: 9_999) }
+    }
+
     @Test func imagesAreFilesWithThumbnailsAtTheirExactSizes() async throws {
         let folder = try TemporaryDirectory()
         let store = ClipboardStore(folder: folder.url)
@@ -115,7 +128,9 @@ struct ClipboardStoreTests {
         try await store.delete(clip.id)
         #expect(!files.contains { FileManager.default.fileExists(atPath: $0.path) })
         #expect(try await store.load().isEmpty)
-        #expect(try await store.items(of: clip.id).isEmpty)
+        await #expect(throws: ClipboardStore.Failure.self, "nothing left to paste") {
+            try await store.items(of: clip.id)
+        }
     }
 
     @Test func clearingKeepsPinnedClips() async throws {

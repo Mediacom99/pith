@@ -387,7 +387,9 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
   11. **Fixed:** `GlobalHotkeys` lets go of every hotkey that changed before registering, and one that didn't change
       loses its problem; two tests cover it, on F18 and F19. What it was: moving a hotkey onto the other's key, or
       swapping them, failed as "taken by another app", and a "taken" row stayed after going back to the old key.
-  12. An image clip whose PNG is gone empties the clipboard on paste, with no notification.
+  12. **Fixed:** a clip with nothing left to put back (an image clip whose file is gone, a clip deleted meanwhile)
+      fails, so a paste posts "Couldn't paste the clip" and leaves the clipboard as it is; a test covers it. What it
+      was: such a paste emptied the clipboard, with no notification.
   13. Open With… applies its app list even after the panel closed, so the next ⌘P opens on it.
   14. Opening Pith.app again does nothing. A launcher hotkey that never fires (a system shortcut wins) leaves no way
       in.

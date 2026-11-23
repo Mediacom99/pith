@@ -70,9 +70,14 @@ public final class ClipboardStore: @unchecked Sendable {
     }
 
     /// What a paste of clip `id` puts back on the pasteboard: each item's representations, in their order. An image
-    /// comes first in the first item, as PNG.
+    /// comes first in the first item, as PNG. Fails when nothing of the clip is left to put back, or an image clip's
+    /// image file is gone, so a paste never empties the clipboard.
     public func items(of id: Int64) async throws(Failure) -> [[Representation]] {
         try await run { () throws(Failure) in
+            let clip = try self.database().prepare("SELECT kind FROM clip WHERE id = ?")
+            try clip.bind([.integer(id)])
+            guard try clip.step() else { throw Failure(description: "it's no longer in the history") }
+            let isImage = clip.text(0) == Clip.Kind.image.rawValue
             let statement = try self.database().prepare(
                 "SELECT item, type, data FROM representation WHERE clip = ? ORDER BY item, position")
             try statement.bind([.integer(id)])
@@ -85,7 +90,10 @@ public final class ClipboardStore: @unchecked Sendable {
             if let image = try? Data(contentsOf: self.imageFile(of: id)) {
                 if items.isEmpty { items.append([]) }
                 items[0].insert(Representation(type: "public.png", data: image), at: 0)
+            } else if isImage {
+                throw Failure(description: "its image file is gone")
             }
+            guard !items.isEmpty else { throw Failure(description: "nothing of it is left to paste") }
             return items
         }
     }
