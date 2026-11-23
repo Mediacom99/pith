@@ -76,6 +76,7 @@ Sources/
     SQLiteDatabase.swift   a thin wrapper over the system SQLite: open, prepare, bind, step, transactions
     ImageThumbnails.swift  a copied image's row and preview thumbnails, decoded by ImageIO at their exact pixel sizes
     ClipReading.swift      a copy's pasteboard items → a clip: the types read, markers skipped, kind, text, PNG
+    ClipboardIndex.swift   the clipboard history in memory, newest first: word search, pins first, parallel when long
     AppScanner.swift       walks the app folders (+ Finder) → [Item] with resolved-path ids
     DirectoryWatcher.swift FSEvents → folders or per-file events with flags, with source-level exclusions
     Config.swift           config.toml settings, defaults, problems with line numbers, the commented template
@@ -99,6 +100,7 @@ Sources/
     Palette.swift          the few colors the system doesn't have: quiet gray, fills, edge, red and orange
     Notifier.swift         notifications for a finished Zip and failed actions, reveal on click
     ClipboardRecorder.swift  the pasteboard's change count on a timer; each new copy read, classified and stored
+    ClipboardHistory.swift the ClipboardIndex, loaded at launch and updated by each recorded copy
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement), copied in by `make app`
 ```
 
@@ -111,8 +113,8 @@ Files the app keeps:
 | `~/Library/Application Support/pith/clipboard/` | The clipboard history: `history.sqlite` (clips, their text and what a paste puts back) and `images/` (each image and its two thumbnails). 2 GB and 30 days, pins kept | After each copy, on the store's serial queue |
 
 **Startup.** `AppDelegate` builds and draws the panel, loads the history, then the config, and registers the
-configured hotkey. The clipboard history is pruned to its limits, and the recorder starts watching from
-what's on the clipboard now. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
+configured hotkey. The clipboard history is pruned to its limits and loaded (its index built on a
+worker); only then does the recorder start watching, from what's on the clipboard now. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
 the launcher itself. The new `SearchIndex` goes to the view controller, which has `IconStore` render the icons it
 doesn't have yet. FSEvents streams trigger a rescan when the app folders change (unless the change is inside a bundle)
 and a reload when the config's folder changes. The newest rescan or reload always wins.
@@ -158,7 +160,7 @@ it to the front) or runs the command. Losing focus also hides the panel. Every h
 | Main | Events, the hotkey handler, NSWorkspace callbacks, the app search, merging results, table updates, applying results | File I/O, icon rendering, IPC, waiting on anything (the one exception: resolving a newly launched app's bundle path, once per process) |
 | Serial GCD queue `launcher.files` (`.userInitiated`) | Owns the file index: searches (spread over the cores with `concurrentPerform`), FSEvents patches (one `lstat` each), subtree rescans | Touching UI |
 | GCD worker (`runInBackground` or `global`) | Full file scans (`.utility`); the app scan and index build; config reading, parsing and app resolution; loading the history; opening files; Reveal, Copy, Trash, Zip (`ditto`, `.utility`); Open With… choices; login item registration | Touching UI or shared state |
-| GCD workers (`concurrentPerform`, one per core, `.userInitiated`) | Rendering missing icons in parallel, each into its own slot | Touching UI or shared state |
+| GCD workers (`concurrentPerform`, one per core, `.userInitiated`) | Rendering missing icons in parallel, each into its own slot; scanning the older half of a long clipboard history when the newest clips don't fill the list | Touching UI or shared state |
 | Serial GCD queue `launcher.history` (`.utility`) | Saving the history, in order; quitting waits for it | Touching UI or shared state |
 | Serial GCD queue `launcher.clipboard.watch` (`.utility`) | The clipboard timer: reads the change count, and on a change the copy's types and data | Touching UI |
 | Serial GCD queue `launcher.clipboard` (`.userInitiated`) | Owns the clipboard database and image files: stores, prunes, loads, reads for a paste | Touching UI |
@@ -184,6 +186,9 @@ At idle, one thing is scheduled: the clipboard's change-count check every 0.5 s,
 - Ranking: match score plus the history boost, then shorter name, then alphabetical. The boost is
   `min(48, 12 · log2(1 + frecency / 100))`: one open today is worth +12, a daily habit tops out at +48 (about three
   well-placed characters), so habits reorder close matches without burying a clearly better one.
+- The clipboard doesn't match fuzzily: each query word must appear in the clip as written, ignoring case and
+  accents, and results stay newest first, with pins first when typing (decision 33). Long texts would let a fuzzy
+  query match almost anything. `docs/MILESTONE-3.md` step 3 has the numbers.
 
 ### Icons
 

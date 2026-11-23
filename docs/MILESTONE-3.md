@@ -76,13 +76,39 @@ history can't be seen until step 4 shows it.
 
 ## 3. History in memory and search
 
-Status: **todo**.
-- `ClipboardIndex` (core library) holds the entries newest first, with search keys prepared at copy time: the text
-  lowercased and capped per item, the URLs and the file names.
-- Search is word by word, in any order, with the existing matcher. Pinned matches come first, then the rest newest
-  first (decision 33).
-- A text row shows the first line that matches the query.
-- `make bench`: under 5 ms per keystroke over 5,000 entries.
+Status: **done** (core library and the app's model; the panel shows it from step 4).
+- `ClipboardIndex` (core library) holds the clips newest first, each with a search key prepared when it arrives.
+  - A text, rich text or link is searched by its text.
+  - Files are searched by their names, not their folders.
+  - An image has no text to search.
+- **Matching:** every word of the query must appear in the clip as written, in any order, ignoring case and accents.
+  - This isn't the launcher's fuzzy matcher. In a 4,096-character text, the letters of almost any short query appear
+    in order somewhere, and scoring thousands of long texts per keystroke is too slow.
+  - Keys and queries are folded the same way, in one Foundation call per text, plus a fast path for ASCII.
+  - A 64-bit mask of the bytes present rejects most non-matches at once; `memmem` checks the rest.
+- **Order:** newest first. When you type, pinned matches come first (decision 33). A pin older than the first 100
+  matches is still found.
+- **Scanning:** the newest clips are scanned first, and most queries fill the list there. Otherwise the rest is split
+  over the cores, and the results are joined in order.
+- `ClipboardIndex.matchingLine` gives the first line that matches, for a text row (step 4).
+- **The app:** `ClipboardHistory` loads the history at launch and builds the index on a worker. The recorder starts
+  only after that, so no copy lands in between. Each recorded copy and each clip retention drops updates it.
+- **Speed** (`make bench`, release, 5,000 clips, limit 100):
+  - **A typical month** (70 % short, 25 % medium, 5 % at the 4,096-character cap):
+    - query as you type it: 0.01–0.04 ms per keystroke;
+    - a word that matches nothing, scanning everything: 1.1–1.5 ms;
+    - building the index: 27 ms on a worker.
+  - **Worst case** (every clip at the cap, 20 MB of text):
+    - typing: 0.05–0.34 ms;
+    - matching nothing: 2.4–2.5 ms (12.9 ms before the scan was split over the cores);
+    - building the index: 186 ms (680 ms with the launcher's per-character folding).
+- Covered by 6 tests:
+  - the empty query's order;
+  - pins first, even past the limit;
+  - any order, case and accents;
+  - files by name, images without text;
+  - inserting, re-copying, removing, pinning;
+  - the matching line.
 
 ## 4. Clipboard mode in the panel
 
