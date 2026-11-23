@@ -222,8 +222,9 @@ Status: **in review**. Built and tested; the commands and settings need Edoardo'
 
 ## 7. Updates
 
-Status: **in progress**. Built and tested (decision 48). 0.3.0 is published on `pith.edoardobertoli.xyz` and
-installed on Edoardo's Mac; what's left is watching a real update arrive (0.3.1).
+Status: **in review**. Built and tested (decisions 48, 49). 0.3.0 → 0.3.1 arrived on Edoardo's Mac on 2026-11-23:
+downloaded 11 s after the panel closed, and ⏎ to 0.3.1 running in under a second. The notifications come next: 0.3.1
+doesn't save the update it installs, so the first one shows going from 0.3.2 to a later version.
 - `Updater` wraps Sparkle 2.10.1, the one dependency:
   - Sparkle's schedule is off. Pith checks after the panel closes, at most once a day (an hour after a check that
     failed), and Sparkle starts only then, so nothing is read at launch and there's no timer.
@@ -232,6 +233,10 @@ installed on Edoardo's Mac; what's left is watching a real update arrive (0.3.1)
   - The launcher lists Update Pith above the recent items, not selected, and search finds it; ⏎ installs and
     relaunches. Otherwise Sparkle installs it when Pith quits.
   - Only a copy in an Applications folder updates, so `make run`'s build is never replaced.
+  - How it went is a notification (decision 49). The update that's ready is saved in Pith's defaults; the next launch
+    reads it on a worker and says "Pith updated to 0.3.1" if it runs that build, or "Couldn't update Pith to 0.3.1"
+    if Update Pith was chosen and it doesn't. A found update that fails to download, verify or install says so at
+    once and is dropped, for the next check to find again. A check that can't reach the site stays quiet.
 - **Make targets:**
   - `make app` embeds Sparkle's framework (2.9 MB, so the app is 4.9 MB) and signs it from the inside out with the
     app.
@@ -241,7 +246,8 @@ installed on Edoardo's Mac; what's left is watching a real update arrive (0.3.1)
     `pith.edoardobertoli.xyz` with `Pith-<version>.zip` and `Pith.zip`, the newest at a fixed address for a first
     install.
 - **Tests:** the update row (first, not selected, ⏎ restarts, hidden until ready), the schedule (daily, an hour after
-  a failure), and Info.plist keeping Sparkle's schedule off with downloads on. Snapshot: `update-ready`.
+  a failure), what the launch after an update reports, which errors are reported, and Info.plist keeping Sparkle's
+  schedule off with downloads on. Snapshot: `update-ready`.
 
 ## 8. Performance
 

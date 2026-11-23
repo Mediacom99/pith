@@ -90,6 +90,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { self?.updater.checkIfDue() }
         }
         updater.onReady = { [weak self] version in self?.panel?.launcher.readyUpdate = version }
+        updater.onResult = { [weak self] result in
+            switch result {
+            case .updated(let version): self?.notifier.updated(to: version)
+            case .failed(let version, let reason):
+                self?.notifier.failed("Couldn't update Pith to \(version)", item: nil, reason: reason)
+            }
+        }
+        updater.reportLastUpdate()
         checkAccessibility()
 
         configStore.onChange = { [weak self] previous in self?.apply(previous: previous) }

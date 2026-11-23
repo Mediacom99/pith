@@ -347,6 +347,29 @@ struct LauncherPanelTests {
         #expect(due == [true, false, true, false, true, false], "first chance, a day later, an hour after a failure")
     }
 
+    @Test func theLaunchAfterAnUpdateSaysHowItWent() {
+        var ready = PendingUpdate(build: "202611231214", version: "0.3.1")
+        #expect(ready.result(runningBuild: "202611231214", runningVersion: "0.3.1") == .updated(to: "0.3.1"))
+        #expect(
+            ready.result(runningBuild: "202611231210", runningVersion: "0.3.0") == nil,
+            "not installed on quit: the next check finds it again")
+        ready.requested = true
+        #expect(
+            ready.result(runningBuild: "202611231210", runningVersion: "0.3.0")
+                == .failed(to: "0.3.1", reason: "Pith is still 0.3.0, and tries again on its next check."))
+    }
+
+    @Test func onlyAFoundUpdateThatFailsIsReported() {
+        func sparkle(_ code: Int) -> NSError { NSError(domain: "SUSparkleErrorDomain", code: code) }
+        #expect(!Updater.isUpdateProblem(sparkle(1002)), "the feed couldn't be read: offline, DNS")
+        #expect(!Updater.isUpdateProblem(sparkle(1001)), "no update")
+        #expect(Updater.isUpdateProblem(sparkle(2001)), "its download")
+        #expect(Updater.isUpdateProblem(sparkle(3001)), "its signature")
+        #expect(Updater.isUpdateProblem(sparkle(4005)), "its install")
+        #expect(!Updater.isUpdateProblem(sparkle(4007)), "canceled")
+        #expect(!Updater.isUpdateProblem(NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet)))
+    }
+
     @Test func sparklesOwnScheduleIsOffAndUpdatesDownloadOnTheirOwn() throws {
         // The Info.plist the app is built with: Pith asks for checks itself, with no timer (decision 48).
         let file = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "../../Support/Info.plist")

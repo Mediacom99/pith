@@ -3,7 +3,7 @@ import LauncherCore
 import UserNotifications
 
 /// What happens after the panel has closed, as a macOS notification: a finished Zip (decision 21), a clip saved as a
-/// file (decision 39) and an action that failed (decision 32). Clicking one reveals its file in Finder. macOS asks for permission the first time; without
+/// file (decision 39), an action that failed (decision 32) and an update (decision 49). Clicking one reveals its file in Finder. macOS asks for permission the first time; without
 /// it, nothing is shown and failures are only logged.
 final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     private nonisolated static let pathKey = "path"
@@ -56,6 +56,16 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         content.title = "Saved to \(file.deletingLastPathComponent().lastPathComponent)"
         content.body = file.lastPathComponent
         content.userInfo = [Self.pathKey: file.path]
+        Task {
+            guard await Self.allowed() else { return }
+            await Self.post(content)
+        }
+    }
+
+    /// Pith restarted into an update (decision 49).
+    func updated(to version: String) {
+        let content = UNMutableNotificationContent()
+        content.title = "Pith updated to \(version)"
         Task {
             guard await Self.allowed() else { return }
             await Self.post(content)

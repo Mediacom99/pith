@@ -55,6 +55,7 @@ supersede an earlier one.
 | 46 | 2026-11-23 | Pith isn't notarized, and there's no paid Apple Developer Program: builds go out as zips signed with the local certificate (`make package`, decision 41). Whoever installs one presses Open Anyway in System Settings, Privacy & Security. | Edoardo doesn't want to pay €99 a year. The local certificate still keeps Accessibility access from one build to the next. | Edoardo |
 | 47 | 2026-11-23 | Versions are 0.\<milestone\>.\<patch\>, in `Support/Info.plist`; the build number is when it was built. `make package` tags the commit `v<version>`, and refuses uncommitted changes or a version already tagged on another commit. The Quit Pith tile shows "Pith 0.3.0". | A report from someone trying a build points to the exact code. | Edoardo |
 | 48 | 2026-11-23 | Pith updates itself with Sparkle, from `pith.edoardobertoli.xyz`: an update feed and the builds as static files on Cloudflare, put there by `make publish`. Sparkle's schedule is off; Pith checks after the panel closes, at most once a day. A found update downloads in the background, then the launcher lists Update Pith, whose ⏎ restarts into it; otherwise it installs when Pith quits. Only a copy in an Applications folder updates. The update check is the second network access, after currency rates, and sends nothing about the Mac. | Patches reach whoever tries Pith without a zip by hand and Open Anyway each time. Hotari already runs the same setup (not notarized, Edoardo's domain). Sparkle is the standard, and the code that decides whether a download is really ours is where a mature library beats our own. | Edoardo |
+| 49 | 2026-11-23 | An update says how it went, as a notification: "Pith updated to 0.3.1" once Pith runs the new build, and "Couldn't update Pith to 0.3.1" with the reason when a found update fails to download, pass its signature check or install. A check that can't reach the site (offline, DNS) stays quiet and is tried again an hour later. No progress bar. | The download is done before Update Pith is listed, and ⏎ to the new build running took under a second (0.3.0 → 0.3.1), so a bar would only flash; what was missing was knowing it worked. A failed check needs nothing from you, and offline it would fire every hour. | Edoardo |
 
 ## Principles
 
@@ -116,7 +117,8 @@ Sources/
     ClipboardPresentation.swift  a clip's words in its row and on the tile: titles, ages, sizes, notices
     ClipImages.swift       copied images' thumbnails as bitmaps, read on a worker, the newest ready ahead of time
     Paste.swift            a clip back on the pasteboard, ⌘V posted, Accessibility, the clip's ⌘K actions, save names
-    Updater.swift          Sparkle, checked after the panel closes at most once a day; a ready update's install
+    Updater.swift          Sparkle, checked after the panel closes at most once a day; a ready update's install,
+                           and how it went
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement, Sparkle's feed and key), copied in by `make app`
 Support/wrangler.toml      pith.edoardobertoli.xyz on Cloudflare, where `make publish` puts the feed and the builds
 ```
@@ -128,13 +130,14 @@ Files the app keeps:
 | `~/.config/pith/config.toml` | Settings (FEATURES §8) | Created with commented defaults on first launch; then only by you |
 | `~/Library/Application Support/pith/history.json` | What you opened and when (≤ 200 items × 10 times); deleted files are dropped | After every open or deletion, on a serial worker, atomically |
 | `~/Library/Application Support/pith/clipboard/` | The clipboard history: `history.sqlite` (clips, their text and what a paste puts back) and `images/` (each image and its two thumbnails), and `paused` while recording is paused (decision 44). `[clipboard]`'s limits, 2 GB and 30 days by default, pins kept | After each copy, on the store's serial queue |
-| `~/Library/Preferences/dev.edoardo.pith.plist`, `~/Library/Caches/dev.edoardo.pith/` | Sparkle's state (its last check) and a downloaded update until it's installed | By Sparkle, after a check (decision 48) |
+| `~/Library/Preferences/dev.edoardo.pith.plist`, `~/Library/Caches/dev.edoardo.pith/` | Sparkle's state (its last check) and a downloaded update until it's installed; the update that's ready (`PendingUpdate`), for the next launch to report | By Sparkle, after a check (decision 48); by Pith when an update is ready or Update Pith is chosen, and read once at the next launch (decision 49) |
 
 **Startup.** `AppDelegate` builds and draws the panel, loads the history, then the config, and registers the
 configured hotkey. The clipboard history is loaded (its index built on a worker) and pruned to `[clipboard]`'s
 limits once the config is read, so nothing is dropped by limits it doesn't set. A pause saved before the relaunch is
 applied, and only then does the recorder start watching, from what's on the clipboard now. Sparkle isn't started at
-launch: the first time the panel closes, it starts and checks for an update. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
+launch: the first time the panel closes, it starts and checks for an update. If an update was ready before this launch,
+it's read on a worker and a notification says how it went. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
 the launcher itself. The new `SearchIndex` goes to the view controller, which has `IconStore` render the icons it
 doesn't have yet. FSEvents streams trigger a rescan when the app folders change (unless the change is inside a bundle)
 and a reload when the config's folder changes. The newest rescan or reload always wins.
