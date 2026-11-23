@@ -222,9 +222,10 @@ Status: **in review**. Built and tested; the commands and settings need Edoardo'
 
 ## 7. Updates
 
-Status: **in review**. Built and tested (decisions 48–50). 0.3.0 → 0.3.1 arrived on Edoardo's Mac on 2026-11-23:
-downloaded 11 s after the panel closed, and ⏎ to 0.3.1 running in under a second. The notifications come next: 0.3.1
-doesn't save the update it installs, so the first one shows going from 0.3.2 to a later version.
+Status: **in review**. Built and tested (decisions 48–50). On Edoardo's Mac on 2026-11-23:
+- 0.3.0 → 0.3.1 downloaded 11 s after the panel closed, and ⏎ to 0.3.1 running took under a second.
+- 0.3.2 → 0.3.3: macOS presented "Pith updated to 0.3.3" 0.4 s after the restart (in the log; Edoardo didn't
+  catch the banner), and Check for Updates then said "Pith is up to date".
 - `Updater` wraps Sparkle 2.10.1, the one dependency:
   - Sparkle's schedule is off. Pith checks after the panel closes, at most once a day (an hour after a check that
     failed), and Sparkle starts only then, so nothing is read at launch and there's no timer.
