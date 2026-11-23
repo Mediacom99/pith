@@ -23,7 +23,7 @@ SITE     := .build/site
 SNAPSHOTS := recent search actions clipboard-text long-names
 
 .DEFAULT_GOAL := help
-.PHONY: help build app package publish site page update-key certificate run install uninstall stop logs stats test bench snapshots lint format clean
+.PHONY: help build app icon package publish site page update-key certificate run install uninstall stop logs stats test bench snapshots lint format clean
 
 help: ## List the targets
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z-]+:.*## / { printf "  make %-11s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -37,6 +37,8 @@ app: build ## Assemble .build/Pith.app and sign it (with the local certificate, 
 	rm -rf $(APP)
 	mkdir -p $(APP)/Contents/MacOS $(APP)/Contents/Frameworks
 	cp Support/Info.plist $(APP)/Contents/Info.plist
+	mkdir -p $(APP)/Contents/Resources
+	cp Support/AppIcon.icns $(APP)/Contents/Resources/AppIcon.icns
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $$(date +%Y%m%d%H%M)" $(APP)/Contents/Info.plist
 	cp .build/$(CONFIG)/$(APP_NAME) $(BINARY)
 	ditto .build/$(CONFIG)/Sparkle.framework $(APP)/Contents/Frameworks/Sparkle.framework
@@ -47,6 +49,22 @@ app: build ## Assemble .build/Pith.app and sign it (with the local certificate, 
 	codesign --force --sign "$(SIGN_AS)" $(SPARKLE)/Updater.app
 	codesign --force --sign "$(SIGN_AS)" $(APP)/Contents/Frameworks/Sparkle.framework
 	codesign --force --sign "$(SIGN_AS)" $(APP)
+
+# The icon's source is Support/AppIcon.svg (decision 54). Chrome draws it at 1024 px on a transparent canvas; sips and
+# iconutil make the sizes macOS wants. The .icns is committed, so building the app doesn't need Chrome.
+CHROME := /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+icon: ## Redraw Support/AppIcon.icns from Support/AppIcon.svg (needs Google Chrome)
+	@[ -x "$(CHROME)" ] || { echo "make icon draws the SVG with Google Chrome, which isn't installed"; exit 1; }
+	@work=$$(mktemp -d); trap 'rm -rf "$$work"' EXIT; \
+	"$(CHROME)" --headless=new --disable-gpu --hide-scrollbars --no-first-run --user-data-dir="$$work/chrome" \
+		--default-background-color=00000000 --window-size=1024,1024 --screenshot="$$work/1024.png" \
+		"file://$(CURDIR)/Support/AppIcon.svg" > /dev/null 2>&1 && \
+	mkdir "$$work/AppIcon.iconset" && \
+	for size in 16 32 128 256 512; do \
+		sips -z $$size $$size "$$work/1024.png" --out "$$work/AppIcon.iconset/icon_$${size}x$${size}.png" > /dev/null && \
+		sips -z $$((size * 2)) $$((size * 2)) "$$work/1024.png" --out "$$work/AppIcon.iconset/icon_$${size}x$${size}@2x.png" > /dev/null; \
+	done && \
+	iconutil -c icns "$$work/AppIcon.iconset" -o Support/AppIcon.icns && echo "Support/AppIcon.icns redrawn"
 
 # A build that goes out comes from a commit, tagged v<version>; a version already tagged elsewhere has to be raised.
 package: ## Zip the app to send to someone and tag it v<version>: signed with the local certificate, not notarized
@@ -85,6 +103,7 @@ site: page ## Put the landing page (site/) on pith.edoardobertoli.xyz, keeping t
 page: ## Assemble the landing page in .build/site, to open locally before make site
 	mkdir -p $(SITE)/snapshots
 	cp site/* $(SITE)/
+	cp Support/AppIcon.svg $(SITE)/icon.svg
 	for s in $(SNAPSHOTS); do cp docs/snapshots/$$s-light.png docs/snapshots/$$s-dark.png $(SITE)/snapshots/; done
 
 # Only the key's value changes in Info.plist: PlistBuddy would rewrite the whole file and drop its comments.

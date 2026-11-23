@@ -16,7 +16,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#ECECEC" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#141414" media="(prefers-color-scheme: dark)">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='13' fill='%231E1E1E'/%3E%3Crect x='4.5' y='4.5' width='55' height='55' rx='12.5' fill='none' stroke='%23ffffff' stroke-opacity='.14'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='-apple-system,Helvetica,Arial,sans-serif' font-size='34' font-weight='600' fill='%23EDEDED'%3EP%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
 :root {
   --ground: #ECECEC;
@@ -112,7 +112,7 @@ kbd.down {
 .bar.scrolled { border-bottom-color: var(--edge); }
 .bar .wrap { display: flex; align-items: center; gap: 28px; height: 60px; }
 .wordmark { font: 700 1.1875rem/1 var(--display); letter-spacing: -0.02em; text-decoration: none; display: inline-flex; align-items: center; gap: 9px; }
-.wordmark kbd { font-size: 0.72rem; min-width: 1.75rem; height: 1.75rem; }
+.wordmark img { width: 32px; height: 32px; margin: -2px -3px; }
 .bar nav { display: flex; gap: 24px; margin-right: auto; }
 .bar nav a { color: var(--quiet); text-decoration: none; font-size: 0.9375rem; }
 .bar nav a:hover { color: var(--label); }
@@ -380,7 +380,7 @@ footer a { color: var(--quiet); }
 <body>
 <header class="bar" id="top">
   <div class="wrap">
-    <a class="wordmark" href="#top" aria-label="Pith"><kbd aria-hidden="true">P</kbd>Pith</a>
+    <a class="wordmark" href="#top" aria-label="Pith"><img src="icon.svg" alt="">Pith</a>
     <nav aria-label="Sections">
       <a href="#keys">Keys</a>
       <a href="#launcher">Features</a>
@@ -669,7 +669,7 @@ pdf = <span class="s">"Preview"</span></code></pre>
 
 <footer>
   <div class="wrap">
-    <a class="wordmark" href="#top"><kbd aria-hidden="true">P</kbd>Pith</a>
+    <a class="wordmark" href="#top"><img src="icon.svg" alt="">Pith</a>
     <span>Made by <a href="https://edoardobertoli.xyz">Edoardo Bertoli</a></span>
     <span class="version" hidden></span>
     <span>© 2026</span>

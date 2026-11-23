@@ -60,6 +60,7 @@ supersede an earlier one.
 | 51 | 2026-11-23 | `pith.edoardobertoli.xyz` has a landing page, `site/index.html`, to send to friends or post. It follows the structure of Raycast's landing page (a short claim with Download, a keyboard of key caps with four reasons, alternating feature rows, a personal note, a closing call to action) with Pith's own words, its monochrome Stage look and the real panel snapshots, light and dark. It shows what ships, with the calculator as "coming next", and Edoardo's first-person "why" names Raycast once. The same Worker serves it with the update feed: `make publish` deploys it too, and `make site` deploys only the page. | One link that explains Pith and downloads it, instead of a zip and instructions in a chat. Raycast's page is the structure Edoardo knows; its look and words stay Raycast's. | Edoardo |
 | 52 | 2026-11-23 | Pith is free: no price, no paid tier, no account. The landing page says so under Download. | It's a launcher for people who need a launcher (README); nothing in it is held back for a paid tier. | Edoardo |
 | 53 | 2026-11-23 | The landing page has motion, in its keys only: they press and ease up, the hero plays a tour of ⌘P, "te", ⌘K and ⌘⇧V once (pausable, pausing off screen and on any input), the ⌘K and ⌘⇧V rows press their keys as they arrive, the config block retypes a value, and the drawn keyboard plays chords. The panel snapshots still change in one frame, and Reduce Motion plays nothing by itself. | Edoardo asked for animation. Putting it in the keys shows how Pith is driven, and keeping the panel instant keeps the one-frame promise. | Edoardo |
+| 54 | 2026-11-23 | Pith's app icon is a citrus cross-section in its monochrome: a gray peel, the white pith, ten gray segments with white membranes, on a graphite rounded square. Its source is `Support/AppIcon.svg`; `make icon` draws it into `Support/AppIcon.icns` (committed), which `make app` puts in the bundle. The site uses the same SVG as its favicon and beside the wordmark. | The name taken literally: the pith is the white layer that holds the fruit together. Edoardo picked it from four directions (a P key cap, ⌘P, the panel, the pith). A single image, not an Icon Composer file: there's no Xcode project. | Edoardo |
 
 ## Principles
 
@@ -126,6 +127,7 @@ Sources/
     Updater.swift          Sparkle, checked after the panel closes at most once a day; a ready update's install,
                            and how it went
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement, Sparkle's feed and key), copied in by `make app`
+Support/AppIcon.svg        the app icon's source (decision 54); `make icon` redraws AppIcon.icns from it
 Support/wrangler.toml      pith.edoardobertoli.xyz on Cloudflare, where `make publish` puts the feed and the builds
 site/index.html            the landing page (decision 51): one file, served with snapshots from docs/snapshots/
 ```

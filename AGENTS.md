@@ -90,6 +90,7 @@ Everything goes through the `Makefile`; `make` lists the targets. Add a target t
 - `docs/snapshots/`: the panel's states as PNGs, written by `make snapshots`.
 - `Support/Info.plist`: bundle metadata (bundle ID, `LSUIElement`, Sparkle's feed and key), copied into the `.app` by
   `make app`.
+- `Support/AppIcon.svg`: the app icon's source; `make icon` redraws the committed `Support/AppIcon.icns` from it.
 - `Support/wrangler.toml`: `pith.edoardobertoli.xyz` on Cloudflare, where `make publish` puts the update feed and the
   builds.
 - `site/`: the landing page on `pith.edoardobertoli.xyz` (decision 51). `make page` assembles it in `.build/site` with

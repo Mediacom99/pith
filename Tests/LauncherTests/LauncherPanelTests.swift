@@ -428,6 +428,11 @@ struct LauncherPanelTests {
         #expect(plist["SUEnableAutomaticChecks"] as? Bool == false)
         #expect(plist["SUAllowsAutomaticUpdates"] as? Bool == true, "else turning the schedule off stops downloads too")
         #expect(plist["SUAutomaticallyUpdate"] as? Bool == true)
+        // The bundle names its icon, and make app copies it from Support (decision 54).
+        #expect(plist["CFBundleIconFile"] as? String == "AppIcon")
+        #expect(
+            FileManager.default.fileExists(
+                atPath: file.deletingLastPathComponent().appending(path: "AppIcon.icns").path))
     }
 
     @Test func commandKListsActionsAndEscapeGoesBack() async {

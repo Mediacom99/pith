@@ -89,7 +89,7 @@ check and currency rates. Settings are a text file, not a settings window.
 
 ## Brand Commitments
 
-The name is Pith (decision 30): the essential part and nothing else. There is no app icon or logo yet. The app's copy today is
+The name is Pith (decision 30): the essential part and nothing else. The app icon is a citrus cross-section in Pith's monochrome: the white pith between the peel and the segments (decision 54). The site uses it as its favicon and beside the wordmark. The app's copy today is
 short and literal ("Config problem, line 3: …", "Filter actions", "Open in Preview").
 
 ## Evidence on Hand
@@ -97,7 +97,7 @@ short and literal ("Config problem, line 3: …", "Filter actions", "Open in Pre
 - `docs/snapshots/`: the panel's current states (search bar, recent, search, ⌘K actions, config problem), in light
   and dark.
 - `docs/ARCHITECTURE.md` (Measured): the latency, memory and idle numbers.
-- There are no users besides Edoardo yet, and no testimonials, website or app icon. Don't invent any.
+- There are no users besides Edoardo and a few friends yet, and no testimonials. Don't invent any. The website and the app icon exist (decisions 51, 54).
 
 ## Product Principles
 
