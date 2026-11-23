@@ -110,6 +110,11 @@ struct ClipboardPanelTests {
         #expect(panel.launcher.searchField.stringValue.isEmpty)
         #expect(titles(panel) == ["Acme"])
 
+        press("backspace", in: panel, held: true)
+        #expect(panel.launcher.mode == .clipboard, "a held ⌫ that emptied the field doesn't run on into the launcher")
+        press("down", in: panel, held: true)
+        #expect(panel.launcher.tableView.selectedRow == 0, "↓ held repeats; one clip, so it stays")
+
         press("backspace", in: panel)
         #expect(panel.launcher.mode == .launcher)
         #expect(panel.launcher.stage.frame.height == Layout.tileHeight)

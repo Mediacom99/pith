@@ -36,7 +36,7 @@ func type(_ text: String, in panel: LauncherPanel) async {
 /// Presses `key` ("down", "return", "cmd+k"), as the keyboard would: through the panel's keys (decision 55). True
 /// when the panel took it; false when it would go on to the search field.
 @discardableResult
-func press(_ key: String, in panel: LauncherPanel) -> Bool {
+func press(_ key: String, in panel: LauncherPanel, held: Bool = false) -> Bool {
     let shortcut = Shortcut(key)!
     var flags: NSEvent.ModifierFlags = []
     for (carbon, flag) in [(cmdKey, NSEvent.ModifierFlags.command), (shiftKey, .shift), (optionKey, .option)]
@@ -57,7 +57,7 @@ func press(_ key: String, in panel: LauncherPanel) -> Bool {
         }
     let event = NSEvent.keyEvent(
         with: .keyDown, location: .zero, modifierFlags: flags, timestamp: 0, windowNumber: panel.windowNumber,
-        context: nil, characters: characters, charactersIgnoringModifiers: characters, isARepeat: false,
+        context: nil, characters: characters, charactersIgnoringModifiers: characters, isARepeat: held,
         keyCode: UInt16(shortcut.keyCode))!
     return panel.handleKey(event)
 }
@@ -309,6 +309,8 @@ struct LauncherPanelTests {
         #expect(panel.launcher.stage.content.name == names(panel.launcher.rows)[1])
         let kept = panel.launcher.tableView(table, selectionIndexesForProposedSelection: IndexSet())
         #expect(kept == IndexSet(integer: 1))
+        press("up", in: panel, held: true)
+        #expect(table.selectedRow == 0, "↑ and ↓ repeat when held")
     }
 
     /// The keypad's Enter (and fn+Return) does what Return does.

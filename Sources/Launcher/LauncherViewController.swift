@@ -1471,13 +1471,17 @@ extension LauncherViewController {
             else { return nil }
             return shortcut
         }
+        // Held down, only up and down repeat: a held ⌫ mustn't run on into the launcher, Space flicker Quick Look, or ⏎
+        // confirm what its first press asked about.
+        let repeats = event.isARepeat
         if sublist != nil {
             for (position, shortcut) in keys.runActions.enumerated() where usable(shortcut) != nil {
-                if runAction(at: position) { return true }
+                if repeats || runAction(at: position) { return true }
             }
         }
         for key in Self.lookupOrder {
             guard let shortcut = keys[key].lazy.compactMap(usable).first else { continue }
+            if repeats, key != .up, key != .down { return true }
             return perform(key) || !shortcut.typesText
         }
         return false

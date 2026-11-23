@@ -433,8 +433,9 @@ real folder prompts (4) on a first install.
         from the start, markers checked. What it was: a password copied in the instant between the concealed check and
         the rich-text fallback's read could be recorded as text.
   - **The panel:**
-    24. Key repeat isn't ignored: holding ⌫ to clear a clipboard search overshoots into the launcher, and holding
-        Space flickers Quick Look.
+    24. **Fixed:** held down, only `up` and `down` repeat; every other panel key acts on its first press, so a held ⏎
+        can't confirm what it asked about either. Tests cover ⌫ and ↑. What it was: key repeat wasn't ignored, so
+        holding ⌫ to clear a clipboard search overshot into the launcher, and holding Space flickered Quick Look.
     25. **Fixed:** typing cancels a waiting second ⏎ whatever the rows do; a test covers it. What it was: typing that
         left the rows unchanged kept the confirmation armed (Clear Clipboard History ⏎, a space, ⏎ cleared).
     26. Update Pith is selected when the empty state is empty (a new user with no history), so ⏎ on an empty field
