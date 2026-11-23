@@ -297,34 +297,37 @@ public final class ClipboardStore: @unchecked Sendable {
         version.reset()
         switch schema {
         case 0:
-            // auto_vacuum only takes effect before the first table exists.
-            try database.execute(
-                """
-                PRAGMA auto_vacuum = INCREMENTAL;
-                CREATE TABLE clip (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    kind TEXT NOT NULL,
-                    copied REAL NOT NULL,
-                    source TEXT,
-                    pinned INTEGER NOT NULL,
-                    size INTEGER NOT NULL,
-                    hash BLOB NOT NULL UNIQUE,
-                    text TEXT NOT NULL,
-                    lines INTEGER NOT NULL,
-                    width INTEGER NOT NULL,
-                    height INTEGER NOT NULL
-                );
-                CREATE INDEX clip_copied ON clip (copied);
-                CREATE TABLE representation (
-                    clip INTEGER NOT NULL REFERENCES clip (id) ON DELETE CASCADE,
-                    item INTEGER NOT NULL,
-                    position INTEGER NOT NULL,
-                    type TEXT NOT NULL,
-                    data BLOB NOT NULL,
-                    PRIMARY KEY (clip, item, position)
-                ) WITHOUT ROWID;
-                PRAGMA user_version = 1;
-                """)
+            // auto_vacuum only takes effect before the first table exists. The tables and the version are written in
+            // one transaction, so a crash halfway leaves no tables behind to fail the next launch.
+            try database.execute("PRAGMA auto_vacuum = INCREMENTAL")
+            try database.transaction { () throws(Failure) in
+                try database.execute(
+                    """
+                    CREATE TABLE clip (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        kind TEXT NOT NULL,
+                        copied REAL NOT NULL,
+                        source TEXT,
+                        pinned INTEGER NOT NULL,
+                        size INTEGER NOT NULL,
+                        hash BLOB NOT NULL UNIQUE,
+                        text TEXT NOT NULL,
+                        lines INTEGER NOT NULL,
+                        width INTEGER NOT NULL,
+                        height INTEGER NOT NULL
+                    );
+                    CREATE INDEX clip_copied ON clip (copied);
+                    CREATE TABLE representation (
+                        clip INTEGER NOT NULL REFERENCES clip (id) ON DELETE CASCADE,
+                        item INTEGER NOT NULL,
+                        position INTEGER NOT NULL,
+                        type TEXT NOT NULL,
+                        data BLOB NOT NULL,
+                        PRIMARY KEY (clip, item, position)
+                    ) WITHOUT ROWID;
+                    PRAGMA user_version = 1;
+                    """)
+            }
         case 1: break
         case let other: throw Failure(description: "the clipboard history is from a newer Pith (version \(other))")
         }

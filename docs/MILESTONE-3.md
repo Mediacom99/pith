@@ -426,11 +426,12 @@ real folder prompts (4) on a first install.
     19. A copy of hundreds of files is cut at 4,096 characters: the title says "and ~50 more", Reveal selects only
         those, and the last path is cut.
     20. Pins over `max_size_gb` drop every new copy right after it's recorded.
-    21. The schema isn't created in a transaction, so a crash during the very first launch breaks the history for
-        good ("table already exists").
+    21. **Fixed:** the tables and the version are created in one transaction. What it was: a crash during the very
+        first launch broke the history for good ("table already exists").
     22. A copy recorded during Clear can come back as a row whose clip is gone (suspect: a narrow window).
-    23. A password copied in the instant between the concealed check and the rich-text fallback's read could be
-        recorded as text: the fallback reads the pasteboard again without checking that it's the same copy.
+    23. **Fixed:** a copy whose change count moved while it was read is dropped, and the next look reads the new copy
+        from the start, markers checked. What it was: a password copied in the instant between the concealed check and
+        the rich-text fallback's read could be recorded as text.
   - **The panel:**
     24. Key repeat isn't ignored: holding ⌫ to clear a clipboard search overshoots into the launcher, and holding
         Space flickers Quick Look.

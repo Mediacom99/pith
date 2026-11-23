@@ -176,6 +176,9 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
         {
             representations[position].append(Representation(type: type, data: data))
         }
+        // A copy made while this one was read (a password manager's, say) would mix into it, unchecked for markers:
+        // this one is dropped, and the next look reads the new copy from the start.
+        guard pasteboard.changeCount == change else { return nil }
         return ClipReading.content(of: representations).map { ($0, source, Date()) }
     }
 
