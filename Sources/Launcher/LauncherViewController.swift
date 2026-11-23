@@ -160,8 +160,10 @@ final class LauncherViewController: NSViewController {
     private(set) var mode = Mode.launcher
     /// Whether the panel shows more than the search bar.
     private var isExpanded = false
-    /// What `fileFacts` said, by path.
+    /// What `fileFacts` said, by path, and which of these were read since the clipboard last opened: a copied file
+    /// can be deleted or change size meanwhile.
     private var facts: [String: (exists: Bool, bytes: Int?)] = [:]
+    private var freshFacts: Set<String> = []
     private var factsLoading: Set<String> = []
     /// The app each link scheme opens in, once looked up, for "Open in Safari".
     private var linkApps: [String: (url: URL?, name: String?)] = [:]
@@ -287,7 +289,10 @@ final class LauncherViewController: NSViewController {
             self.mode = mode
             applyMode()
         }
-        if mode == .clipboard { onShowClipboard() }
+        if mode == .clipboard {
+            onShowClipboard()
+            freshFacts = []
+        }
         refresh()
     }
 
@@ -301,7 +306,10 @@ final class LauncherViewController: NSViewController {
         mode = new
         applyMode()
         setQuery("")
-        if new == .clipboard { onShowClipboard() }
+        if new == .clipboard {
+            onShowClipboard()
+            freshFacts = []
+        }
         refresh()
     }
 
@@ -1216,19 +1224,21 @@ extension LauncherViewController {
         }
     }
 
-    /// Whether a copied file is still there and its size, once read on a worker; the tile updates when it is.
+    /// Whether a copied file is still there and its size, read on a worker the first time the clipboard shows it
+    /// after opening; the last answer shows meanwhile, and the tile updates when the new one differs.
     private func fileFact(_ path: String) -> (exists: Bool, bytes: Int?)? {
-        if let fact = facts[path] { return fact }
-        if factsLoading.insert(path).inserted {
+        if !freshFacts.contains(path), factsLoading.insert(path).inserted {
             let read = fileFacts
             Task {
                 let fact = await runInBackground(qos: .userInitiated) { read(path) }
                 factsLoading.remove(path)
+                freshFacts.insert(path)
+                let changed = facts[path].map { $0.exists != fact.exists || $0.bytes != fact.bytes } ?? true
                 facts[path] = fact
-                updateStage()
+                if changed { updateStage() }
             }
         }
-        return nil
+        return facts[path]
     }
 
     /// What Clear Clipboard History's row says while it waits for its second ⏎.

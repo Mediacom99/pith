@@ -391,6 +391,25 @@ struct ClipboardPanelTests {
         for _ in 0..<row { press("down", in: panel) }
     }
 
+    /// A copied file's facts are read again each time the clipboard opens: one deleted since says so.
+    @Test func aCopiedFileDeletedSinceSaysSoNextTime() async throws {
+        let folder = try TemporaryDirectory()
+        let path = "/Users/me/Documents/Acme/Quarterly_Budget_Review.pdf"
+        let files = ClipContent(
+            kind: .files, text: path,
+            items: [[Representation(type: "public.file-url", data: URL(filePath: path).dataRepresentation)]])
+        let panel = try await clipboardPanel(folder.url, [(files, nil, 1)])
+        panel.launcher.fileFacts = { _ in (true, 2_143_000) }
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(await eventuallyTrue { panel.launcher.stage.content.kind.contains("MB") })
+        #expect(!panel.launcher.stage.content.place.hasPrefix("No longer in"))
+
+        panel.launcher.reset()
+        panel.launcher.fileFacts = { _ in (false, nil) }
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(await eventuallyTrue { panel.launcher.stage.content.place.hasPrefix("No longer in") })
+    }
+
     /// A copy whose notice comes in after Clear removed it isn't put back as a row whose clip is gone.
     @Test func aCopyClearedBeforeItsNoticeStaysGone() async throws {
         let folder = try TemporaryDirectory()

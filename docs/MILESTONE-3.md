@@ -449,7 +449,9 @@ real folder prompts (4) on a first install.
         left the rows unchanged kept the confirmation armed (Clear Clipboard History ⏎, a space, ⏎ cleared).
     26. Update Pith is selected when the empty state is empty (a new user with no history), so ⏎ on an empty field
         restarts into the update.
-    27. A copied file's facts (size, whether it's still there) are cached until relaunch.
+    27. **Confirmed and fixed:** a copied file's facts are read again the first time the clipboard shows it after
+        opening, the last answer showing meanwhile; a test covers a file deleted since. What it was: they were
+        cached until relaunch, so a deleted file never said "No longer in".
     28. **Fixed:** only ⏎ on a clip, meant to paste, asks for Accessibility; a test covers it. What it was: ⌘K → Copy
         to Clipboard, chosen on purpose, asked for it too.
   - **Files:**
