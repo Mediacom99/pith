@@ -395,11 +395,13 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
       the next ⌘P opened on it, and a second ⏎ added a second level.
   14. **Fixed, needs Edoardo's run:** opening Pith.app while it runs (Finder, Spotlight, `open`) opens the launcher.
       What it was: it did nothing, so a launcher hotkey that never fires (a system shortcut wins) left no way in.
-  15. **The file index:**
-      - Overlapping folders (`~` and `~/dev`) list files twice.
-      - A configured folder that's moved in, trashed, or on a drive mounted later is never rescanned, so its results
-        are missing or ghosts.
-      - Dropped FSEvents rescan everything, once per folder.
+  15. **Fixed:** a folder given twice is scanned once, and one inside another is scanned only as its own root. A
+      configured folder that's created, moved or removed, or dropped events at or above one, rebuild everything on a
+      worker, once per batch; dropped events under a folder re-read it. 3 tests cover it; a drive mounted later isn't
+      tested. What it was, in **the file index**:
+      - overlapping folders (`~` and `~/dev`) listed files twice, with ghosts after a deletion;
+      - a configured folder moved in, trashed, or on a drive mounted later was never rescanned;
+      - dropped FSEvents rescanned everything on the engine's queue, once per folder.
   16. **Keyboard layouts.** The defaults are fine on Italian, German and French.
       - Global hotkeys and the paste's ⌘V use US key positions. On Dvorak or Colemak, ⌘P and ⌘V land on other keys,
         and custom hotkeys do on QWERTZ and AZERTY too.

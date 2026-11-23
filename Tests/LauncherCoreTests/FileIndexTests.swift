@@ -125,6 +125,19 @@ struct FileScannerTests {
                 name: "Caches", path: home.url.path + "/Library/Caches"))
     }
 
+    /// Overlapping folders, or one given twice, index each file once.
+    @Test func overlappingFoldersIndexEachFileOnce() throws {
+        let home = try TemporaryDirectory()
+        try home.makeFile("dev/Acme/deploy.sh")
+        try home.makeFile("notes.md")
+        let dev = home.url.path + "/dev"
+        var index = FileIndex()
+        FileScanner.scan(
+            FileRules(roots: [home.url.path, dev, dev], ignore: IgnoreRules([]), maxDepth: 6), into: &index)
+        #expect(index.count == 3, "Acme, deploy.sh and notes.md; dev is a root")
+        #expect(index.search("deploy", limit: 5).map(\.path) == [dev + "/Acme/deploy.sh"])
+    }
+
     /// The protected folders a scan would read, and the rules without them (decision 60).
     @Test func protectedFoldersAreLeftOutUntilAllowed() throws {
         let home = "/Users/acme"

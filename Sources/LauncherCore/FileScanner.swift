@@ -19,12 +19,17 @@ public struct FileRules: Sendable, Equatable {
     /// `ignore` inside each root, in `roots`' order: without the path rules that hold the root.
     let ignoreInRoots: [IgnoreRules]
 
+    /// A folder given twice is scanned once, and one inside another root is scanned only as a root of its own, so each
+    /// file is in the index once.
     public init(roots: [String], ignore: IgnoreRules, maxDepth: Int, protected: [String] = []) {
+        let roots = roots.reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
         self.roots = roots
         self.ignore = ignore
         self.maxDepth = maxDepth
         self.protected = protected
-        ignoreInRoots = roots.map { ignore.inside($0) }
+        ignoreInRoots = roots.map { root in
+            ignore.inside(root).adding(roots.filter { $0 != root && IgnoreRules.holds(root, $0) })
+        }
     }
 
     /// The protected folders a scan would read: in a root and not ignored there, or holding a root.

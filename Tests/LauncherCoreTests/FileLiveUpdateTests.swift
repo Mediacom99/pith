@@ -44,6 +44,36 @@ private func paths(_ engine: FileSearchEngine, _ query: String) async -> [String
         #expect(await eventually { await paths(engine, "inner-notes") == [root + "/Bundle/inner-notes.md"] })
     }
 
+    /// A folder inside another one that's also configured: a file deleted there leaves no copy behind.
+    @Test func aFileDeletedInANestedFolderIsGone() async throws {
+        let home = try TemporaryDirectory()
+        try home.makeFile("dev/old-script.sh")
+        let root = home.canonicalPath
+        let engine = FileSearchEngine()
+        await engine.rebuild(FileRules(roots: [root, root + "/dev"], ignore: IgnoreRules([]), maxDepth: 6))
+        #expect(await paths(engine, "old-script") == [root + "/dev/old-script.sh"])
+
+        try FileManager.default.removeItem(at: home.url.appending(path: "dev/old-script.sh"))
+        #expect(await eventually { await paths(engine, "old-script").isEmpty })
+    }
+
+    /// A configured folder moved away loses its files, and moved back gets them again.
+    @Test func aConfiguredFolderMovedAwayAndBack() async throws {
+        let home = try TemporaryDirectory()
+        let elsewhere = try TemporaryDirectory()
+        try home.makeFile("Projects/roadmap-draft.txt")
+        let projects = home.canonicalPath + "/Projects"
+        let engine = FileSearchEngine()
+        await engine.rebuild(FileRules(roots: [projects], ignore: IgnoreRules([]), maxDepth: 6))
+        #expect(await paths(engine, "roadmap-draft") == [projects + "/roadmap-draft.txt"])
+
+        let away = elsewhere.url.appending(path: "Projects")
+        try FileManager.default.moveItem(at: home.url.appending(path: "Projects"), to: away)
+        #expect(await eventually { await paths(engine, "roadmap-draft").isEmpty })
+        try FileManager.default.moveItem(at: away, to: home.url.appending(path: "Projects"))
+        #expect(await eventually { await paths(engine, "roadmap-draft") == [projects + "/roadmap-draft.txt"] })
+    }
+
     /// A folder asked for inside an ignored one (Dropbox in `~/Library/CloudStorage`) gets its live updates too.
     @Test func picksUpNewFilesInARootInsideAnIgnoredFolder() async throws {
         let home = try TemporaryDirectory()

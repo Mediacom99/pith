@@ -177,52 +177,49 @@ public final class FileSearchEngine: @unchecked Sendable {
     }
 
     /// Patches the index from FSEvents. Paths outside it are skipped without touching the disk; the rest are checked
-    /// with one `lstat`, which makes repeated or out-of-order events harmless.
+    /// with one `lstat`, which makes repeated or out-of-order events harmless. A configured folder that's created,
+    /// moved or removed, or events dropped at or above one, scans everything again on a worker, once per batch.
     private func apply(_ events: [DirectoryWatcher.Event]) {
         guard let rules, !events.isEmpty else { return }
         var removed: [String] = []
+        var rebuildAll = false
         for event in events {
             var path = event.path
             while path.count > 1, path.hasSuffix("/") { path.removeLast() }
-
-            if event.mustRescan {
-                rescan(path, rules: rules)
+            if rules.roots.contains(where: { IgnoreRules.holds(path, $0) }) {
+                if event.mustRescan || event.isAddedRemovedOrMoved { rebuildAll = true }
                 continue
             }
-            let known = index.contains(path)
-            guard known || index.entry(at: Self.parent(of: path)) != nil else { continue }
-
-            var info = stat()
-            guard lstat(path, &info) == 0, !rules.ignore(at: path).ignores(name: Self.name(of: path), path: path) else {
-                if known {
-                    index.remove(path)
-                    removed.append(path)
-                }
-                continue
-            }
-            let isFolder = info.st_mode & S_IFMT == S_IFDIR && !FileScanner.isPackage(path)
-            if known, index.isFolder(path) == isFolder { continue }
-            if known { index.remove(path) }  // a file replaced by a folder, or the other way around
-            // A folder that appears (created, moved in, restored) is indexed with what's in it.
-            if index.insert(path, isFolder: isFolder, maxDepth: rules.maxDepth), isFolder {
+            if let gone = update(path, rules: rules) { removed.append(gone) }
+            // Events dropped under a folder: what's in it is read again.
+            if event.mustRescan, index.isFolder(path) == true {
+                index.removeDescendants(of: path)
                 FileScanner.scan(folder: path, rules: rules, into: &index)
             }
         }
         if !removed.isEmpty { onRemoved(removed) }
+        if rebuildAll, let requested { Task { await rebuild(requested) } }
     }
 
-    /// Events under `path` were dropped: index it again from disk.
-    private func rescan(_ path: String, rules: FileRules) {
-        if rules.roots.contains(where: { $0 == path || $0.hasPrefix(path + "/") }) {
-            var fresh = FileIndex()
-            FileScanner.scan(rules, into: &fresh)
-            fresh.trim()
-            index = fresh
-            index.setBoosts(boosts)
-        } else if index.isFolder(path) == true {
-            index.removeDescendants(of: path)
+    /// Brings `path` in line with the disk: added, removed, or a file that became a folder. Returns it if it was
+    /// removed.
+    private func update(_ path: String, rules: FileRules) -> String? {
+        let known = index.contains(path)
+        guard known || index.entry(at: Self.parent(of: path)) != nil else { return nil }
+        var info = stat()
+        guard lstat(path, &info) == 0, !rules.ignore(at: path).ignores(name: Self.name(of: path), path: path) else {
+            guard known else { return nil }
+            index.remove(path)
+            return path
+        }
+        let isFolder = info.st_mode & S_IFMT == S_IFDIR && !FileScanner.isPackage(path)
+        if known, index.isFolder(path) == isFolder { return nil }
+        if known { index.remove(path) }  // a file replaced by a folder, or the other way around
+        // A folder that appears (created, moved in, restored) is indexed with what's in it.
+        if index.insert(path, isFolder: isFolder, maxDepth: rules.maxDepth), isFolder {
             FileScanner.scan(folder: path, rules: rules, into: &index)
         }
+        return nil
     }
 
     private static func parent(of path: String) -> String {
