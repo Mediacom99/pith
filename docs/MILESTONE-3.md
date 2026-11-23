@@ -188,12 +188,18 @@ snapshots: `clipboard-actions`, `clipboard-delete-pinned`, `clipboard-accessibil
 
 ## 6. Commands and config
 
-Status: **todo**.
+Status: **todo**. `[hotkeys] clipboard` and the Clipboard History command already landed in step 4.
 - **Launcher commands:**
-  - Pause Clipboard Recording and Resume Clipboard Recording;
-  - Clear Clipboard History, after a second ⏎; pinned items stay.
-- **Config:** `[hotkeys] clipboard`, `[clipboard] max_size_gb` and `max_age_days`, and `[open_links]`. Each is
-  parsed, documented in the template, tested, and reported as a problem row when it's wrong.
+  - Pause Clipboard Recording and Resume Clipboard Recording. The panel already shows the `.paused` notice (its row
+    and tile are in `ClipboardNotice`); what's missing is a paused flag in `ClipboardRecorder`, which keeps reading
+    the change count but not the copy, so resuming doesn't record what was copied meanwhile. `AppDelegate`
+    `publishClipboardNotices()` adds `.paused`, and `resolveNotice(.paused)` resumes.
+  - Clear Clipboard History, after a second ⏎ as Force Quit does (`confirming`); pinned items stay
+    (`ClipboardStore.clear()` exists).
+- **Config:** `[clipboard] max_size_gb` and `max_age_days` (into `ClipboardStore.Retention`, used by
+  `ClipboardHistory.load` and the recorder, both `.standard` today), and `[open_links]` (into the view controller's
+  `openLinks`, resolved like `[open_with]`). Each is parsed, documented in the template, tested, and reported as a
+  problem row when it's wrong.
 
 ## 7. Performance
 
