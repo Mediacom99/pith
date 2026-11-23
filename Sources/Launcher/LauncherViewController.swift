@@ -54,6 +54,9 @@ final class LauncherViewController: NSViewController {
     var problems: [String] = []
     /// Runs a launcher command (Open Config, Quit Pith…).
     var runCommand: (Command) -> Void = { _ in }
+    /// Commands that don't apply now, left out of the results and the recent list: Resume Clipboard Recording while
+    /// recording, Pause while paused (decision 45).
+    var hiddenCommands: Set<Command> = [.resumeClipboard]
     /// `[open_with]`, resolved: extension or type → app.
     var openWithApps: [String: URL] = [:]
     /// `[actions] terminal`, resolved.
@@ -93,7 +96,9 @@ final class LauncherViewController: NSViewController {
     var saveFolder = URL.downloadsDirectory
     lazy var reportSaved: (URL) -> Void = { [weak self] in self?.notifier?.saved($0) }
     /// `[open_links]`, resolved: URL scheme → app (decision 16). Other links open in their default app.
-    var openLinks: [String: URL] = [:]
+    var openLinks: [String: URL] = [:] {
+        didSet { if openLinks != oldValue { linkApps = [:] } }
+    }
     /// The clipboard's hotkey as menus show it (`⇧⌘V`), for the Clipboard History command's tile.
     var clipboardHotkey: String?
     /// ⌘ plus these run a ⌘K list's actions, the first to the seventh: the top row under the left hand (decision 43).
@@ -156,8 +161,8 @@ final class LauncherViewController: NSViewController {
     private(set) var sublist: Sublist?
     /// What ⎋ goes back to, innermost last: each level's sublist (nil for the search), query, rows and selection.
     private var backStack: [(sublist: Sublist?, query: String, rows: [Row], selection: Int)] = []
-    /// Force Quit, or deleting a pinned clip, is waiting for its second ⏎ (decision 28). ⎋, typing or moving the
-    /// selection cancels it.
+    /// Force Quit, Clear Clipboard History or deleting a pinned clip is waiting for its second ⏎ (decision 28). ⎋,
+    /// typing or moving the selection cancels it.
     private(set) var confirming = false
 
     private var panel: LauncherPanel? { viewIfLoaded?.window as? LauncherPanel }
@@ -348,7 +353,10 @@ final class LauncherViewController: NSViewController {
 
     /// One list, best first (decision 19). Apps found by the file index too (in ~/Applications) appear once.
     private func merge(apps: [(index: Int, score: Int32)], files hits: [FileHit]) -> [Row] {
-        var scored = apps.map { (item: index.items[$0.index], score: $0.score + Self.appHeadStart) }
+        var scored = apps.compactMap { app in
+            let item = index.items[app.index]
+            return isHidden(item) ? nil : (item: item, score: app.score + Self.appHeadStart)
+        }
         for hit in hits where index.position(of: hit.path) == nil {
             scored.append((Item(path: hit.path, isFolder: hit.isFolder), hit.score))
         }
@@ -368,7 +376,7 @@ final class LauncherViewController: NSViewController {
         case .recent:
             items = history.history.recent(limit: Self.recentLimit).compactMap { id in
                 Item(fileID: id) ?? index.position(of: id).map { index.items[$0] }
-            }
+            }.filter { !isHidden($0) }
         case .running:
             // Open apps first, then every other app alphabetically (the index is sorted by name).
             let open = running.order.compactMap(runningItem)
@@ -378,6 +386,10 @@ final class LauncherViewController: NSViewController {
         // Like ⌘Tab, the running list starts on the previous app: the first one is the app you're in.
         let skip = emptyState == .running && running.order.count > 1 ? 1 : 0
         return (notices + items.map(Row.item), notices.count + skip)
+    }
+
+    private func isHidden(_ item: Item) -> Bool {
+        if case .command(let command) = item.kind { hiddenCommands.contains(command) } else { false }
     }
 
     /// The index's item for a running app, or one made up for an app outside the indexed folders.
@@ -472,7 +484,9 @@ final class LauncherViewController: NSViewController {
                 cell.icon.image = icons.icon(forFile: url)
                 detail = Self.folder(of: url)
             case .command(let command):
-                cell.icon.image = icons.symbol(Symbols.command(command))
+                isDanger = command == .clearClipboard && confirming
+                if isDanger { cell.title = Self.clearConfirmation }
+                cell.icon.image = icons.symbol(Symbols.command(command), tint: isDanger ? .danger : .quiet)
             }
         case .action(let action):
             if case .actions(let item) = sublist {
@@ -627,7 +641,12 @@ final class LauncherViewController: NSViewController {
         case nil:
             switch row {
             case .item(let item):
-                stage.content = stageContent(for: item)
+                var content = stageContent(for: item)
+                if confirming {
+                    content.isDanger = true
+                    content.secondary = StageView.Key(words: "Cancel", caps: ["esc"])
+                }
+                stage.content = content
             case .problem(let message):
                 let (title, detail) = Self.problemTile(message)
                 stage.content = StageView.Content(
@@ -680,6 +699,10 @@ final class LauncherViewController: NSViewController {
             return StageView.Content(
                 icon: icons.symbol(Symbols.command(.clipboard), size: .tile), name: item.name, place: "Pith command",
                 kind: clipboardHotkey.map { "Also \($0), from any app" } ?? "", primary: "Open")
+        case .command(.clearClipboard):
+            return StageView.Content(
+                icon: icons.symbol(Symbols.command(.clearClipboard), size: .tile), name: item.name,
+                place: "Pith command", kind: "Pinned items stay", primary: "Clear")
         case .command(let command):
             return StageView.Content(
                 icon: icons.symbol(Symbols.command(command), size: .tile), name: item.name, place: "Pith command",
@@ -880,6 +903,11 @@ final class LauncherViewController: NSViewController {
             panel?.dismiss()
             if let url = file.url, let appURL = app.url { open(url, with: appURL) }
         case (.item(let item), _):
+            if case .command(.clearClipboard) = item.kind, !confirming {
+                confirming = true
+                refreshVisibleRows()
+                return
+            }
             open(item)
         case (.action(let action), .actions(let item)?):
             if action == .forceQuit, !confirming {
@@ -1133,6 +1161,9 @@ extension LauncherViewController {
         }
         return nil
     }
+
+    /// What Clear Clipboard History's row says while it waits for its second ⏎.
+    static let clearConfirmation = "Press ⏎ again to clear the clipboard history"
 
     static func noticeTitle(_ notice: ClipboardNotice) -> String {
         switch notice {

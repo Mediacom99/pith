@@ -24,9 +24,6 @@ public final class ClipboardStore: @unchecked Sendable {
             self.maxBytes = maxBytes
             self.maxAge = maxAge
         }
-
-        /// 2 GB and 30 days.
-        public static let standard = Retention(maxBytes: 2_000_000_000, maxAge: 30 * 86_400)
     }
 
     /// A row's image thumbnail: 20 pt at 2x.
@@ -204,6 +201,32 @@ public final class ClipboardStore: @unchecked Sendable {
     public func delete(_ id: Int64) async throws(Failure) {
         try await run { () throws(Failure) in try self.remove([id]) }
     }
+
+    /// Whether recording is paused (decision 44): a `paused` file beside the database, so it lasts through a relaunch.
+    public func isPaused() async -> Bool {
+        let file = pausedFile
+        return (try? await run { FileManager.default.fileExists(atPath: file.path) }) ?? false
+    }
+
+    public func setPaused(_ paused: Bool) async throws(Failure) {
+        let (folder, file) = (folder, pausedFile)
+        try await run { () throws(Failure) in
+            do {
+                if paused {
+                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                    try Data().write(to: file)
+                } else if FileManager.default.fileExists(atPath: file.path) {
+                    try FileManager.default.removeItem(at: file)
+                }
+            } catch {
+                throw Failure(
+                    description:
+                        "couldn't save that recording is \(paused ? "paused" : "on"): \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private var pausedFile: URL { folder.appending(path: "paused") }
 
     /// Deletes every clip that isn't pinned and returns their ids.
     public func clear() async throws(Failure) -> [Int64] {

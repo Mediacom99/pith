@@ -144,12 +144,19 @@ folders = ["~"]
 ignore = [".*", "~/Library", "node_modules", ".build", "*.photoslibrary"]
 max_depth = 6
 
+[clipboard]
+max_size_gb = 2             # whichever is reached first drops the oldest items; pinned ones stay
+max_age_days = 30
+
 [actions]
 terminal = "Ghostty"        # used by "Open in Terminal"
 
 [open_with]
 md  = "Visual Studio Code"  # extension or type → app
 pdf = "Preview"
+
+[open_links]
+https = "Firefox"           # URL scheme → app, for links from the clipboard (https covers http)
 ```
 
 ## Performance

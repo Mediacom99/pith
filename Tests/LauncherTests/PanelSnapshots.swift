@@ -90,6 +90,13 @@ import Testing
         press(#selector(NSResponder.insertNewline(_:)), in: confirm)
         try await snapshot(confirm, "force-quit-\(suffix)")
 
+        // Clear Clipboard History waiting for its second ⏎. Running it is swapped out.
+        let clear = try await panel(emptyState: .none)
+        clear.launcher.runCommand = { _ in }
+        await type("clear clip", in: clear)
+        press(#selector(NSResponder.insertNewline(_:)), in: clear)
+        try await snapshot(clear, "clear-clipboard-\(suffix)")
+
         // The problem selected, so the tile shows it.
         let problem = try await panel(emptyState: .recent, problems: ["line 3: unknown setting \"theme\""])
         problem.launcher.prepareToShow()
@@ -108,7 +115,7 @@ import Testing
     }
 
     /// The clipboard (docs/BRIEF-CLIPBOARD.md): a text from Terminal on the tile, then each other kind selected, a
-    /// search with a pin first, the history empty, and macOS denying the clipboard.
+    /// search with a pin first, the history empty, recording paused, and macOS denying the clipboard.
     @Test(arguments: [NSAppearance.Name.aqua, .darkAqua])
     func clipboard(appearance: NSAppearance.Name) async throws {
         _ = NSApplication.shared
@@ -137,6 +144,12 @@ import Testing
         let empty = try await clipboardPanel(clips: [])
         empty.launcher.prepareToShow(.clipboard)
         try await snapshot(empty, "clipboard-empty-\(suffix)")
+
+        let paused = try await clipboardPanel()
+        paused.launcher.clipboardNotices = [.paused]
+        paused.launcher.prepareToShow(.clipboard)
+        press(#selector(NSResponder.moveUp(_:)), in: paused)
+        try await snapshot(paused, "clipboard-paused-\(suffix)")
 
         let denied = try await clipboardPanel()
         denied.launcher.clipboardNotices = [.cannotRead]

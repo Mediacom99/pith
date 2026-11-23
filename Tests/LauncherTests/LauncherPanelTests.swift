@@ -271,6 +271,47 @@ struct LauncherPanelTests {
         #expect(panel.launcher.searchField.stringValue.isEmpty)
     }
 
+    @Test func clearClipboardHistoryWaitsForASecondReturn() async {
+        let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))
+        var run: [Command] = []
+        panel.launcher.runCommand = { run.append($0) }
+        await type("clear clip", in: panel)
+        #expect(panel.launcher.rows.first == .item(Item(command: .clearClipboard)))
+        #expect(panel.launcher.stage.content.kind == "Pinned items stay")
+        func title() -> String? {
+            (panel.launcher.tableView.view(atColumn: 0, row: 0, makeIfNecessary: false) as? ResultCell)?
+                .textField?.stringValue
+        }
+
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        #expect(run.isEmpty)
+        #expect(title() == "Press ⏎ again to clear the clipboard history")
+        #expect(panel.launcher.stage.content.isDanger)
+        #expect(panel.launcher.stage.content.secondary?.words == "Cancel")
+
+        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        #expect(!panel.launcher.confirming && title() == "Clear Clipboard History", "⎋ cancels it")
+        #expect(!panel.launcher.stage.content.isDanger)
+
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        #expect(run == [.clearClipboard])
+    }
+
+    @Test func onlyTheRecordingCommandThatAppliesIsListed() async {
+        let panel = makePanel(
+            items: apps + Command.allCases.map(Item.init(command:)),
+            opened: ["command:pause-clipboard", "command:resume-clipboard"], emptyState: .recent)
+        await type("recording", in: panel)
+        #expect(names(panel) == ["Pause Clipboard Recording"], "recording")
+
+        panel.launcher.hiddenCommands = [.pauseClipboard]
+        await type("recordin", in: panel)
+        #expect(names(panel) == ["Resume Clipboard Recording"], "paused")
+        await type("", in: panel)
+        #expect(names(panel) == ["Resume Clipboard Recording"], "the recent list leaves it out too")
+    }
+
     @Test func commandKListsActionsAndEscapeGoesBack() async {
         let panel = makePanel(items: apps)
         await type("g", in: panel)

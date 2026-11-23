@@ -29,8 +29,21 @@ public struct Config: Sendable, Equatable {
     /// Which app opens files of a type when opened from the launcher (decision 15): a lowercased extension (`md`) or
     /// a type identifier (`public.image`) → an app name, bundle id or path.
     public var openWith: [String: String] = [:]
+    /// Which app opens links of a URL scheme (decision 16): a lowercased scheme (`https`, `mailto`) → an app name,
+    /// bundle id or path.
+    public var openLinks: [String: String] = [:]
+    /// How much clipboard history is kept (decision 37): whichever limit is reached first drops the oldest unpinned
+    /// clips.
+    public var clipboardMaxSizeGB = 2.0
+    public var clipboardMaxAgeDays = 30
 
     public init() {}
+
+    /// The clipboard's limits, as the store applies them.
+    public var clipboardRetention: ClipboardStore.Retention {
+        ClipboardStore.Retention(
+            maxBytes: Int(clipboardMaxSizeGB * 1_000_000_000), maxAge: TimeInterval(clipboardMaxAgeDays) * 86_400)
+    }
 
     /// What the file index scans, with `~` expanded and symlinks resolved: FSEvents reports real paths, so a
     /// symlinked folder would otherwise never see its changes.
@@ -63,6 +76,13 @@ public struct Config: Sendable, Equatable {
             for (key, entry) in entries {
                 let name = table.isEmpty ? key : "\(table).\(key)"
                 func problem(_ message: String) { problems.append((entry.line, "line \(entry.line): \(message)")) }
+                func size(_ gigabytes: Double, as written: String) {
+                    if gigabytes > 0, gigabytes <= 1_000 {
+                        config.clipboardMaxSizeGB = gigabytes
+                    } else {
+                        problem("clipboard.max_size_gb is \(written), expected more than 0 and at most 1000")
+                    }
+                }
                 switch (name, entry.value) {
                 case ("hotkeys.launcher", .string(let text)), ("hotkeys.clipboard", .string(let text)):
                     if let hotkey = Hotkey(text) {
@@ -97,6 +117,33 @@ public struct Config: Sendable, Equatable {
                     config.openWith[key.lowercased().trimmingPrefix(".").description] = app
                 case (_, _) where table == "open_with":
                     problem("open_with.\(key) should be an app name in quotes")
+                case (_, .string(let app)) where table == "open_links":
+                    // "https:" and "https://" mean "https" too.
+                    var scheme = key.lowercased()
+                    while scheme.hasSuffix(":") || scheme.hasSuffix("/") { scheme.removeLast() }
+                    if let first = scheme.first, first.isASCII, first.isLetter,
+                        scheme.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "+-.".contains($0)) })
+                    {
+                        config.openLinks[scheme] = app
+                    } else {
+                        problem("open_links \"\(key)\" isn't a URL scheme like \"https\"")
+                    }
+                case (_, _) where table == "open_links":
+                    problem("open_links.\(key) should be an app name in quotes")
+                case ("clipboard.max_size_gb", .integer(let gigabytes)):
+                    size(Double(gigabytes), as: "\(gigabytes)")
+                case ("clipboard.max_size_gb", .float(let gigabytes)):
+                    size(gigabytes, as: "\(gigabytes)")
+                case ("clipboard.max_age_days", .integer(let days)):
+                    if (1...3_650).contains(days) {
+                        config.clipboardMaxAgeDays = days
+                    } else {
+                        problem("clipboard.max_age_days is \(days), expected 1 to 3650")
+                    }
+                case ("clipboard.max_size_gb", _):
+                    problem("clipboard.max_size_gb should be a number, like 2 or 0.5")
+                case ("clipboard.max_age_days", _):
+                    problem("clipboard.max_age_days should be a whole number of days")
                 case ("hotkeys.launcher", _), ("hotkeys.clipboard", _), ("launcher.empty_state", _),
                     ("actions.terminal", _):
                     problem("\(name) should be a string in quotes")
@@ -143,6 +190,11 @@ public struct Config: Sendable, Equatable {
         # How many folders deep to go.
         max_depth = 6
 
+        [clipboard]
+        # How much history to keep: whichever limit is reached first drops the oldest items. Pinned items always stay.
+        max_size_gb = 2
+        max_age_days = 30
+
         [actions]
         # The app "Open in terminal" uses: Terminal, iTerm, Ghostty, Warp…
         terminal = "Terminal"
@@ -153,6 +205,12 @@ public struct Config: Sendable, Equatable {
         # md  = "Visual Studio Code"
         # pdf = "Preview"
         # "public.image" = "Pixelmator Pro"
+
+        [open_links]
+        # Which app opens a link from the clipboard: URL scheme = app name, bundle id or path. https covers http too,
+        # unless http has its own. Other links open in their default app. For example:
+        # https  = "Firefox"
+        # mailto = "Mail"
 
         """
 }

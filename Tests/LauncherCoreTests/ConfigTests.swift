@@ -60,6 +60,49 @@ struct ConfigTests {
             ])
     }
 
+    @Test func readsTheClipboardsLimitsAndTheLinksApps() {
+        #expect(Config().clipboardRetention == .init(maxBytes: 2_000_000_000, maxAge: 30 * 86_400), "decision 37")
+        let (config, problems) = Config.parse(
+            """
+            [clipboard]
+            max_size_gb = 0.5
+            max_age_days = 7
+            [open_links]
+            HTTPS = "Firefox"
+            "mailto:" = "Mail"
+            "x-man-page" = "Terminal"
+            """)
+        #expect(problems.isEmpty)
+        #expect(config.clipboardRetention == .init(maxBytes: 500_000_000, maxAge: 7 * 86_400))
+        #expect(config.openLinks == ["https": "Firefox", "mailto": "Mail", "x-man-page": "Terminal"])
+        #expect(Config.parse("clipboard.max_size_gb = 3").config.clipboardMaxSizeGB == 3, "a whole number too")
+    }
+
+    @Test func badClipboardAndLinkSettingsAreReported() {
+        let (config, problems) = Config.parse(
+            """
+            [clipboard]
+            max_size_gb = 0
+            max_age_days = 1.5
+            [open_links]
+            "https://acme.example" = "Safari"
+            mailto = 3
+            """)
+        #expect(config == Config())
+        #expect(
+            problems == [
+                "line 2: clipboard.max_size_gb is 0, expected more than 0 and at most 1000",
+                "line 3: clipboard.max_age_days should be a whole number of days",
+                "line 5: open_links \"https://acme.example\" isn't a URL scheme like \"https\"",
+                "line 6: open_links.mailto should be an app name in quotes",
+            ])
+        #expect(
+            Config.parse("[clipboard]\nmax_size_gb = \"2\"\nmax_age_days = 0").problems == [
+                "line 2: clipboard.max_size_gb should be a number, like 2 or 0.5",
+                "line 3: clipboard.max_age_days is 0, expected 1 to 3650",
+            ])
+    }
+
     @Test func invalidTOMLGivesTheDefaultsAndOneProblem() {
         let (config, problems) = Config.parse("[launcher]\nempty_state = \"recent\nlaunch_at_login = true")
         #expect(config == Config())

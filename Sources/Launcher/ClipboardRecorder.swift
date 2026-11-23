@@ -6,7 +6,8 @@ import Synchronization
 ///
 /// macOS has no notification for a new copy, so a timer on a serial queue reads the pasteboard's change count every
 /// half second, with leeway so the system can coalesce the wakeups. It stops while the screens sleep or another user's
-/// session is in front. Only a change reads the copy; what was on the clipboard at launch isn't recorded.
+/// session is in front, and while recording is paused. Only a change reads the copy; what was on the clipboard at launch
+/// isn't recorded.
 nonisolated final class ClipboardRecorder: @unchecked Sendable {
     /// How often the change count is read, and how late the system may run it to save wakeups.
     static let interval = DispatchTimeInterval.milliseconds(500)
@@ -14,8 +15,7 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
 
     private let pasteboard: NSPasteboard
     private let store: ClipboardStore
-    private let retention: ClipboardStore.Retention
-    private let onRecord: @MainActor @Sendable (Clip, _ removed: [Int64]) -> Void
+    private let onRecord: @MainActor @Sendable (Clip) -> Void
     /// Whether macOS lets Pith read the clipboard, when that changes (false: denied in Privacy & Security).
     private let onAccessChange: @MainActor @Sendable (_ allowed: Bool) -> Void
     /// The app in front: where a copy that doesn't name its source came from. Updated on the main thread.
@@ -28,16 +28,16 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
     private var lastChange = 0
     private var running = false
     private var asleep = false
+    private var paused = false
     private var denied = false
 
     init(
-        pasteboard: NSPasteboard = .general, store: ClipboardStore, retention: ClipboardStore.Retention = .standard,
-        onRecord: @escaping @MainActor @Sendable (Clip, _ removed: [Int64]) -> Void,
+        pasteboard: NSPasteboard = .general, store: ClipboardStore,
+        onRecord: @escaping @MainActor @Sendable (Clip) -> Void,
         onAccessChange: @escaping @MainActor @Sendable (_ allowed: Bool) -> Void = { _ in }
     ) {
         self.pasteboard = pasteboard
         self.store = store
-        self.retention = retention
         self.onRecord = onRecord
         self.onAccessChange = onAccessChange
     }
@@ -87,6 +87,17 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
         return await record(copy)
     }
 
+    /// Pauses recording (decision 44), or resumes it from the clipboard as it is now: what was copied while paused
+    /// isn't recorded. The timer is off while paused, so pausing costs no wakeups.
+    func setPaused(_ value: Bool) {
+        queue.async { [self] in
+            guard value != paused else { return }
+            paused = value
+            if !paused { lastChange = pasteboard.changeCount }
+            updateTimer()
+        }
+    }
+
     // MARK: On the queue
 
     private func setAsleep(_ value: Bool) {
@@ -96,9 +107,9 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
         }
     }
 
-    /// Runs the timer while started and awake, and stops it otherwise.
+    /// Runs the timer while started, awake and not paused, and stops it otherwise.
     private func updateTimer() {
-        if running && !asleep {
+        if running && !asleep && !paused {
             guard timer == nil else { return }
             let timer = DispatchSource.makeTimerSource(queue: queue)
             timer.schedule(deadline: .now() + Self.interval, repeating: Self.interval, leeway: Self.leeway)
@@ -120,6 +131,7 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
         let change = pasteboard.changeCount
         guard change != lastChange else { return nil }
         lastChange = change
+        if paused { return nil }
 
         // Denied in Privacy & Security, a read would get nothing: say so instead of failing silently.
         let isDenied = pasteboard.accessBehavior == .alwaysDeny
@@ -160,8 +172,7 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
     private func record(_ copy: (content: ClipContent, source: String?, date: Date)) async -> Clip? {
         do {
             let clip = try await store.add(copy.content, from: copy.source, at: copy.date)
-            let removed = try await store.prune(retention, now: copy.date)
-            await onRecord(clip, removed)
+            await onRecord(clip)
             return clip
         } catch {
             Log.app.error("Couldn't record a copy: \(error.description, privacy: .public)")

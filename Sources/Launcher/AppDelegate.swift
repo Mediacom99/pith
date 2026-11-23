@@ -37,13 +37,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let clipboard = ClipboardHistory(store: ClipboardStore(folder: ClipboardStore.defaultFolder))
     private lazy var recorder = ClipboardRecorder(
         store: clipboard.store,
-        onRecord: { [weak self] clip, removed in self?.clipboard.recorded(clip, removed: removed) },
+        onRecord: { [weak self] clip in self?.clipboard.recorded(clip) },
         onAccessChange: { [weak self] allowed in
             self?.canReadClipboard = allowed
             self?.publishClipboardNotices()
         })
-    /// What the clipboard says above its clips: macOS denies reading it, or paste lacks Accessibility access.
+    /// What the clipboard says above its clips: macOS denies reading it, paste lacks Accessibility access, or
+    /// recording is paused (decision 44).
     private var canReadClipboard = true
+    private var isRecordingPaused = false
     private var askedForAccessibility = false
     private var fileRules: FileRules?
     private var panel: LauncherPanel?
@@ -61,7 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let launcher = LauncherViewController(history: history, running: RunningApps(), files: files)
         launcher.runCommand = { [weak self] in self?.run($0) }
         launcher.clipboard = clipboard
-        launcher.resolveNotice = { notice in
+        launcher.resolveNotice = { [weak self] notice in
             switch notice {
             case .cannotRead:
                 // Privacy & Security, where macOS lists the apps that may read the clipboard.
@@ -69,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case .needsAccessibility:
                 if let settings = Accessibility.settings { NSWorkspace.shared.open(settings) }
             case .paused:
-                break
+                self?.setRecordingPaused(false)
             }
         }
         launcher.onShowClipboard = { [weak self] in self?.checkAccessibility() }
@@ -91,9 +93,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await configStore.start()
         }
 
-        // The clipboard history is loaded before the recorder starts, so no copy can slip in between.
+        // The clipboard history is loaded before the recorder starts, so no copy can slip in between, and a pause
+        // saved before a relaunch holds from the start.
         Task {
             await clipboard.load()
+            if await clipboard.store.isPaused() { setRecordingPaused(true, save: false) }
             await recorder.start()
         }
 
@@ -116,6 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         register("clipboard", config.clipboardHotkey) { [weak panel] in panel?.toggleClipboard(pressedAt: $0) }
         panel.launcher.clipboardHotkey = hotkeys["clipboard"]?.current?.hotkey.symbols
         panel.launcher.emptyState = config.emptyState
+        clipboard.retention = config.clipboardRetention
         publishProblems()
         resolveApps()
 
@@ -146,7 +151,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var notices: [ClipboardNotice] = []
         if !canReadClipboard { notices.append(.cannotRead) }
         if !launcher.canPaste { notices.append(.needsAccessibility) }
+        if isRecordingPaused { notices.append(.paused) }
         launcher.clipboardNotices = notices
+    }
+
+    /// Pauses or resumes recording, and saves it so a relaunch keeps it (decision 44). The launcher then lists the
+    /// command that undoes it (decision 45).
+    private func setRecordingPaused(_ paused: Bool, save: Bool = true) {
+        isRecordingPaused = paused
+        recorder.setPaused(paused)
+        panel?.launcher.hiddenCommands = [paused ? .pauseClipboard : .resumeClipboard]
+        publishClipboardNotices()
+        guard save else { return }
+        let store = clipboard.store
+        Task {
+            do throws(ClipboardStore.Failure) {
+                try await store.setPaused(paused)
+            } catch {
+                Log.app.error("\(error.description, privacy: .public)")
+            }
+        }
+    }
+
+    /// Clear Clipboard History, after its second ⏎: every clip but the pinned ones.
+    private func clearClipboard() {
+        Task {
+            do throws(ClipboardStore.Failure) {
+                try await clipboard.clear()
+            } catch {
+                Log.app.error("Couldn't clear the clipboard history: \(error.description, privacy: .public)")
+                notifier.failed("Couldn't clear the clipboard history", item: nil, reason: error.description)
+            }
+        }
     }
 
     private func publishProblems() {
@@ -169,8 +205,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeys[name] = slot
     }
 
-    /// Resolves the apps config.toml names (`[open_with]`, the terminal) on a worker, once the index knows the
-    /// installed apps; names that match no app become problems.
+    /// Resolves the apps config.toml names (`[open_with]`, `[open_links]`, the terminal) on a worker, once the index
+    /// knows the installed apps; names that match no app become problems.
     private func resolveApps() {
         guard let launcher = panel?.launcher, !launcher.index.items.isEmpty else { return }
         let config = configStore.config
@@ -178,7 +214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         resolveGeneration += 1
         let generation = resolveGeneration
         Task {
-            let (openWith, terminal, problems) = await runInBackground(qos: .utility) {
+            let (openWith, openLinks, terminal, problems) = await runInBackground(qos: .utility) {
                 var problems: [String] = []
                 var openWith: [String: URL] = [:]
                 for (key, spec) in config.openWith.sorted(by: { $0.key < $1.key }) {
@@ -190,12 +226,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         problems.append("open_with.\(key): can't find the app \"\(spec)\"")
                     }
                 }
+                let links = AppResolver.links(config.openLinks, among: apps)
+                problems += links.problems
                 let terminal = AppResolver.resolve(config.terminal, among: apps)
                 if terminal == nil { problems.append("actions.terminal: can't find the app \"\(config.terminal)\"") }
-                return (openWith, terminal, problems)
+                return (openWith, links.apps, terminal, problems)
             }
             guard generation == resolveGeneration else { return }
             launcher.openWithApps = openWith
+            launcher.openLinks = openLinks
             launcher.terminalApp = terminal
             appProblems = problems
             publishProblems()
@@ -205,6 +244,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func run(_ command: Command) {
         switch command {
         case .clipboard: panel?.launcher.switchMode(to: .clipboard)
+        case .pauseClipboard: setRecordingPaused(true)
+        case .resumeClipboard: setRecordingPaused(false)
+        case .clearClipboard: clearClipboard()
         case .openConfig: configStore.open()
         case .reloadConfig: configStore.reload()
         case .quit: NSApp.terminate(nil)

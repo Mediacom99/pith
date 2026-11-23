@@ -19,8 +19,9 @@ Status: **done** (core library; the app uses it from step 2).
   - the pasteboard types it came with (the standard ones, step 2), so a paste puts them all back;
   - the source app, the time, a pin, and its size.
 - **Retention:**
-  - 2 GB and 30 days by default (decision 37), oldest unpinned first; pins are never dropped.
-  - Applied after each copy and at launch, so no timer is needed.
+  - 2 GB and 30 days by default (decision 37, `[clipboard]` since step 6), oldest unpinned first; pins are never
+    dropped.
+  - Applied after each copy, at launch and when the config changes the limits, so no timer is needed.
 - Every call runs on the store's own serial queue, `launcher.clipboard`, so it's off the main thread and off Swift's
   cooperative pool. The main actor gets ready-made `Clip` values.
 - In memory, a clip keeps only the first 4,096 characters of its text; the rest stays on disk for the paste.
@@ -68,7 +69,7 @@ history can't be seen until step 4 shows it.
 - **Source:** the app named by the copy's `org.nspasteboard.source` marker, otherwise the app in front.
 - **Duplicates:** a copy that is already in the history moves that clip to the top, keeping its pin. An unknown
   source doesn't overwrite a known one, so pasting from the history won't record "from Pith".
-- **Old history** is pruned to 2 GB and 30 days at launch and after each copy.
+- **Old history** is pruned to `[clipboard]`'s limits at launch and after each copy (step 6).
 - **Tests:**
   - 10 on classifying.
   - 6 on the recorder, on a private named pasteboard, so they never read or change your clipboard. They cover:
@@ -127,7 +128,7 @@ Status: **in review**. Built from the brief (§3, §5, §7) and checked on the `
   - A file's existence and size are read on a worker.
   - A long URL wraps over three lines and is cut in the middle past them.
   - States: the empty history (the tile alone), "Pith can't read the clipboard" in orange with ⏎ opening Privacy &
-    Security (from step 2's permission check), and "Recording is paused" (its command comes in step 6).
+    Security (from step 2's permission check), and "Recording is paused" (step 6).
   - Quick Look (⌘Y, Space) previews an image or the first file.
   - The launcher's Clipboard History command (decision 42): "c" alone lists it first through its alias, its tile
     says "Also ⇧⌘V, from any app", and ⏎ opens the clipboard in place.
@@ -173,7 +174,7 @@ snapshots: `clipboard-actions`, `clipboard-delete-pinned`, `clipboard-accessibil
   - Paste as Plain Text writes the text alone, marked transient so the history skips it, and moves the clip to the
     top itself.
   - Pin and Delete keep the panel open, go back to the list and keep the clip, or its place, selected.
-  - Open in… names the app (`[open_links]`'s once step 6 parses it, else the default), looked up on a worker.
+  - Open in… names the app (`[open_links]`'s, else the default), looked up on a worker.
   - Save as File writes `Clipboard 2026-11-23 at 14.05.txt` or `.png` in Downloads, numbered when taken, then posts
     "Saved to Downloads".
   - Reveal says when the files are gone.
@@ -188,18 +189,36 @@ snapshots: `clipboard-actions`, `clipboard-delete-pinned`, `clipboard-accessibil
 
 ## 6. Commands and config
 
-Status: **todo**. `[hotkeys] clipboard` and the Clipboard History command already landed in step 4.
-- **Launcher commands:**
-  - Pause Clipboard Recording and Resume Clipboard Recording. The panel already shows the `.paused` notice (its row
-    and tile are in `ClipboardNotice`); what's missing is a paused flag in `ClipboardRecorder`, which keeps reading
-    the change count but not the copy, so resuming doesn't record what was copied meanwhile. `AppDelegate`
-    `publishClipboardNotices()` adds `.paused`, and `resolveNotice(.paused)` resumes.
-  - Clear Clipboard History, after a second ⏎ as Force Quit does (`confirming`); pinned items stay
-    (`ClipboardStore.clear()` exists).
-- **Config:** `[clipboard] max_size_gb` and `max_age_days` (into `ClipboardStore.Retention`, used by
-  `ClipboardHistory.load` and the recorder, both `.standard` today), and `[open_links]` (into the view controller's
-  `openLinks`, resolved like `[open_with]`). Each is parsed, documented in the template, tested, and reported as a
-  problem row when it's wrong.
+Status: **in review**. Built and tested; the commands and settings need Edoardo's run. Two new snapshots:
+`clipboard-paused` and `clear-clipboard`.
+- **Launcher commands** (`[hotkeys] clipboard` and Clipboard History landed in step 4):
+  - Pause Clipboard Recording and Resume Clipboard Recording. Only the one that applies is listed (decision 45).
+    - Paused, the recorder's timer is off, so pausing costs no wakeups. Resuming reads the change count first, so
+      what was copied meanwhile is never recorded.
+    - The pause is saved as a `paused` file in the clipboard folder and lasts through a relaunch (decision 44).
+    - The clipboard lists "Recording is paused" first, quiet, and ⏎ on it resumes in place.
+  - Clear Clipboard History asks for a second ⏎ in red, as Force Quit does, and its tile says "Pinned items stay".
+    A failure posts a notification (decision 32).
+- **Config:**
+  - `[clipboard] max_size_gb` (more than 0 and at most 1000, decimals too) and `max_age_days` (1 to 3650), 2 and 30
+    by default.
+    - `ClipboardHistory` owns the limits: it prunes after the load, after each copy, and at once when the config
+      changes them.
+    - Nothing is pruned before the config is read, so a longer limit never loses clips at launch.
+  - `[open_links]`: URL scheme → app, resolved like `[open_with]`.
+    - `https` covers `http` unless `http` has its own.
+    - `"https:"` or `"https://"` as a key means `https`.
+  - Each is in the template, and a wrong value, or an app that isn't found, is a problem row.
+- **Tests:** 10 new:
+  - the limits and link apps parsed, and their problems;
+  - a pause saved across a relaunch;
+  - nothing copied while paused is recorded, even after resuming;
+  - retention pruning when the limits are set and after a copy, keeping pins;
+  - Clear keeping pins;
+  - Clear's second ⏎, cancelled by ⎋;
+  - only the recording command that applies, in the results and the recent list;
+  - ⏎ on the paused row resuming in place;
+  - `https` covering `http`.
 
 ## 7. Performance
 

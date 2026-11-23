@@ -277,6 +277,51 @@ struct ClipboardPanelTests {
         #expect(titles(panel) == ["Acme"], "notices are for the full list, not a search")
     }
 
+    @Test func returnOnThePausedNoticeResumesInPlace() async throws {
+        let folder = try TemporaryDirectory()
+        let panel = try await clipboardPanel(folder.url, [(text("Acme"), nil, 1)])
+        var resolved: [ClipboardNotice] = []
+        panel.launcher.resolveNotice = { resolved.append($0) }
+        panel.launcher.clipboardNotices = [.paused]
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(titles(panel) == ["Recording is paused", "Acme"])
+        press(#selector(NSResponder.moveUp(_:)), in: panel)
+        #expect(panel.launcher.stage.content.primary == "Resume")
+
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        #expect(resolved == [.paused])
+        panel.launcher.clipboardNotices = []
+        #expect(titles(panel) == ["Acme"] && panel.launcher.tableView.selectedRow == 0)
+    }
+
+    @Test func retentionPrunesWhenItsSetAndAfterACopy() async throws {
+        let folder = try TemporaryDirectory()
+        let day = 24 * 60.0
+        let panel = try await clipboardPanel(
+            folder.url, [(text("pinned"), nil, 90 * day), (text("old"), nil, 40 * day), (text("new"), nil, 1)],
+            pinned: [0])
+        let history = try #require(panel.launcher.clipboard)
+        #expect(history.index.count == 3, "no limits until the config is read")
+
+        history.retention = .init(maxBytes: 2_000_000_000, maxAge: 30 * 86_400)
+        #expect(await eventuallyTrue { history.index.clips.map(\.text) == ["new", "pinned"] }, "pins stay")
+
+        history.retention = .init(maxBytes: 1, maxAge: 30 * 86_400)
+        let copy = try await history.store.add(text("newest"), from: nil, at: .now)
+        history.recorded(copy)
+        #expect(await eventuallyTrue { history.index.clips.map(\.text) == ["pinned"] }, "the newest goes too")
+    }
+
+    @Test func clearingKeepsThePinnedClips() async throws {
+        let folder = try TemporaryDirectory()
+        let panel = try await clipboardPanel(
+            folder.url, [(text("pinned"), nil, 5), (text("gone"), nil, 1)], pinned: [0])
+        let history = try #require(panel.launcher.clipboard)
+        try await history.clear()
+        #expect(history.index.clips.map(\.text) == ["pinned"])
+        #expect(try await history.store.load().map(\.text) == ["pinned"])
+    }
+
     @Test func resetGoesBackToTheLauncher() async throws {
         let folder = try TemporaryDirectory()
         let panel = try await clipboardPanel(folder.url, [(text("Acme"), nil, 1)])

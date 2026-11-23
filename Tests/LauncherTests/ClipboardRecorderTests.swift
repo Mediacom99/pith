@@ -12,7 +12,7 @@ struct ClipboardRecorderTests {
         let pasteboard = privatePasteboard()
         defer { pasteboard.releaseGlobally() }
         let store = ClipboardStore(folder: folder.url)
-        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: store) { _, _ in }
+        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: store) { _ in }
         await recorder.start(timer: false)
         #expect(await recorder.check() == nil, "nothing new yet")
 
@@ -34,7 +34,7 @@ struct ClipboardRecorderTests {
         defer { pasteboard.releaseGlobally() }
         pasteboard.clearContents()
         pasteboard.setString("copied before Pith started", forType: .string)
-        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: ClipboardStore(folder: folder.url)) { _, _ in }
+        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: ClipboardStore(folder: folder.url)) { _ in }
         await recorder.start(timer: false)
         #expect(await recorder.check() == nil)
     }
@@ -44,7 +44,7 @@ struct ClipboardRecorderTests {
         let pasteboard = privatePasteboard()
         defer { pasteboard.releaseGlobally() }
         let store = ClipboardStore(folder: folder.url)
-        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: store) { _, _ in }
+        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: store) { _ in }
         await recorder.start(timer: false)
 
         for marker in ClipReading.skipMarkers.sorted() {
@@ -62,7 +62,7 @@ struct ClipboardRecorderTests {
         let folder = try TemporaryDirectory()
         let pasteboard = privatePasteboard()
         defer { pasteboard.releaseGlobally() }
-        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: ClipboardStore(folder: folder.url)) { _, _ in }
+        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: ClipboardStore(folder: folder.url)) { _ in }
         await recorder.start(timer: false)
 
         try folder.makeFile("Acme/Quarterly_Budget_Review.pdf")
@@ -96,7 +96,7 @@ struct ClipboardRecorderTests {
         let folder = try TemporaryDirectory()
         let pasteboard = privatePasteboard()
         defer { pasteboard.releaseGlobally() }
-        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: ClipboardStore(folder: folder.url)) { _, _ in }
+        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: ClipboardStore(folder: folder.url)) { _ in }
         await recorder.start(timer: false)
 
         let rtf = try NSAttributedString(string: "Quarterly budget").data(
@@ -113,7 +113,7 @@ struct ClipboardRecorderTests {
         let pasteboard = privatePasteboard()
         defer { pasteboard.releaseGlobally() }
         let store = ClipboardStore(folder: folder.url)
-        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: store) { _, _ in }
+        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: store) { _ in }
         await recorder.start(timer: false)
 
         let item = NSPasteboardItem()
@@ -139,6 +139,27 @@ struct ClipboardRecorderTests {
         let again = try #require(await recorder.check())
         #expect(again.id == first.id)
         #expect(try await store.load().map(\.id) == [first.id, first.id + 1])
+    }
+
+    @Test func whatIsCopiedWhilePausedIsNeverRecorded() async throws {
+        let folder = try TemporaryDirectory()
+        let pasteboard = privatePasteboard()
+        defer { pasteboard.releaseGlobally() }
+        let store = ClipboardStore(folder: folder.url)
+        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: store) { _ in }
+        await recorder.start(timer: false)
+
+        recorder.setPaused(true)
+        pasteboard.clearContents()
+        pasteboard.setString("copied while paused", forType: .string)
+        #expect(await recorder.check() == nil)
+
+        recorder.setPaused(false)
+        #expect(await recorder.check() == nil, "resuming starts from the clipboard as it is, not from the pause")
+        pasteboard.clearContents()
+        pasteboard.setString("copied after", forType: .string)
+        let clip = try #require(await recorder.check())
+        #expect(try await store.load().map(\.text) == ["copied after"] && clip.text == "copied after")
     }
 
     private func privatePasteboard() -> NSPasteboard {

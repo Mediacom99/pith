@@ -146,6 +146,16 @@ struct ClipboardStoreTests {
         #expect(saved.count == 2 && saved[1].pinned)
     }
 
+    @Test func aPauseLastsThroughARelaunch() async throws {
+        let folder = try TemporaryDirectory()
+        let store = ClipboardStore(folder: folder.url.appending(path: "clipboard"))
+        #expect(await !store.isPaused(), "recording by default, before the folder exists")
+        try await store.setPaused(true)
+        #expect(await ClipboardStore(folder: store.folder).isPaused())
+        try await store.setPaused(false)
+        #expect(await !ClipboardStore(folder: store.folder).isPaused())
+    }
+
     @Test func aLongTextIsKeptWholeOnDiskAndOnlyItsStartInMemory() async throws {
         let folder = try TemporaryDirectory()
         let store = ClipboardStore(folder: folder.url)

@@ -20,6 +20,17 @@ struct AppResolverTests {
         #expect(AppResolver.resolve("/nonexistent/X.app", among: apps) == nil)
     }
 
+    @Test func linksFindTheirAppsAndHttpsCoversHttp() {
+        let (found, problems) = AppResolver.links(["https": "Terminal", "mailto": "No Such App"], among: apps)
+        #expect(found.mapValues(\.path) == ["https": terminal.path, "http": terminal.path])
+        #expect(problems == ["open_links.mailto: can't find the app \"No Such App\""])
+
+        let own = AppResolver.links(["https": "Terminal", "http": "No Such App"], among: apps)
+        #expect(
+            own.apps.mapValues(\.path) == ["https": terminal.path],
+            "http set on its own isn't replaced, even when it's not found")
+    }
+
     @Test func picksTheOpenWithAppByExtensionThenMostSpecificType() {
         let a = URL(filePath: "/A.app")
         let b = URL(filePath: "/B.app")

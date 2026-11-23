@@ -8,21 +8,48 @@ final class ClipboardHistory {
     private(set) var index = ClipboardIndex()
     /// Called after every change, so the panel can show it.
     var onChange: (() -> Void)?
+    /// How much history is kept (`[clipboard]`, decision 37). Nil until the config is read, so nothing is dropped by
+    /// limits it doesn't set; a change prunes at once.
+    var retention: ClipboardStore.Retention? {
+        didSet { if retention != oldValue { Task { await prune() } } }
+    }
+    private var isLoaded = false
 
     init(store: ClipboardStore) {
         self.store = store
     }
 
-    /// Prunes the history to its limits and loads it. Called once at launch, before the recorder starts, so no copy
+    /// Loads the history and prunes it to its limits. Called once at launch, before the recorder starts, so no copy
     /// can land in between and be lost.
     func load() async {
         do throws(ClipboardStore.Failure) {
-            _ = try await store.prune(.standard, now: .now)
             let clips = try await store.load()
             index = await runInBackground(qos: .userInitiated) { ClipboardIndex(clips: clips) }
         } catch {
             Log.app.error("Couldn't load the clipboard history: \(error.description, privacy: .public)")
         }
+        isLoaded = true
+        await prune()
+        onChange?()
+    }
+
+    /// Drops what `retention` doesn't keep, oldest unpinned first. Waits for the load, so the index it updates is
+    /// the one on screen.
+    func prune() async {
+        guard isLoaded, let retention else { return }
+        do throws(ClipboardStore.Failure) {
+            let removed = try await store.prune(retention, now: .now)
+            guard !removed.isEmpty else { return }
+            index.remove(removed)
+            onChange?()
+        } catch {
+            Log.app.error("Couldn't prune the clipboard history: \(error.description, privacy: .public)")
+        }
+    }
+
+    /// Deletes every clip that isn't pinned (Clear Clipboard History).
+    func clear() async throws(ClipboardStore.Failure) {
+        index.remove(try await store.clear())
         onChange?()
     }
 
@@ -56,10 +83,10 @@ final class ClipboardHistory {
         }
     }
 
-    /// A copy the recorder stored, and the clips retention dropped to make room.
-    func recorded(_ clip: Clip, removed: [Int64]) {
-        index.remove(removed)
+    /// A copy the recorder stored; older clips may have to go to make room.
+    func recorded(_ clip: Clip) {
         index.insert(clip)
         onChange?()
+        Task { await prune() }
     }
 }

@@ -173,8 +173,9 @@ Since there is no menu bar icon, these are searchable commands:
 - **Clipboard History** — opens the clipboard in the panel; `c` alone lists it first (decision 42)
 - **Open config** — opens `config.toml` in the default editor
 - **Reload config** (also automatic on save)
-- **Pause / resume clipboard recording**
-- **Clear clipboard history** (keeps pinned)
+- **Pause / resume clipboard recording**: only the one that applies is listed, and a pause lasts through a relaunch
+  (decisions 44, 45)
+- **Clear clipboard history** (keeps pinned, after a second ⏎)
 - **Quit Pith**
 
 ---

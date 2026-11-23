@@ -50,6 +50,8 @@ supersede an earlier one.
 | 41 | 2026-11-23 | Builds are signed with a self-signed "Pith Local Signing" certificate in the login keychain, created once with `make certificate`; `make app` falls back to ad hoc without it. | macOS ties Accessibility access (which paste needs) to the app's signature, and an ad hoc one changes with every `make install`. The certificate is tied to no Apple account, unlike Edoardo's existing identities, so no team ID goes into the build. | Edoardo |
 | 42 | 2026-11-23 | The launcher has a Clipboard History command, as Raycast does. "c" is its alias: typed alone, it puts the command first, above any app or habit; "clipboard" finds it by name. ⏎ (or a double-click) opens the clipboard in place. ⌘⇧V and the `c ` prefix still open it too. | Edoardo opens the clipboard from the launcher by habit, as in Raycast. An alias rather than a boost keeps "ca" for Calendar, and longer prefixes rank as usual. | Edoardo |
 | 43 | 2026-11-23 | In a ⌘K actions list, ⌘Q, ⌘W, ⌘E, ⌘R, ⌘T, ⌘Y and ⌘U run the 1st to 7th action, as ⏎ would on its row; each row shows its letter at its end. The letter is fixed per action (its place in the full list), so a filter doesn't change it. Force Quit and a pinned clip's Delete still take a second press. The letters work only inside ⌘K. A single click still only selects. | Edoardo wants the actions one chord away, under the left hand. In the results list ⌘Q and ⌘W are reflexes (quit, close) and would fire by accident; inside ⌘K they're deliberate. | Edoardo |
+| 44 | 2026-11-23 | Pausing clipboard recording lasts through a relaunch: it stays paused until Resume Clipboard Recording, or ⏎ on the clipboard's "Recording is paused" row. Nothing is read while paused, and resuming starts from the clipboard as it is then, so what was copied meanwhile is never recorded. | Pausing is for copying something private, and a restart (login, an update) that silently resumed would record it. The paused row at the top of the clipboard keeps it from being forgotten. | Edoardo |
+| 45 | 2026-11-23 | The launcher lists only the recording command that applies: Pause Clipboard Recording while recording, Resume Clipboard Recording while paused. | Nothing in the list does nothing. | Edoardo |
 
 ## Principles
 
@@ -104,8 +106,10 @@ Sources/
                            row view (the quiet selection)
     Palette.swift          the few colors the system doesn't have: quiet gray, fills, edge, red and orange
     Notifier.swift         notifications for a finished Zip and failed actions, reveal on click
-    ClipboardRecorder.swift  the pasteboard's change count on a timer; each new copy read, classified and stored
-    ClipboardHistory.swift the ClipboardIndex, loaded at launch and updated by each recorded copy
+    ClipboardRecorder.swift  the pasteboard's change count on a timer (off while paused); each new copy read,
+                           classified and stored
+    ClipboardHistory.swift the ClipboardIndex, loaded at launch and updated by each recorded copy; prunes to
+                           `[clipboard]`'s limits
     ClipboardPresentation.swift  a clip's words in its row and on the tile: titles, ages, sizes, notices
     ClipImages.swift       copied images' thumbnails as bitmaps, read on a worker, the newest ready ahead of time
     Paste.swift            a clip back on the pasteboard, ⌘V posted, Accessibility, the clip's ⌘K actions, save names
@@ -118,11 +122,12 @@ Files the app keeps:
 |---|---|---|
 | `~/.config/pith/config.toml` | Settings (FEATURES §8) | Created with commented defaults on first launch; then only by you |
 | `~/Library/Application Support/pith/history.json` | What you opened and when (≤ 200 items × 10 times); deleted files are dropped | After every open or deletion, on a serial worker, atomically |
-| `~/Library/Application Support/pith/clipboard/` | The clipboard history: `history.sqlite` (clips, their text and what a paste puts back) and `images/` (each image and its two thumbnails). 2 GB and 30 days, pins kept | After each copy, on the store's serial queue |
+| `~/Library/Application Support/pith/clipboard/` | The clipboard history: `history.sqlite` (clips, their text and what a paste puts back) and `images/` (each image and its two thumbnails), and `paused` while recording is paused (decision 44). `[clipboard]`'s limits, 2 GB and 30 days by default, pins kept | After each copy, on the store's serial queue |
 
 **Startup.** `AppDelegate` builds and draws the panel, loads the history, then the config, and registers the
-configured hotkey. The clipboard history is pruned to its limits and loaded (its index built on a
-worker); only then does the recorder start watching, from what's on the clipboard now. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
+configured hotkey. The clipboard history is loaded (its index built on a worker) and pruned to `[clipboard]`'s
+limits once the config is read, so nothing is dropped by limits it doesn't set. A pause saved before the relaunch is
+applied, and only then does the recorder start watching, from what's on the clipboard now. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
 the launcher itself. The new `SearchIndex` goes to the view controller, which has `IconStore` render the icons it
 doesn't have yet. FSEvents streams trigger a rescan when the app folders change (unless the change is inside a bundle)
 and a reload when the config's folder changes. The newest rescan or reload always wins.

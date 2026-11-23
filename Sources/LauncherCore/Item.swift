@@ -67,6 +67,11 @@ public struct Item: Sendable, Hashable {
 /// The launcher's own commands, found by searching like apps (FEATURES.md §7).
 public enum Command: String, Sendable, CaseIterable {
     case clipboard
+    /// Only one of the two is listed at a time: the one that applies (decision 45).
+    case pauseClipboard = "pause-clipboard"
+    case resumeClipboard = "resume-clipboard"
+    /// Asks for a second ⏎ first; pinned clips stay.
+    case clearClipboard = "clear-clipboard"
     case openConfig = "open-config"
     case reloadConfig = "reload-config"
     case quit
@@ -74,6 +79,9 @@ public enum Command: String, Sendable, CaseIterable {
     public var title: String {
         switch self {
         case .clipboard: "Clipboard History"
+        case .pauseClipboard: "Pause Clipboard Recording"
+        case .resumeClipboard: "Resume Clipboard Recording"
+        case .clearClipboard: "Clear Clipboard History"
         case .openConfig: "Open Config"
         case .reloadConfig: "Reload Config"
         case .quit: "Quit Pith"
