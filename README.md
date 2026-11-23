@@ -173,7 +173,8 @@ release; to change only the page, `make page` assembles it in `.build/site` to l
 ## Configuration
 
 Settings live in `~/.config/pith/config.toml`. It's created with commented defaults on first launch, and saved
-changes apply right away. A mistake shows up as a row at the top of the launcher, and ⏎ on it opens the file.
+changes apply right away. A mistake shows up as a row at the top of the launcher, and ⏎ on it opens the file; until
+it's fixed, the settings it touches stay as they were.
 
 ```toml
 [hotkeys]

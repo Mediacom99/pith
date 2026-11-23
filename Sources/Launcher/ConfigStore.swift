@@ -7,10 +7,12 @@ final class ConfigStore {
     nonisolated static let file = URL.homeDirectory.appending(path: ".config/pith/config.toml")
 
     private(set) var config = Config()
-    /// What's wrong in the file, with line numbers. Wrong settings keep their defaults.
+    /// What's wrong in the file, with line numbers. Wrong settings stay as they were (decision 59).
     private(set) var problems: [String] = []
     private var watcher: DirectoryWatcher?
     private var generation = 0
+    /// Whether `config` came from the file yet: until then, a mistake falls back to the defaults.
+    private var hasLoaded = false
 
     /// Called after every load, with the settings before it.
     var onChange: ((_ previous: Config) -> Void)?
@@ -51,22 +53,33 @@ final class ConfigStore {
         generation += 1
         let generation = generation
         let file = Self.file
-        let (config, problems) = await runInBackground(qos: .userInitiated) { Self.read(file) }
+        let current = hasLoaded ? config : nil
+        let (config, problems) = await runInBackground(qos: .userInitiated) { Self.read(file, previous: current) }
         // A newer load started meanwhile: its result wins.
         guard generation == self.generation else { return }
         let previous = self.config
         self.config = config
         self.problems = problems
+        hasLoaded = true
         for problem in problems { Log.app.error("config.toml \(problem, privacy: .public)") }
         onChange?(previous)
     }
 
-    private nonisolated static func read(_ file: URL) -> (Config, [String]) {
-        guard let data = try? Data(contentsOf: file) else { return (Config(), []) }
-        guard let text = String(data: data, encoding: .utf8) else {
-            return (Config(), ["config.toml isn't UTF-8 text"])
+    /// The settings in `file`, given the ones Pith has now (`previous`, nil at launch). A file that's gone, can't be
+    /// read or isn't text changes nothing, as a file that isn't valid TOML doesn't (decision 59).
+    nonisolated static func read(_ file: URL, previous: Config?) -> (Config, [String]) {
+        let data: Data
+        do {
+            data = try Data(contentsOf: file)
+        } catch CocoaError.fileReadNoSuchFile {
+            return Config.unchanged("config.toml is missing", previous: previous)
+        } catch {
+            return Config.unchanged("config.toml can't be read", previous: previous)
         }
-        return Config.parse(text)
+        guard let text = String(data: data, encoding: .utf8) else {
+            return Config.unchanged("config.toml isn't UTF-8 text", previous: previous)
+        }
+        return Config.parse(text, previous: previous)
     }
 
     private nonisolated static func createIfMissing(_ file: URL) {

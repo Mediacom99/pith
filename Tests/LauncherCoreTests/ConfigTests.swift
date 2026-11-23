@@ -88,7 +88,11 @@ struct ConfigTests {
             "https://acme.example" = "Safari"
             mailto = 3
             """)
-        #expect(config == Config())
+        var expected = Config()
+        expected.clipboardMaxSizeGB = nil
+        expected.clipboardMaxAgeDays = nil
+        #expect(config == expected, "at launch, a wrong limit drops nothing (decision 59)")
+        #expect(config.clipboardRetention == .init(maxBytes: .max, maxAge: .infinity))
         #expect(
             problems == [
                 "line 2: clipboard.max_size_gb is 0, expected more than 0 and at most 1000",
@@ -103,10 +107,67 @@ struct ConfigTests {
             ])
     }
 
-    @Test func invalidTOMLGivesTheDefaultsAndOneProblem() {
-        let (config, problems) = Config.parse("[launcher]\nempty_state = \"recent\nlaunch_at_login = true")
-        #expect(config == Config())
-        #expect(problems == ["line 2: unterminated string, so every setting is at its default"])
+    @Test func invalidTOMLChangesNothing() {
+        let broken = "[launcher]\nempty_state = \"recent\nlaunch_at_login = true"
+        var current = Config()
+        current.emptyState = .none
+        current.clipboardMaxAgeDays = 365
+        let (config, problems) = Config.parse(broken, previous: current)
+        #expect(config == current, "decision 59")
+        #expect(problems == ["line 2: unterminated string, so the settings stay as they were"])
+
+        #expect(
+            Config.parse("terminal = “Ghostty”").problems == [
+                "line 1: curly quotes, expected straight ones (\"), so every setting is at its default and no clipboard history is dropped"
+            ])
+
+        let (atLaunch, launchProblems) = Config.parse(broken)
+        #expect(atLaunch.emptyState == .recent)
+        #expect(atLaunch.clipboardRetention == .init(maxBytes: .max, maxAge: .infinity), "no clipboard history dropped")
+        #expect(
+            launchProblems == [
+                "line 2: unterminated string, so every setting is at its default and no clipboard history is dropped"
+            ])
+    }
+
+    /// A wrong value keeps what Pith has now; what's right applies, and what isn't written goes back to its default.
+    @Test func aWrongSettingStaysAsItWas() {
+        var current = Config()
+        current.clipboardMaxAgeDays = 365
+        current.clipboardMaxSizeGB = 10
+        current.launchAtLogin = false
+        current.clipboardHotkey = nil
+        current.terminal = "Ghostty"
+        current.folders = ["~/dev"]
+        current.openWith = ["md": "Visual Studio Code"]
+        current.keys = Config.parse("[keys]\nup = \"ctrl+p\"").config.keys
+        let (config, problems) = Config.parse(
+            """
+            [hotkeys]
+            clipboard = "cmd+"
+            [keys]
+            up = "ctrl+"
+            [launcher]
+            empty_state = "none"
+            launch_at_login = "no"
+            [clipboard]
+            max_age_days = 9999
+            max_size_gb = 4
+            [actions]
+            terminal = 3
+            [open_with]
+            md = 1
+            """, previous: current)
+        #expect(problems.count == 6)
+        #expect(config.clipboardMaxAgeDays == 365, "a mistake never deletes history")
+        #expect(config.clipboardMaxSizeGB == 4)
+        #expect(config.launchAtLogin == false)
+        #expect(config.clipboardHotkey == nil)
+        #expect(config.keys[.up] == [Shortcut("ctrl+p")!])
+        #expect(config.terminal == "Ghostty")
+        #expect(config.openWith == ["md": "Visual Studio Code"])
+        #expect(config.emptyState == .none)
+        #expect(config.folders == Config().folders, "not written: the default")
     }
 }
 

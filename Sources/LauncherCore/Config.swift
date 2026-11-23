@@ -38,16 +38,34 @@ public struct Config: Sendable, Equatable {
     /// bundle id or path.
     public var openLinks: [String: String] = [:]
     /// How much clipboard history is kept (decision 37): whichever limit is reached first drops the oldest unpinned
-    /// clips.
-    public var clipboardMaxSizeGB = 2.0
-    public var clipboardMaxAgeDays = 30
+    /// clips. Nil when the file's value is wrong and Pith has none from before to keep, at launch: that limit then
+    /// drops nothing, so a mistake never deletes history (decision 59).
+    public var clipboardMaxSizeGB: Double? = 2
+    public var clipboardMaxAgeDays: Int? = 30
 
     public init() {}
 
-    /// The clipboard's limits, as the store applies them.
+    /// The clipboard's limits, as the store applies them. A limit that's nil drops nothing.
     public var clipboardRetention: ClipboardStore.Retention {
         ClipboardStore.Retention(
-            maxBytes: Int(clipboardMaxSizeGB * 1_000_000_000), maxAge: TimeInterval(clipboardMaxAgeDays) * 86_400)
+            maxBytes: clipboardMaxSizeGB.map { Int($0 * 1_000_000_000) } ?? .max,
+            maxAge: clipboardMaxAgeDays.map { TimeInterval($0) * 86_400 } ?? .infinity)
+    }
+
+    /// What a wrong setting falls back to at launch, when Pith has no settings yet: its default, except the
+    /// clipboard's limits, which drop nothing until the file sets them right (decision 59).
+    static var atLaunch: Config {
+        var config = Config()
+        config.clipboardMaxSizeGB = nil
+        config.clipboardMaxAgeDays = nil
+        return config
+    }
+
+    /// The settings when config.toml can't be read or isn't valid TOML: `previous`, the ones Pith has now, unchanged,
+    /// or at launch `atLaunch`, with one problem that says why (decision 59).
+    public static func unchanged(_ reason: String, previous: Config?) -> (config: Config, problems: [String]) {
+        if let previous { return (previous, ["\(reason), so the settings stay as they were"]) }
+        return (atLaunch, ["\(reason), so every setting is at its default and no clipboard history is dropped"])
     }
 
     /// What the file index scans, with `~` expanded and symlinks resolved: FSEvents reports real paths, so a
@@ -65,24 +83,54 @@ public struct Config: Sendable, Equatable {
         return FileRules(roots: roots, ignore: IgnoreRules(ignore, home: home), maxDepth: maxDepth)
     }
 
-    /// The settings in `text`, plus a problem for every setting that's wrong or unknown. A wrong setting keeps its
-    /// default and the rest still apply. A file that isn't valid TOML gives the defaults and one problem, which says so.
-    public static func parse(_ text: String) -> (config: Config, problems: [String]) {
-        var config = Config()
+    /// The settings in `text`, plus a problem for every setting that's wrong or unknown (decision 59). `previous` is
+    /// the settings Pith has now, nil at launch. A wrong setting keeps its value there (at launch, `atLaunch`'s), and
+    /// the rest still apply; a setting the file doesn't write has its default. A file that isn't valid TOML changes
+    /// nothing.
+    public static func parse(_ text: String, previous: Config? = nil) -> (config: Config, problems: [String]) {
         let tables: [String: [String: TOMLReader.Entry]]
         do {
             tables = try TOMLReader.parse(text)
         } catch {
-            return (config, ["\(error.description), so every setting is at its default"])
+            return unchanged(error.description, previous: previous)
         }
 
+        var config = Config()
+        let fallback = previous ?? atLaunch
         var problems: [(line: Int, message: String)] = []
         var writtenKeys: [(key: PanelKey, line: Int, shortcuts: [Shortcut])] = []
         var hotkeyLines: [String: Int] = [:]
         for (table, entries) in tables {
             for (key, entry) in entries {
                 let name = table.isEmpty ? key : "\(table).\(key)"
-                func problem(_ message: String) { problems.append((entry.line, "line \(entry.line): \(message)")) }
+                /// A wrong value: the setting stays as it was.
+                func keep() {
+                    switch name {
+                    case "hotkeys.launcher": config.launcherHotkey = fallback.launcherHotkey
+                    case "hotkeys.clipboard": config.clipboardHotkey = fallback.clipboardHotkey
+                    case "launcher.empty_state": config.emptyState = fallback.emptyState
+                    case "launcher.clipboard_alias": config.clipboardAlias = fallback.clipboardAlias
+                    case "launcher.launch_at_login": config.launchAtLogin = fallback.launchAtLogin
+                    case "launcher.folders": config.folders = fallback.folders
+                    case "launcher.ignore": config.ignore = fallback.ignore
+                    case "launcher.max_depth": config.maxDepth = fallback.maxDepth
+                    case "actions.terminal": config.terminal = fallback.terminal
+                    case "clipboard.max_size_gb": config.clipboardMaxSizeGB = fallback.clipboardMaxSizeGB
+                    case "clipboard.max_age_days": config.clipboardMaxAgeDays = fallback.clipboardMaxAgeDays
+                    default:
+                        if table == "keys", let panelKey = PanelKey(rawValue: key) {
+                            writtenKeys.append((panelKey, entry.line, fallback.keys[panelKey]))
+                        } else if table == "open_with" {
+                            config.openWith[fileType(key)] = fallback.openWith[fileType(key)]
+                        } else if table == "open_links", let scheme = scheme(key) {
+                            config.openLinks[scheme] = fallback.openLinks[scheme]
+                        }
+                    }
+                }
+                func problem(_ message: String) {
+                    problems.append((entry.line, "line \(entry.line): \(message)"))
+                    keep()
+                }
                 func size(_ gigabytes: Double, as written: String) {
                     if gigabytes > 0, gigabytes <= 1_000 {
                         config.clipboardMaxSizeGB = gigabytes
@@ -157,16 +205,11 @@ public struct Config: Sendable, Equatable {
                 case ("actions.terminal", .string(let app)):
                     config.terminal = app
                 case (_, .string(let app)) where table == "open_with":
-                    config.openWith[key.lowercased().trimmingPrefix(".").description] = app
+                    config.openWith[fileType(key)] = app
                 case (_, _) where table == "open_with":
                     problem("open_with.\(key) should be an app name in quotes")
                 case (_, .string(let app)) where table == "open_links":
-                    // "https:" and "https://" mean "https" too.
-                    var scheme = key.lowercased()
-                    while scheme.hasSuffix(":") || scheme.hasSuffix("/") { scheme.removeLast() }
-                    if let first = scheme.first, first.isASCII, first.isLetter,
-                        scheme.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "+-.".contains($0)) })
-                    {
+                    if let scheme = scheme(key) {
                         config.openLinks[scheme] = app
                     } else {
                         problem("open_links \"\(key)\" isn't a URL scheme like \"https\"")
@@ -215,6 +258,22 @@ public struct Config: Sendable, Equatable {
         config.keys = keys.bindings
         problems += keys.problems
         return (config, problems.sorted { $0.line < $1.line }.map(\.message))
+    }
+
+    /// An `[open_with]` key as it's looked up: lowercased, without a leading dot.
+    private static func fileType(_ key: String) -> String {
+        key.lowercased().trimmingPrefix(".").description
+    }
+
+    /// An `[open_links]` key as a lowercased URL scheme ("https:" and "https://" mean "https" too), or nil when it
+    /// isn't one.
+    private static func scheme(_ key: String) -> String? {
+        var scheme = key.lowercased()
+        while scheme.hasSuffix(":") || scheme.hasSuffix("/") { scheme.removeLast() }
+        guard let first = scheme.first, first.isASCII, first.isLetter,
+            scheme.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "+-.".contains($0)) })
+        else { return nil }
+        return scheme
     }
 
     /// Written to a new config file: every setting with its default, explained.

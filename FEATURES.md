@@ -191,7 +191,9 @@ Since there is no menu bar icon, these are searchable commands:
 
 ## 8. Configuration
 
-Single file, no settings window: `~/.config/pith/config.toml`. Reloaded automatically on save.
+Single file, no settings window: `~/.config/pith/config.toml`. Reloaded automatically on save. A mistake changes
+nothing but shows up first in the launcher: a wrong value keeps its setting as it was, and a file that doesn't parse
+keeps them all (decision 59).
 
 ```toml
 [hotkeys]

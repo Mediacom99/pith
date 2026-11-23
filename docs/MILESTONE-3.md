@@ -337,13 +337,15 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
   - The live page, `install.sh` and the feed match the repo.
   - "Suspect" marks a trigger that wasn't confirmed.
 - **Critical:**
-  1. **A mistake in config.toml deletes clipboard history.**
-     - A syntax error anywhere gives every setting its default: a half-typed line saved, or a table given twice.
-     - An out-of-range value gives that setting its default: `max_age_days = 9999`, or `365.0`.
-     - So a longer `max_age_days` or `max_size_gb` drops back to 30 days or 2 GB, and the prune runs at once. Fixing
-       the file doesn't bring the clips back.
-     - The same reset turns launch at login and the clipboard hotkey back on, and rescans `~`.
-     - TextEdit, the fallback editor, turns typed quotes curly, which the reader rejects (suspect).
+  1. **Fixed** (decision 59): a mistake changes nothing it doesn't have to. A file that doesn't parse, is missing or
+     can't be read keeps every setting, a wrong value keeps its setting, and at launch a wrong clipboard limit drops
+     nothing. Curly quotes get their own problem ("curly quotes, expected straight ones"). 2 new tests, 2 updated. What it was:
+     **a mistake in config.toml deleted clipboard history.**
+     - A syntax error anywhere gave every setting its default: a half-typed line saved, or a table given twice.
+     - An out-of-range value gave that setting its default: `max_age_days = 9999`, or `365.0`.
+     - So a longer `max_age_days` or `max_size_gb` dropped back to 30 days or 2 GB, and the prune ran at once.
+     - The same reset turned launch at login and the clipboard hotkey back on, and rescanned `~`.
+     - TextEdit, the fallback editor, turns typed quotes curly, which the reader rejects.
 - **High:**
   2. **Accessibility given after the first paste isn't seen when the clipboard opens from the launcher** (`c `,
      Clipboard History, or ⌘⇧V with the launcher open). Only launch and ⌘⇧V on a closed panel check it, so ⏎ keeps
