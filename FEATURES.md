@@ -245,4 +245,5 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 - [x] **Pick a final name:** Pith (decision 30)
 - [x] Clipboard hotkey: `⌘⇧V` (decision 34)
 - [ ] Clipboard privacy: concealed copies are skipped (decision 35) and recording pauses from the launcher (decision 44); an ignore-app list?
+- [ ] Every keybind configurable in `config.toml` (Edoardo, 2026-11-23, the next task): today only `[hotkeys] launcher` and `clipboard` are; the panel's keys (§3: ↑ ↓ ⌃K ⌃J, ⏎, ⌘K, ⌘Q–⌘U, ⎋, Space and ⌘Y, ⌫, the `c ` prefix) are fixed.
 - [x] Default size cap / max age: 2 GB, 30 days (decision 37)
