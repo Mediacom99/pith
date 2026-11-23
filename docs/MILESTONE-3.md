@@ -222,11 +222,11 @@ Status: **in review**. Built and tested; the commands and settings need Edoardo'
 
 ## 7. Updates
 
-Status: **in progress**. Built and tested (decision 48). Waiting on Edoardo's two one-time steps (`make update-key`,
-`npx wrangler login`) for the first `make publish`, then a real update on his Mac.
+Status: **in progress**. Built and tested (decision 48). 0.3.0 is published on `pith.edoardobertoli.xyz` and
+installed on Edoardo's Mac; what's left is watching a real update arrive (0.3.1).
 - `Updater` wraps Sparkle 2.10.1, the one dependency:
-  - Sparkle's schedule is off. Pith checks after the panel closes, at most once a day, and Sparkle starts only then,
-    so nothing is read at launch and there's no timer.
+  - Sparkle's schedule is off. Pith checks after the panel closes, at most once a day (an hour after a check that
+    failed), and Sparkle starts only then, so nothing is read at launch and there's no timer.
   - A found update downloads in the background, is checked against the key in Info.plist and against the app's own
     signature, then waits.
   - The launcher lists Update Pith above the recent items, not selected, and search finds it; ⏎ installs and
@@ -240,8 +240,8 @@ Status: **in progress**. Built and tested (decision 48). Waiting on Edoardo's tw
   - `make publish` packages and tags the build, writes `appcast.xml` signed with the key, and deploys it to
     `pith.edoardobertoli.xyz` with `Pith-<version>.zip` and `Pith.zip`, the newest at a fixed address for a first
     install.
-- **Tests:** the update row (first, not selected, ⏎ restarts, hidden until ready) and Info.plist keeping Sparkle's
-  schedule off with downloads on. Snapshot: `update-ready`.
+- **Tests:** the update row (first, not selected, ⏎ restarts, hidden until ready), the schedule (daily, an hour after
+  a failure), and Info.plist keeping Sparkle's schedule off with downloads on. Snapshot: `update-ready`.
 
 ## 8. Performance
 

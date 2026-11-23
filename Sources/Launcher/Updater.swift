@@ -9,12 +9,10 @@ import Sparkle
 /// waits: the launcher lists Update Pith, which installs it and relaunches, and Sparkle installs it anyway when Pith
 /// quits.
 final class Updater: NSObject, SPUUpdaterDelegate {
-    static let interval: TimeInterval = 86_400
-
     /// Called with the version that's downloaded and ready to install.
     var onReady: (String) -> Void = { _ in }
     private var updater: SPUUpdater?
-    private var lastCheck: Date?
+    private var schedule = UpdateSchedule()
     /// Installs the downloaded update and relaunches; Sparkle hands it over once the update is ready.
     private var install: (() -> Void)?
 
@@ -25,12 +23,10 @@ final class Updater: NSObject, SPUUpdaterDelegate {
         return !key.isEmpty && LoginItem.isInApplicationsFolder
     }
 
-    /// Checks for an update when a day has passed since the last check, or none was made since launch. Sparkle starts
-    /// on the first one, so it reads nothing at launch.
+    /// Checks for an update when one is due (`UpdateSchedule`). Sparkle starts on the first check, so it reads nothing
+    /// at launch.
     func checkIfDue(now: Date = .now) {
-        guard Self.isEnabled, install == nil else { return }
-        if let lastCheck, now.timeIntervalSince(lastCheck) < Self.interval { return }
-        lastCheck = now
+        guard Self.isEnabled, install == nil, schedule.take(at: now) else { return }
         if updater == nil {
             let bundle = Bundle.main
             let updater = SPUUpdater(
@@ -70,5 +66,27 @@ final class Updater: NSObject, SPUUpdaterDelegate {
             return
         }
         Log.app.error("Couldn't update: \(error.localizedDescription, privacy: .public)")
+        schedule.failed(at: .now)
+    }
+}
+
+/// When Pith checks for an update: at the first chance after launch, then at most once a day, and an hour after a
+/// check that failed (offline, the site down), rather than a day.
+struct UpdateSchedule {
+    static let interval: TimeInterval = 86_400
+    static let retry: TimeInterval = 3_600
+    /// When the next check is due; nil until the first.
+    private(set) var next: Date?
+
+    /// Whether a check is due at `now`. If it is, it's taken, and the next one is a day later.
+    mutating func take(at now: Date) -> Bool {
+        if let next, now < next { return false }
+        next = now + Self.interval
+        return true
+    }
+
+    /// The last check failed: the next is due an hour from `now`.
+    mutating func failed(at now: Date) {
+        next = now + Self.retry
     }
 }

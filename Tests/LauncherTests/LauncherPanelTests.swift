@@ -334,6 +334,19 @@ struct LauncherPanelTests {
         #expect(run == [.installUpdate])
     }
 
+    @Test func updatesAreCheckedOnceADayAndAnHourAfterAFailure() {
+        let start = Date(timeIntervalSince1970: 1_790_000_000)
+        let hour: TimeInterval = 3_600
+        var schedule = UpdateSchedule()
+        // Hours after `start` that a check is attempted at, and whether it's due; a failure at hour 24.
+        var due: [Bool] = []
+        for (hours, failed) in [(0.0, false), (23, false), (24, true), (24.98, false), (25, false), (26, false)] {
+            due.append(schedule.take(at: start + hours * hour))
+            if failed { schedule.failed(at: start + hours * hour) }
+        }
+        #expect(due == [true, false, true, false, true, false], "first chance, a day later, an hour after a failure")
+    }
+
     @Test func sparklesOwnScheduleIsOffAndUpdatesDownloadOnTheirOwn() throws {
         // The Info.plist the app is built with: Pith asks for checks itself, with no timer (decision 48).
         let file = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "../../Support/Info.plist")
