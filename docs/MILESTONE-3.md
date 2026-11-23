@@ -420,34 +420,44 @@ real folder prompts (4) on a first install.
       sentence. 2 tests. What it was, **stalls**: deleting tens of thousands of indexed files (`cargo clean`) checked
       the history against every path on the main thread, and a pasted 2,000-word query allocated about 800 MB per
       keystroke on the file index's queue.
-- **Low:**
+- **Low** (numbered on from the others):
   - **The clipboard:**
-    - an image-only RTFD from TextEdit or Notes shows "￼" (suspect);
-    - a copy of hundreds of files is cut at 4,096 characters;
-    - pins over `max_size_gb` drop every new copy;
-    - the schema isn't created in a transaction;
-    - a copy recorded during Clear can come back (suspect).
+    18. An image-only RTFD from TextEdit or Notes is a rich-text clip titled "￼", not an image (suspect).
+    19. A copy of hundreds of files is cut at 4,096 characters: the title says "and ~50 more", Reveal selects only
+        those, and the last path is cut.
+    20. Pins over `max_size_gb` drop every new copy right after it's recorded.
+    21. The schema isn't created in a transaction, so a crash during the very first launch breaks the history for
+        good ("table already exists").
+    22. A copy recorded during Clear can come back as a row whose clip is gone (suspect: a narrow window).
+    23. A password copied in the instant between the concealed check and the rich-text fallback's read could be
+        recorded as text: the fallback reads the pasteboard again without checking that it's the same copy.
   - **The panel:**
-    - key repeat isn't ignored, so holding ⌫ overshoots into the launcher and Space flickers Quick Look;
-    - typing that leaves the rows unchanged keeps a confirmation armed;
-    - Update Pith is selected when the empty state is empty;
-    - file facts are cached until relaunch;
-    - Copy to Clipboard asks for Accessibility.
+    24. Key repeat isn't ignored: holding ⌫ to clear a clipboard search overshoots into the launcher, and holding
+        Space flickers Quick Look.
+    25. Typing that leaves the rows unchanged keeps a confirmation armed (Clear Clipboard History ⏎, a space, ⏎
+        clears), against "typing cancels it".
+    26. Update Pith is selected when the empty state is empty (a new user with no history), so ⏎ on an empty field
+        restarts into the update.
+    27. A copied file's facts (size, whether it's still there) are cached until relaunch.
+    28. ⌘K → Copy to Clipboard, chosen on purpose, still asks for Accessibility.
   - **Files:**
-    - a case-only rename leaves a duplicate;
-    - with 200 items remembered, a newly opened one can be forgotten at once;
-    - recents on a drive that isn't mounted are forgotten at launch;
-    - hidden files under `~` (`.zsh_history`, `.cache`) wake Pith;
-    - the file-type icon cache never shrinks.
+    29. A case-only rename (`report.pdf` → `Report.pdf`) leaves a duplicate row.
+    30. With 200 items remembered, a newly opened one can be forgotten at once, as older ones with many opens
+        outrank it.
+    31. Recents on a drive that isn't mounted at launch are forgotten for good.
+    32. Hidden files under `~` (`.zsh_history`, `.cache`) wake Pith on every write: only path rules are left out of
+        FSEvents.
+    33. The file-type icon cache never shrinks (about 43 KB per extension seen).
   - **Config:**
-    - `clipboard = "cmd+v"` is accepted;
-    - a restored ⏎ or ⎋ isn't marked as taken;
-    - a symlinked config.toml doesn't reload;
-    - any file written in its folder reloads it, vim's swap file included;
-    - FEATURES §8's example is out of date: `folders` and `ignore`, and `[calculator]`, which is an unknown setting
-      today.
-  - **Install:** the Terminal line stops Pith with a signal. If an update was waiting, Sparkle's installer may then
-    put that older build over the new copy (suspect).
+    34. `clipboard = "cmd+v"` is accepted and takes ⌘V from every app; the editing keys are reserved only in
+        `[keys]`.
+    35. A ⏎ or ⎋ given back to `open` or `back` isn't marked taken, so another key setting can list it silently.
+    36. A config.toml that's a symlink (stow, dotfiles managers) doesn't reload when its target is saved.
+    37. Any file written in its folder reloads it, vim's swap file included (harmless, some wakeups).
+    38. FEATURES §8's example is out of date: `folders` and `ignore`, and `[calculator]`, an unknown setting today.
+  - **Install:**
+    39. The Terminal line stops Pith with a signal. If an update was waiting, Sparkle's installer may then put that
+        older build over the new copy (suspect).
 - **Still open beside it:**
   - repeat-to-paste (FEATURES §11, Edoardo picks);
   - the quieter first install's other prompts (FEATURES §11).
