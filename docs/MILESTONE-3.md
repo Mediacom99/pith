@@ -328,10 +328,97 @@ release with them, for Edoardo to install as a new user would.
 
 ## 12. Bug check before friends
 
-Status: **todo**, next. Before Edoardo sends Pith to friends:
-- Go through every feature in `FEATURES.md`, the two install paths (the Terminal line, Pith.dmg), updates, the
-  config and the keys, the clipboard, and the landing page.
-- Rank the bugs found by severity and fix them one at a time with Edoardo.
-- Still open beside it: the notification icon (step 11), repeat-to-paste (FEATURES §11, Edoardo picks), and the
-  quieter first install. A new user still gets the Desktop, Documents and Downloads prompts as the first scan of
-  `~` starts.
+Status: **in progress**. The check is done; the fixes are next, one at a time with Edoardo, most severe first.
+- **How it was checked:**
+  - Read every source file, the install script, the Makefile and the landing page.
+  - `make lint test` (197 tests), `make bench`, `make snapshots` and `make page` pass. A keystroke takes 2.2 ms to
+    update, and the snapshots are unchanged.
+  - The Terminal line installs 0.3.6 into a scratch folder with no quarantine flag.
+  - The live page, `install.sh` and the feed match the repo.
+  - "Suspect" marks a trigger that wasn't confirmed.
+- **Critical:**
+  1. **A mistake in config.toml deletes clipboard history.**
+     - A syntax error anywhere gives every setting its default: a half-typed line saved, or a table given twice.
+     - An out-of-range value gives that setting its default: `max_age_days = 9999`, or `365.0`.
+     - So a longer `max_age_days` or `max_size_gb` drops back to 30 days or 2 GB, and the prune runs at once. Fixing
+       the file doesn't bring the clips back.
+     - The same reset turns launch at login and the clipboard hotkey back on, and rescans `~`.
+     - TextEdit, the fallback editor, turns typed quotes curly, which the reader rejects (suspect).
+- **High:**
+  2. **Accessibility given after the first paste isn't seen when the clipboard opens from the launcher** (`c `,
+     Clipboard History, or ⌘⇧V with the launcher open). Only launch and ⌘⇧V on a closed panel check it, so ⏎ keeps
+     copying instead of pasting until a relaunch.
+  3. **A clip's thumbnail that can't be read is asked for forever, and one core stays busy until Pith quits.**
+     - A failed decode still calls `onChange`, which redraws the rows, and each row asks again.
+     - Triggers: a missing thumbnail file, or an image clip pruned while its row is still in the closed panel.
+  4. **The first scan of `~`:**
+     - There are no file results until every privacy prompt (Desktop, Documents, Downloads) is answered.
+     - A folder allowed later in System Settings is never rescanned.
+     - A config change during that scan can be overwritten by it, since a rebuild has no generation.
+  5. **A folder in `folders` under `~/Library`, or starting with a dot, is never indexed, and no problem row says
+     so.**
+     - This covers Dropbox, Google Drive and OneDrive (`~/Library/CloudStorage`), iCloud Drive and `~/.config`.
+     - The cause: the ignore rules apply to the roots themselves.
+- **Medium:**
+  6. A copy that lands while the clipboard is open moves the selection to the newest clip. ⏎ can then paste another
+     clip than the one chosen, since the recorder sees a copy up to 0.75 s late.
+  7. Keypad Enter and fn+Return do nothing. `open` matches only Return's key code, and since step 10 the field
+     swallows `insertNewline:`.
+  8. A click selects a row, but the tile and Quick Look stay on the old one, while ⏎ opens the clicked row.
+  9. **Images kept beside text and files.**
+     - A text or files copy keeps every image the app offered: a spreadsheet cell keeps its rendered image, a
+       Finder copy keeps the icon.
+     - Every image type is read, so a 5K screenshot also renders a TIFF of about 59 MB, which is then dropped.
+     - Memory spikes, and the 2 GB fills sooner. This needs measuring.
+  10. With Quick Look open, the panel doesn't close when another app takes focus.
+  11. **Hotkey changes.**
+      - Moving a hotkey onto the other's key, or swapping them, fails as "taken by another app".
+      - A "taken" row stays after going back to the old key.
+  12. An image clip whose PNG is gone empties the clipboard on paste, with no notification.
+  13. Open With… applies its app list even after the panel closed, so the next ⌘P opens on it.
+  14. Opening Pith.app again does nothing. A launcher hotkey that never fires (a system shortcut wins) leaves no way
+      in.
+  15. **The file index:**
+      - Overlapping folders (`~` and `~/dev`) list files twice.
+      - A configured folder that's moved in, trashed, or on a drive mounted later is never rescanned, so its results
+        are missing or ghosts.
+      - Dropped FSEvents rescan everything, once per folder.
+  16. **Keyboard layouts.** The defaults are fine on Italian, German and French.
+      - Global hotkeys and the paste's ⌘V use US key positions. On Dvorak or Colemak, ⌘P and ⌘V land on other keys,
+        and custom hotkeys do on QWERTZ and AZERTY too.
+      - The field's ⌘V and ⌘C fail on Cyrillic and Greek layouts.
+  17. **Main-thread stalls:**
+      - Deleting tens of thousands of indexed files (`cargo clean`) checks the history against every path.
+      - A pasted 2,000-word query allocates about 800 MB per keystroke.
+- **Low:**
+  - **The clipboard:**
+    - an image-only RTFD from TextEdit or Notes shows "￼" (suspect);
+    - a copy of hundreds of files is cut at 4,096 characters;
+    - pins over `max_size_gb` drop every new copy;
+    - the schema isn't created in a transaction;
+    - a copy recorded during Clear can come back (suspect).
+  - **The panel:**
+    - key repeat isn't ignored, so holding ⌫ overshoots into the launcher and Space flickers Quick Look;
+    - typing that leaves the rows unchanged keeps a confirmation armed;
+    - Update Pith is selected when the empty state is empty;
+    - file facts are cached until relaunch;
+    - Copy to Clipboard asks for Accessibility.
+  - **Files:**
+    - a case-only rename leaves a duplicate;
+    - with 200 items remembered, a newly opened one can be forgotten at once;
+    - recents on a drive that isn't mounted are forgotten at launch;
+    - hidden files under `~` (`.zsh_history`, `.cache`) wake Pith;
+    - the file-type icon cache never shrinks.
+  - **Config:**
+    - `clipboard = "cmd+v"` is accepted;
+    - a restored ⏎ or ⎋ isn't marked as taken;
+    - a symlinked config.toml doesn't reload;
+    - any file written in its folder reloads it, vim's swap file included;
+    - FEATURES §8's example is out of date: `folders` and `ignore`, and `[calculator]`, which is an unknown setting
+      today.
+  - **Install:** the Terminal line stops Pith with a signal. If an update was waiting, Sparkle's installer may then
+    put that older build over the new copy (suspect).
+- **Still open beside it:**
+  - the notification icon (step 11);
+  - repeat-to-paste (FEATURES §11, Edoardo picks);
+  - the quieter first install, which item 4 is part of.
