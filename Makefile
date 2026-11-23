@@ -69,7 +69,7 @@ publish: package ## Put the packaged build and its update feed on pith.edoardobe
 	$(TOOLS)/generate_appcast --ed-key-file "$$secret/key" --download-url-prefix $(FEED)/ --maximum-versions 1 .build/feed
 	cp .build/feed/appcast.xml $(PACKAGE) .build/site/
 	cp $(PACKAGE) .build/site/$(APP_NAME).zip
-	npx --yes wrangler@4 deploy --config Support/wrangler.toml
+	WRANGLER_SEND_METRICS=false npx --yes wrangler@4.166.0 deploy --config Support/wrangler.toml
 	@echo "Published $(VERSION): $(FEED)/$(APP_NAME).zip"
 
 update-key: ## Once: create the key that signs updates (in the login keychain) and put its public half in Info.plist
