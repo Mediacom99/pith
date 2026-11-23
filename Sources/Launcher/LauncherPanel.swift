@@ -111,6 +111,12 @@ final class LauncherPanel: NSPanel {
         toggle(.launcher, pressedAt: pressedAt)
     }
 
+    /// Opens the launcher if it isn't showing: for opening Pith.app again, the way in when the hotkey doesn't fire.
+    func show() {
+        guard !isVisible else { return }
+        present(.launcher, pressedAt: ProcessInfo.processInfo.systemUptime)
+    }
+
     /// The clipboard's hotkey (⌘⇧V, decision 34): the same, for the clipboard.
     func toggleClipboard(pressedAt: TimeInterval) {
         toggle(.clipboard, pressedAt: pressedAt)

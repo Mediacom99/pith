@@ -30,7 +30,8 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 - Light/dark follows the system.
 - `Esc` closes (or goes back one level when inside a sub-view such as actions or the editor).
 - Closes automatically when it loses focus.
-- **No Dock icon, no menu bar icon.** App-level commands live in the launcher (see §7).
+- **No Dock icon, no menu bar icon.** App-level commands live in the launcher (see §7). Opening Pith.app while it runs
+  opens the launcher, the way in when its hotkey doesn't fire.
 - Launches at login.
 
 ---

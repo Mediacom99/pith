@@ -115,6 +115,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Opening Pith.app while it runs (Finder, Spotlight, `open`) opens the launcher: the way in when its hotkey doesn't
+    /// fire, taken by a system shortcut.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        panel?.show()
+        return false
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         history.flush()
     }

@@ -393,8 +393,8 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
   13. **Fixed:** Open With…'s apps land only if the panel is still where it was chosen, and a restored selection is
       never below 0; a test covers it. What it was: Open With… applied its app list even after the panel closed, so
       the next ⌘P opened on it, and a second ⏎ added a second level.
-  14. Opening Pith.app again does nothing. A launcher hotkey that never fires (a system shortcut wins) leaves no way
-      in.
+  14. **Fixed, needs Edoardo's run:** opening Pith.app while it runs (Finder, Spotlight, `open`) opens the launcher.
+      What it was: it did nothing, so a launcher hotkey that never fires (a system shortcut wins) left no way in.
   15. **The file index:**
       - Overlapping folders (`~` and `~/dev`) list files twice.
       - A configured folder that's moved in, trashed, or on a drive mounted later is never rescanned, so its results
