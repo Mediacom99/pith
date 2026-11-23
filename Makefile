@@ -43,6 +43,7 @@ app: build ## Assemble .build/Pith.app and sign it (with the local certificate, 
 	cp Support/Info.plist $(APP)/Contents/Info.plist
 	mkdir -p $(APP)/Contents/Resources
 	cp Support/AppIcon.icns $(APP)/Contents/Resources/AppIcon.icns
+	cp Support/Assets.car $(APP)/Contents/Resources/Assets.car
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $$(date +%Y%m%d%H%M)" $(APP)/Contents/Info.plist
 	cp .build/$(CONFIG)/$(APP_NAME) $(BINARY)
 	ditto .build/$(CONFIG)/Sparkle.framework $(APP)/Contents/Frameworks/Sparkle.framework
@@ -55,8 +56,9 @@ app: build ## Assemble .build/Pith.app and sign it (with the local certificate, 
 	codesign --force --sign "$(SIGN_AS)" $(APP)
 
 # The icon's source is Support/AppIcon.svg (decision 54). Chrome draws it at 1024 px on a transparent canvas; sips and
-# iconutil make the sizes macOS wants. The installer's background (decision 56) is drawn at 1x and 2x. Both are
-# committed, so building doesn't need Chrome.
+# iconutil make the sizes macOS wants, and actool compiles the same sizes into Assets.car: macOS 26 draws an app's icon
+# from its asset catalog in places such as notifications, and shows a blank square without one. The installer's
+# background (decision 56) is drawn at 1x and 2x. All are committed, so building doesn't need Chrome.
 CHROME := /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 icon: ## Redraw Support/AppIcon.icns and the installer's background from their SVGs (needs Google Chrome)
 	@[ -x "$(CHROME)" ] || { echo "make icon draws the SVG with Google Chrome, which isn't installed"; exit 1; }
@@ -70,6 +72,12 @@ icon: ## Redraw Support/AppIcon.icns and the installer's background from their S
 		sips -z $$((size * 2)) $$((size * 2)) "$$work/1024.png" --out "$$work/AppIcon.iconset/icon_$${size}x$${size}@2x.png" > /dev/null; \
 	done && \
 	iconutil -c icns "$$work/AppIcon.iconset" -o Support/AppIcon.icns && echo "Support/AppIcon.icns redrawn" && \
+	mkdir -p "$$work/Assets.xcassets/AppIcon.appiconset" && \
+	cp "$$work/AppIcon.iconset/"*.png "$$work/Assets.xcassets/AppIcon.appiconset/" && \
+	cp Support/AppIconSet.json "$$work/Assets.xcassets/AppIcon.appiconset/Contents.json" && \
+	xcrun actool "$$work/Assets.xcassets" --compile "$$work" --platform macosx --minimum-deployment-target 26.0 \
+		--app-icon AppIcon --output-partial-info-plist "$$work/partial.plist" > /dev/null && \
+	cp "$$work/Assets.car" Support/Assets.car && echo "Support/Assets.car redrawn" && \
 	for scale in 1 2; do \
 		"$(CHROME)" --headless=new --disable-gpu --hide-scrollbars --no-first-run --user-data-dir="$$work/chrome" \
 			--window-size=640,400 --force-device-scale-factor=$$scale --screenshot="$$work/background-$$scale.png" \

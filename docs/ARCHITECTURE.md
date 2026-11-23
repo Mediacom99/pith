@@ -131,7 +131,8 @@ Sources/
     Updater.swift          Sparkle, checked after the panel closes at most once a day; a ready update's install,
                            and how it went
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement, Sparkle's feed and key), copied in by `make app`
-Support/AppIcon.svg        the app icon's source (decision 54); `make icon` redraws AppIcon.icns from it
+Support/AppIcon.svg        the app icon's source (decision 54); `make icon` redraws AppIcon.icns and Assets.car from it
+Support/Assets.car         the same icon as an asset catalog (`CFBundleIconName`), which macOS 26 draws in notifications
 Support/DMGBackground.svg  the installer window's background (decision 56); `make icon` redraws its PNGs at 1x and 2x
 Support/dmg-settings.py    the installer's layout for dmgbuild: Pith and Applications side by side
 Support/dmgbuild-requirements.txt  dmgbuild and its two libraries, pinned by hash
@@ -326,6 +327,7 @@ One third-party dependency: Sparkle, for updates.
 | Watching the clipboard | `NSPasteboard.changeCount` on a GCD timer with leeway | macOS has no notification for a new copy, so this is the only way; leeway lets the system coalesce the wakeups. |
 | Paste | `CGEvent` ⌘V posted to the annotated session tap (CoreGraphics, system), after the pasteboard is written, on a worker | How every clipboard manager pastes; it needs Accessibility access (`AXIsProcessTrusted`, checked on a worker at launch and on each ⌘⇧V). |
 | Updates | [Sparkle](https://sparkle-project.org) 2.10.1, pinned, from its Swift package; `make app` embeds its framework and signs it with the app (decision 48) | The standard updater for Mac apps outside the App Store, since 2006: EdDSA-signed feeds, a check that the update is signed like the app, install and relaunch. Hotari uses the same version. An updater of our own would mean owning the code that decides whether a download is ours. Its schedule is off, so it adds no timer; it starts on the first check, after the panel closes. |
+| The icon in notifications | `actool` (Xcode), run by `make icon` on the icon's sizes, no Xcode project; the compiled `Assets.car` is committed | macOS 26's Notification Center draws an app's icon from its asset catalog (`CFBundleIconName`) and showed a blank square for Pith's `.icns` alone, while Hotari, which has both, showed its own. The catalog holds the same single image as the `.icns` (decision 54), not an Icon Composer file. |
 | Installer disk image | [dmgbuild](https://github.com/dmgbuild/dmgbuild) 1.6.5 with ds_store 1.3.1 and mac_alias 2.2.2, pinned by hash in `Support/dmgbuild-requirements.txt`, in a venv under `.build` (decision 56) | Writes the window's layout (icon places, background, hidden bars) straight into the image's `.DS_Store` with the image mounted hidden, so no Finder window opens on the Mac building it. create-dmg lays the window out by scripting Finder, which puts windows on screen; `hdiutil` alone makes an image with no layout. A build tool, not shipped in the app. |
 | Hosting the updates and the landing page | Cloudflare static assets on `pith.edoardobertoli.xyz`, deployed with wrangler 4.166.0, pinned, its telemetry off (`npx`, `Support/wrangler.toml`) | The domain is already on Cloudflare; static files need no server, and the zips stay out of git. One deploy carries the page, its snapshots, the feed and the builds (decision 51). |
 | Tests | Swift Testing (toolchain) | The current standard over XCTest. |
