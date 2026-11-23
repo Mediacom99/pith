@@ -54,6 +54,7 @@ supersede an earlier one.
 | 45 | 2026-11-23 | The launcher lists only the recording command that applies: Pause Clipboard Recording while recording, Resume Clipboard Recording while paused. | Nothing in the list does nothing. | Edoardo |
 | 46 | 2026-11-23 | Pith isn't notarized, and there's no paid Apple Developer Program: builds go out as zips signed with the local certificate (`make package`, decision 41). Whoever installs one presses Open Anyway in System Settings, Privacy & Security. | Edoardo doesn't want to pay €99 a year. The local certificate still keeps Accessibility access from one build to the next. | Edoardo |
 | 47 | 2026-11-23 | Versions are 0.\<milestone\>.\<patch\>, in `Support/Info.plist`; the build number is when it was built. `make package` tags the commit `v<version>`, and refuses uncommitted changes or a version already tagged on another commit. The Quit Pith tile shows "Pith 0.3.0". | A report from someone trying a build points to the exact code. | Edoardo |
+| 48 | 2026-11-23 | Pith updates itself with Sparkle, from `pith.edoardobertoli.xyz`: an update feed and the builds as static files on Cloudflare, put there by `make publish`. Sparkle's schedule is off; Pith checks after the panel closes, at most once a day. A found update downloads in the background, then the launcher lists Update Pith, whose ⏎ restarts into it; otherwise it installs when Pith quits. Only a copy in an Applications folder updates. The update check is the second network access, after currency rates, and sends nothing about the Mac. | Patches reach whoever tries Pith without a zip by hand and Open Anyway each time. Hotari already runs the same setup (not notarized, Edoardo's domain). Sparkle is the standard, and the code that decides whether a download is really ours is where a mature library beats our own. | Edoardo |
 
 ## Principles
 
@@ -115,7 +116,9 @@ Sources/
     ClipboardPresentation.swift  a clip's words in its row and on the tile: titles, ages, sizes, notices
     ClipImages.swift       copied images' thumbnails as bitmaps, read on a worker, the newest ready ahead of time
     Paste.swift            a clip back on the pasteboard, ⌘V posted, Accessibility, the clip's ⌘K actions, save names
-Support/Info.plist         bundle metadata (bundle ID, LSUIElement), copied in by `make app`
+    Updater.swift          Sparkle, checked after the panel closes at most once a day; a ready update's install
+Support/Info.plist         bundle metadata (bundle ID, LSUIElement, Sparkle's feed and key), copied in by `make app`
+Support/wrangler.toml      pith.edoardobertoli.xyz on Cloudflare, where `make publish` puts the feed and the builds
 ```
 
 Files the app keeps:
@@ -125,11 +128,13 @@ Files the app keeps:
 | `~/.config/pith/config.toml` | Settings (FEATURES §8) | Created with commented defaults on first launch; then only by you |
 | `~/Library/Application Support/pith/history.json` | What you opened and when (≤ 200 items × 10 times); deleted files are dropped | After every open or deletion, on a serial worker, atomically |
 | `~/Library/Application Support/pith/clipboard/` | The clipboard history: `history.sqlite` (clips, their text and what a paste puts back) and `images/` (each image and its two thumbnails), and `paused` while recording is paused (decision 44). `[clipboard]`'s limits, 2 GB and 30 days by default, pins kept | After each copy, on the store's serial queue |
+| `~/Library/Preferences/dev.edoardo.pith.plist`, `~/Library/Caches/dev.edoardo.pith/` | Sparkle's state (its last check) and a downloaded update until it's installed | By Sparkle, after a check (decision 48) |
 
 **Startup.** `AppDelegate` builds and draws the panel, loads the history, then the config, and registers the
 configured hotkey. The clipboard history is loaded (its index built on a worker) and pruned to `[clipboard]`'s
 limits once the config is read, so nothing is dropped by limits it doesn't set. A pause saved before the relaunch is
-applied, and only then does the recorder start watching, from what's on the clipboard now. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
+applied, and only then does the recorder start watching, from what's on the clipboard now. Sparkle isn't started at
+launch: the first time the panel closes, it starts and checks for an update. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
 the launcher itself. The new `SearchIndex` goes to the view controller, which has `IconStore` render the icons it
 doesn't have yet. FSEvents streams trigger a rescan when the app folders change (unless the change is inside a bundle)
 and a reload when the config's folder changes. The newest rescan or reload always wins.
@@ -270,7 +275,7 @@ is in `docs/snapshots/` (`make snapshots`).
 
 ## Libraries
 
-No third-party dependencies.
+One third-party dependency: Sparkle, for updates.
 
 | Need | Pick | Why |
 |---|---|---|
@@ -296,6 +301,8 @@ No third-party dependencies.
 | Clipboard duplicates | SHA-256 from CryptoKit (system) | A copy of content already in the history must find it, and a collision would move the wrong clip, so a 64-bit hash isn't enough. |
 | Watching the clipboard | `NSPasteboard.changeCount` on a GCD timer with leeway | macOS has no notification for a new copy, so this is the only way; leeway lets the system coalesce the wakeups. |
 | Paste | `CGEvent` ⌘V posted to the annotated session tap (CoreGraphics, system), after the pasteboard is written, on a worker | How every clipboard manager pastes; it needs Accessibility access (`AXIsProcessTrusted`, checked on a worker at launch and on each ⌘⇧V). |
+| Updates | [Sparkle](https://sparkle-project.org) 2.10.1, pinned, from its Swift package; `make app` embeds its framework and signs it with the app (decision 48) | The standard updater for Mac apps outside the App Store, since 2006: EdDSA-signed feeds, a check that the update is signed like the app, install and relaunch. Hotari uses the same version. An updater of our own would mean owning the code that decides whether a download is ours. Its schedule is off, so it adds no timer; it starts on the first check, after the panel closes. |
+| Hosting the updates | Cloudflare static assets on `pith.edoardobertoli.xyz`, deployed with `npx wrangler@4 deploy` (`Support/wrangler.toml`) | The domain is already on Cloudflare; static files need no server, and the zips stay out of git. |
 | Tests | Swift Testing (toolchain) | The current standard over XCTest. |
 | Panel snapshots | `NSView.cacheDisplay(in:to:)` into a 2× bitmap, written as PNG (AppKit, system) | Draws real panels that are never on screen, so it runs anytime. swift-snapshot-testing would add a dependency for image comparisons we don't do. |
 | Formatting | swift-format (toolchain), configured in `.swift-format` | Ships with Swift, so nothing to install. |

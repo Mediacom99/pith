@@ -31,7 +31,8 @@ justify a subscription.
 - **Instant.** Built at launch, indexes in memory: ⌘P only shows what's ready.
 - **Keyboard only.** The row you want is usually the first.
 - **Small.** Native AppKit and Swift, zero dependencies, ~0 % CPU when idle.
-- **Private.** No account, no telemetry, no AI, no network (the planned calculator will fetch currency rates).
+- **Private.** No account, no telemetry, no AI. The network is only for a daily update check, and currency rates for
+  the planned calculator.
 - **Native.** It follows the system's appearance and is configured with a text file.
 
 ## Features
@@ -121,16 +122,27 @@ The clipboard pastes into the app you were in, which needs Accessibility access 
 Run `make certificate` once before `make install`: it creates a local signing certificate (macOS asks for your
 password), so the access you give survives reinstalls.
 
-### Sending it to someone
+### Releases
 
-`make package` zips the release build into `.build/Pith-<version>.zip`, signed with the local certificate, and tags
-the commit `v<version>`. Versions are 0.\<milestone\>.\<patch\>: raise the one in `Support/Info.plist` before a new
-build goes out, and commit first. The Quit Pith tile shows the version, so whoever tries it can say which build they
-have.
+Pith updates itself with [Sparkle](https://sparkle-project.org) from `pith.edoardobertoli.xyz`.
+- **Once:**
+  - `make update-key` creates the key that signs updates, in your keychain, and puts its public half in
+    `Support/Info.plist`. Commit that.
+  - `npx wrangler login` connects to the Cloudflare account that has the domain.
+- **Each release:**
+  1. Raise the version in `Support/Info.plist`: 0.\<milestone\>.\<patch\>.
+  2. Commit.
+  3. Run `make publish`. It builds, signs and zips the app, tags the commit `v<version>`, and puts the zip and the
+     signed update feed online.
+- **What people get:**
+  - A first install comes from `https://pith.edoardobertoli.xyz/Pith.zip`.
+  - After that, Pith checks at most once a day and downloads an update in the background. Update Pith in the
+    launcher restarts into it; otherwise it installs when Pith quits.
+  - Settings, history and Accessibility access carry over.
+  - The Quit Pith tile shows the version, so a report can say which build it's about.
 
-Pith isn't notarized, so the first time they open each build macOS blocks it, and they press Open Anyway in System
-Settings, Privacy & Security. Their Mac needs macOS 26 and Apple Silicon too. Each build you send keeps the same
-signature, so the Accessibility access they gave, their settings and their history carry over.
+Pith isn't notarized, so the first install is blocked once, and they press Open Anyway in System Settings, Privacy &
+Security. Their Mac needs macOS 26 and Apple Silicon. `make package` alone makes the zip without publishing it.
 
 ## Configuration
 

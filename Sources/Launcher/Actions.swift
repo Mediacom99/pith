@@ -72,6 +72,7 @@ nonisolated enum Symbols {
         case .pauseClipboard: paused
         case .resumeClipboard: "play.circle"
         case .clearClipboard: "trash"
+        case .installUpdate: "arrow.down.circle"
         case .openConfig: "gearshape"
         case .reloadConfig: "arrow.clockwise"
         case .quit: "power"

@@ -4,7 +4,7 @@
 
 Pith is a minimal, keyboard-only macOS launcher with a clipboard manager and calculator, for people who drive their Mac from the keyboard. It's always resident and opens in one frame. No AI, extensions, account or telemetry.
 
-Stack: Swift 6.4, AppKit, a Swift Package (no Xcode project), macOS 26+ on Apple Silicon. No third-party dependencies so far.
+Stack: Swift 6.4, AppKit, a Swift Package (no Xcode project), macOS 26+ on Apple Silicon. One third-party dependency: Sparkle, for updates (decision 48).
 
 Read these before doing anything:
 - `FEATURES.md`: the product spec, covering what the app does and the performance targets.
@@ -39,7 +39,7 @@ Read these before doing anything:
   - Impeccable can't run the app: `make snapshots` draws the panel's states, light and dark, into `docs/snapshots/` without putting anything on screen. Regenerate and commit them with every visual change.
   - Never use claude.ai Artifacts: anything visual is a local HTML file, opened in the browser.
 - **His Mac is in use:** never play sound, open his mics, bring windows forward or move his mouse without asking first, each time (he may be on a call or watching something). Headless checks (builds, tests) are fine anytime. `make run` and `make install` are not headless: they launch the app, which takes ⌘P from every app, so ask first.
-- **Edoardo's daily copy:** he uses the installed app (`~/Applications/Pith.app`, starts at login) in place of Raycast; it's installed from `clipboard/milestone-3` (2026-11-23, milestone 3 steps 1–5 plus decisions 42–43), ahead of `staging`, signed with the local certificate (decision 41) so its Accessibility access survives reinstalls. Keep it current: whenever a change that affects the app lands on `staging`, or on the branch he's trying, tell him and offer to reinstall it with `make install`. When he stops using it (back to another launcher, or a real release replaces it), remind him and run `make uninstall`.
+- **Edoardo's daily copy:** he uses the installed app (`~/Applications/Pith.app`, starts at login) in place of Raycast; it's installed from `clipboard/milestone-3` (2026-11-23, milestone 3 steps 1–5 plus decisions 42–43), ahead of `staging`, signed with the local certificate (decision 41) so its Accessibility access survives reinstalls. Keep it current: whenever a change that affects the app lands on `staging`, or on the branch he's trying, tell him and offer to reinstall it with `make install`. Once it has Sparkle and its key, it also updates itself to whatever `make publish` puts out, even over a newer branch build, so publish from the branch he uses. When he stops using it (back to another launcher, or a real release replaces it), remind him and run `make uninstall`.
 - **Secrets** never go in a repo.
 - **Edoardo's work stays out:** never mention his employer, clients or work projects anywhere: code, tests, docs, commit messages, or chat examples. Don't copy real file or folder names from his Mac into the repo either; tests and docs use made-up examples (`Acme`, `Quarterly_Budget_Review.pdf`).
 - **Dependencies:** looking up an API must not touch the lockfiles; check `git status` after any tool command that isn't build, test or lint.
@@ -88,7 +88,10 @@ Everything goes through the `Makefile`; `make` lists the targets. Add a target t
 - `Tests/LauncherTests/`: AppKit layout tests, the UI benchmark and the panel snapshots, in real panels that are never put on screen.
 - Suites named `…Benchmark` run only through `make bench`, and `…Snapshots` only through `make snapshots`.
 - `docs/snapshots/`: the panel's states as PNGs, written by `make snapshots`.
-- `Support/Info.plist`: bundle metadata (bundle ID, `LSUIElement`), copied into the `.app` by `make app`.
+- `Support/Info.plist`: bundle metadata (bundle ID, `LSUIElement`, Sparkle's feed and key), copied into the `.app` by
+  `make app`.
+- `Support/wrangler.toml`: `pith.edoardobertoli.xyz` on Cloudflare, where `make publish` puts the update feed and the
+  builds.
 
 ## Conventions
 

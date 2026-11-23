@@ -72,6 +72,8 @@ public enum Command: String, Sendable, CaseIterable {
     case resumeClipboard = "resume-clipboard"
     /// Asks for a second ⏎ first; pinned clips stay.
     case clearClipboard = "clear-clipboard"
+    /// Installs a downloaded update and relaunches; listed only once one is ready (decision 48).
+    case installUpdate = "install-update"
     case openConfig = "open-config"
     case reloadConfig = "reload-config"
     case quit
@@ -82,6 +84,7 @@ public enum Command: String, Sendable, CaseIterable {
         case .pauseClipboard: "Pause Clipboard Recording"
         case .resumeClipboard: "Resume Clipboard Recording"
         case .clearClipboard: "Clear Clipboard History"
+        case .installUpdate: "Update Pith"
         case .openConfig: "Open Config"
         case .reloadConfig: "Reload Config"
         case .quit: "Quit Pith"

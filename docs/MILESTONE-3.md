@@ -43,7 +43,7 @@ history can't be seen until step 4 shows it.
 - **Watching:** `ClipboardRecorder` runs a GCD timer on its own queue, `launcher.clipboard.watch`, because macOS has
   no notification for a new copy.
   - Every 0.5 s it reads the pasteboard's change count, with 0.25 s of leeway so the system can coalesce wakeups.
-  - It stops while the screens sleep or another user's session is in front. Step 7 measures what it costs at idle.
+  - It stops while the screens sleep or another user's session is in front. Step 8 measures what it costs at idle.
   - What's on the clipboard at launch isn't recorded, so starting Pith never reads the clipboard by itself. `start()`
     returns once it has read the change count, so a copy made right after launch can't be taken for the old one.
 - **Clipboard permission:** macOS can ask before an app reads the clipboard (`accessBehavior`, since 15.4).
@@ -136,7 +136,7 @@ Status: **in review**. Built from the brief (§3, §5, §7) and checked on the `
   - Dates read "Oct 31", as the launcher's "opened Oct 31" does, rather than "31 Oct".
   - Sizes follow the Mac's region format, as Finder's do.
 - **Speed** (`make bench`, release, in-process, 1,000 clips): showing the clipboard 1.0–1.1 ms (the launcher's recent
-  list: 0.3 ms); a keystroke 0.09 ms to update. On screen in step 7.
+  list: 0.3 ms); a keystroke 0.09 ms to update. On screen in step 8.
 - **Tests:** 11 tests, real panels never put on screen, ⏎ swapped out so they never touch the clipboard:
   - newest first under the 188 pt tile, and five whole rows;
   - pins first when typing;
@@ -220,9 +220,33 @@ Status: **in review**. Built and tested; the commands and settings need Edoardo'
   - ⏎ on the paused row resuming in place;
   - `https` covering `http`.
 
-## 7. Performance
+## 7. Updates
 
-Status: **todo**. Measured with a month-sized history (thousands of entries, a few hundred screenshots):
+Status: **in progress**. Built and tested (decision 48). Waiting on Edoardo's two one-time steps (`make update-key`,
+`npx wrangler login`) for the first `make publish`, then a real update on his Mac.
+- `Updater` wraps Sparkle 2.10.1, the one dependency:
+  - Sparkle's schedule is off. Pith checks after the panel closes, at most once a day, and Sparkle starts only then,
+    so nothing is read at launch and there's no timer.
+  - A found update downloads in the background, is checked against the key in Info.plist and against the app's own
+    signature, then waits.
+  - The launcher lists Update Pith above the recent items, not selected, and search finds it; ⏎ installs and
+    relaunches. Otherwise Sparkle installs it when Pith quits.
+  - Only a copy in an Applications folder updates, so `make run`'s build is never replaced.
+- **Make targets:**
+  - `make app` embeds Sparkle's framework (2.9 MB, so the app is 4.9 MB) and signs it from the inside out with the
+    app.
+  - `make update-key`, once, creates Pith's own signing key in the login keychain and writes its public half into
+    Info.plist.
+  - `make publish` packages and tags the build, writes `appcast.xml` signed with the key, and deploys it to
+    `pith.edoardobertoli.xyz` with `Pith-<version>.zip` and `Pith.zip`, the newest at a fixed address for a first
+    install.
+- **Tests:** the update row (first, not selected, ⏎ restarts, hidden until ready) and Info.plist keeping Sparkle's
+  schedule off with downloads on. Snapshot: `update-ready`.
+
+## 8. Performance
+
+Status: **todo**. Measured with a month-sized history (thousands of entries, a few hundred screenshots), and Sparkle
+in the build:
 - ⌘⇧V → drawn;
 - keystroke → drawn;
 - idle CPU and wakeups with the recording timer;
@@ -230,7 +254,7 @@ Status: **todo**. Measured with a month-sized history (thousands of entries, a f
 
 The numbers go in this status line.
 
-## 8. Design review
+## 9. Design review
 
 Status: **todo**.
 - An impeccable critique and polish of clipboard mode against the brief, on the snapshots.

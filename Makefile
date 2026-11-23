@@ -11,12 +11,16 @@ PROCESS  := $(APP_NAME).app/Contents/MacOS/$(APP_NAME)
 # keeps macOS's permissions (Accessibility, for paste) across reinstalls; an ad hoc one changes with every build.
 CERTIFICATE := Pith Local Signing
 SIGN_AS  = $(shell security find-certificate -c "$(CERTIFICATE)" >/dev/null 2>&1 && echo "$(CERTIFICATE)" || echo -)
+# Sparkle (decision 48): its framework, embedded by `make app`, and the tools that sign and list updates.
+SPARKLE  := $(APP)/Contents/Frameworks/Sparkle.framework/Versions/B
+TOOLS    := .build/artifacts/sparkle/Sparkle/bin
+FEED     := https://pith.edoardobertoli.xyz
 # The version in Info.plist, 0.<milestone>.<patch> (decision 47): `make package` names the zip and the tag after it.
 VERSION  = $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Support/Info.plist)
 PACKAGE  = .build/$(APP_NAME)-$(VERSION).zip
 
 .DEFAULT_GOAL := help
-.PHONY: help build app package certificate run install uninstall stop logs stats test bench snapshots lint format clean
+.PHONY: help build app package publish update-key certificate run install uninstall stop logs stats test bench snapshots lint format clean
 
 help: ## List the targets
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z]+:.*## / { printf "  make %-11s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -24,12 +28,21 @@ help: ## List the targets
 build: ## Compile (CONFIG=release by default, CONFIG=debug for a debug build)
 	swift build -c $(CONFIG)
 
+# Sparkle's framework goes in Contents/Frameworks, and is signed from the inside out before the app, the order Sparkle
+# documents (never --deep).
 app: build ## Assemble .build/Pith.app and sign it (with the local certificate, if there is one)
 	rm -rf $(APP)
-	mkdir -p $(APP)/Contents/MacOS
+	mkdir -p $(APP)/Contents/MacOS $(APP)/Contents/Frameworks
 	cp Support/Info.plist $(APP)/Contents/Info.plist
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $$(date +%Y%m%d%H%M)" $(APP)/Contents/Info.plist
 	cp .build/$(CONFIG)/$(APP_NAME) $(BINARY)
+	ditto .build/$(CONFIG)/Sparkle.framework $(APP)/Contents/Frameworks/Sparkle.framework
+	install_name_tool -add_rpath @executable_path/../Frameworks $(BINARY)
+	codesign --force --sign "$(SIGN_AS)" $(SPARKLE)/XPCServices/Installer.xpc
+	codesign --force --sign "$(SIGN_AS)" --preserve-metadata=entitlements $(SPARKLE)/XPCServices/Downloader.xpc
+	codesign --force --sign "$(SIGN_AS)" $(SPARKLE)/Autoupdate
+	codesign --force --sign "$(SIGN_AS)" $(SPARKLE)/Updater.app
+	codesign --force --sign "$(SIGN_AS)" $(APP)/Contents/Frameworks/Sparkle.framework
 	codesign --force --sign "$(SIGN_AS)" $(APP)
 
 # A build that goes out comes from a commit, tagged v<version>; a version already tagged elsewhere has to be raised.
@@ -43,6 +56,27 @@ package: ## Zip the app to send to someone and tag it v<version>: signed with th
 	ditto -c -k --keepParent $(APP) $(PACKAGE)
 	@git rev-parse -q --verify "refs/tags/v$(VERSION)" > /dev/null || git tag "v$(VERSION)"
 	@echo "$(PACKAGE), tagged v$(VERSION)"
+
+# The feed lists only the newest build; Pith.zip is the same build at a fixed address, for a first install. The private
+# key leaves the keychain only for generate_appcast, in a temporary folder that's removed after.
+publish: package ## Put the packaged build and its update feed on pith.edoardobertoli.xyz, for every copy to update to
+	@[ -n "$$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' Support/Info.plist)" ] || { echo "Run make update-key first"; exit 1; }
+	rm -rf .build/site .build/feed
+	mkdir -p .build/site .build/feed
+	cp $(PACKAGE) .build/feed/
+	@secret=$$(mktemp -d); trap 'rm -rf "$$secret"' EXIT; \
+	$(TOOLS)/generate_keys --account pith -x "$$secret/key" > /dev/null && \
+	$(TOOLS)/generate_appcast --ed-key-file "$$secret/key" --download-url-prefix $(FEED)/ --maximum-versions 1 .build/feed
+	cp .build/feed/appcast.xml $(PACKAGE) .build/site/
+	cp $(PACKAGE) .build/site/$(APP_NAME).zip
+	npx --yes wrangler@4 deploy --config Support/wrangler.toml
+	@echo "Published $(VERSION): $(FEED)/$(APP_NAME).zip"
+
+update-key: ## Once: create the key that signs updates (in the login keychain) and put its public half in Info.plist
+	@$(TOOLS)/generate_keys --account pith > /dev/null
+	@key=$$($(TOOLS)/generate_keys --account pith -p) && \
+	/usr/libexec/PlistBuddy -c "Set :SUPublicEDKey $$key" Support/Info.plist && \
+	echo "Support/Info.plist now checks updates against $$key"
 
 certificate: ## Once: create the self-signed certificate that keeps Pith's permissions across reinstalls (asks for your password)
 	@if security find-certificate -c "$(CERTIFICATE)" >/dev/null 2>&1; then echo "$(CERTIFICATE) is already in the keychain"; exit 0; fi; \

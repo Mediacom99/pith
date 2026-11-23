@@ -161,7 +161,7 @@ Typed directly in the launcher; result shows as the top row. `Enter` **copies th
 
 - **Math:** `+ - * / ^ %`, parentheses, `sqrt`, `sin`/`cos`/`tan`, `log`/`ln`, `pi`, `e`.
 - **Units:** length, mass, volume, temperature, data size, time, speed — e.g. `5 km in mi`, `200 MB in GB`, `30 c in f`.
-- **Currency:** e.g. `100 usd in eur`. Rates fetched once a day from a free source (e.g. ECB via frankfurter.app), cached on disk, last rates used offline. **This is the app's only network access.**
+- **Currency:** e.g. `100 usd in eur`. Rates fetched once a day from a free source (e.g. ECB via frankfurter.app), cached on disk, last rates used offline. **This and the daily update check (decision 48) are the app's only network access.**
 - **Programmer:** hex / binary / octal / decimal, bit ops — e.g. `0xff in bin`, `1 << 8`, `0b1010 & 0b0110`.
 
 ---

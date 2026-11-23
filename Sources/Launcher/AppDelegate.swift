@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let history = HistoryStore()
     private let hotKeys = HotKeyCenter()
     private let notifier = Notifier()
+    private let updater = Updater()
     private lazy var files = FileSearchEngine { [weak self] removed in
         Task { @MainActor in self?.history.forget(paths: removed) }
     }
@@ -84,6 +85,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launcher.notifier = notifier
         notifier.install()
         panel = LauncherPanel(launcher: launcher)
+        panel?.onDismiss = { [weak self] in
+            // After the event that closed the panel, so an open or a paste goes first.
+            Task { self?.updater.checkIfDue() }
+        }
+        updater.onReady = { [weak self] version in self?.panel?.launcher.readyUpdate = version }
         checkAccessibility()
 
         configStore.onChange = { [weak self] previous in self?.apply(previous: previous) }
@@ -247,6 +253,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .pauseClipboard: setRecordingPaused(true)
         case .resumeClipboard: setRecordingPaused(false)
         case .clearClipboard: clearClipboard()
+        case .installUpdate: updater.installNow()
         case .openConfig: configStore.open()
         case .reloadConfig: configStore.reload()
         case .quit: NSApp.terminate(nil)

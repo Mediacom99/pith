@@ -101,6 +101,9 @@ final class LauncherViewController: NSViewController {
     }
     /// The clipboard's hotkey as menus show it (`⇧⌘V`), for the Clipboard History command's tile.
     var clipboardHotkey: String?
+    /// The version of a downloaded update, ready to install: Update Pith is listed first in the empty state, and
+    /// found by search, until then.
+    var readyUpdate: String?
     /// Pith's version, on the Quit Pith tile, so whoever tries a build can say which one it is (decision 47).
     var version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
     /// ⌘ plus these run a ⌘K list's actions, the first to the seventh: the top row under the left hand (decision 43).
@@ -370,7 +373,9 @@ final class LauncherViewController: NSViewController {
     }
 
     private func emptyStateRows() -> (rows: [Row], selection: Int) {
-        let notices = problems.map(Row.problem)
+        // Problems first, then a ready update; the selection starts below them.
+        let update = Item(command: .installUpdate)
+        let notices = problems.map(Row.problem) + (readyUpdate == nil ? [] : [.item(update)])
         let items: [Item]
         switch emptyState {
         case .none:
@@ -378,7 +383,7 @@ final class LauncherViewController: NSViewController {
         case .recent:
             items = history.history.recent(limit: Self.recentLimit).compactMap { id in
                 Item(fileID: id) ?? index.position(of: id).map { index.items[$0] }
-            }.filter { !isHidden($0) }
+            }.filter { !isHidden($0) && $0 != update }
         case .running:
             // Open apps first, then every other app alphabetically (the index is sorted by name).
             let open = running.order.compactMap(runningItem)
@@ -391,7 +396,8 @@ final class LauncherViewController: NSViewController {
     }
 
     private func isHidden(_ item: Item) -> Bool {
-        if case .command(let command) = item.kind { hiddenCommands.contains(command) } else { false }
+        guard case .command(let command) = item.kind else { return false }
+        return hiddenCommands.contains(command) || (command == .installUpdate && readyUpdate == nil)
     }
 
     /// The index's item for a running app, or one made up for an app outside the indexed folders.
@@ -701,6 +707,10 @@ final class LauncherViewController: NSViewController {
             return StageView.Content(
                 icon: icons.symbol(Symbols.command(.clipboard), size: .tile), name: item.name, place: "Pith command",
                 kind: clipboardHotkey.map { "Also \($0), from any app" } ?? "", primary: "Open")
+        case .command(.installUpdate):
+            return StageView.Content(
+                icon: icons.symbol(Symbols.command(.installUpdate), size: .tile), name: item.name,
+                place: "Pith \(readyUpdate ?? "") is ready", kind: "Pith restarts into it", primary: "Restart")
         case .command(.clearClipboard):
             return StageView.Content(
                 icon: icons.symbol(Symbols.command(.clearClipboard), size: .tile), name: item.name,

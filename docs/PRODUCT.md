@@ -48,8 +48,8 @@ nothing (~0% CPU, under 50 MB).
 
 Speed and small size are the product. It's native AppKit and always resident: the window is built at launch and the
 indexes live in memory, so it opens in one frame. It has Raycast's keyboard actions with the footprint and immediacy of
-rofi and dmenu. It has no AI, extensions, store, account or telemetry, and touches the network only for currency
-rates. Settings are a text file, not a settings window.
+rofi and dmenu. It has no AI, extensions, store, account or telemetry, and touches the network only for an update
+check and currency rates. Settings are a text file, not a settings window.
 
 ## Operating Context
 
@@ -105,7 +105,7 @@ short and literal ("Config problem, line 3: …", "Filter actions", "Open in Pre
    right one.
 3. **Small scope, done excellently:** launcher, clipboard, calculator, and nothing else.
 4. **Native and quiet.** It behaves like part of macOS, follows the system's appearance, accent color and icon style,
-   and asks for nothing: no account, no network beyond currency rates.
+   and asks for nothing: no account, no network beyond an update check and currency rates.
 
 ## Accessibility & Inclusion
 

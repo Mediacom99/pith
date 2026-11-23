@@ -97,6 +97,13 @@ import Testing
         press(#selector(NSResponder.insertNewline(_:)), in: clear)
         try await snapshot(clear, "clear-clipboard-\(suffix)")
 
+        // An update downloaded and selected, above the recent list.
+        let update = try await panel(emptyState: .recent)
+        update.launcher.readyUpdate = "0.3.1"
+        update.launcher.prepareToShow()
+        press(#selector(NSResponder.moveUp(_:)), in: update)
+        try await snapshot(update, "update-ready-\(suffix)")
+
         // The problem selected, so the tile shows it.
         let problem = try await panel(emptyState: .recent, problems: ["line 3: unknown setting \"theme\""])
         problem.launcher.prepareToShow()

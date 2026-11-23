@@ -314,6 +314,36 @@ struct LauncherPanelTests {
         #expect(names(panel) == ["Resume Clipboard Recording"], "the recent list leaves it out too")
     }
 
+    @Test func aReadyUpdateIsListedFirstAndReturnRestarts() async {
+        let panel = makePanel(
+            items: apps + Command.allCases.map(Item.init(command:)), opened: [apps[0].id, "command:install-update"],
+            emptyState: .recent)
+        var run: [Command] = []
+        panel.launcher.runCommand = { run.append($0) }
+        await type("update pith", in: panel)
+        #expect(panel.launcher.rows.isEmpty, "nothing to install yet")
+
+        panel.launcher.readyUpdate = "0.3.1"
+        await type("", in: panel)
+        #expect(names(panel) == ["Update Pith", "Gizmo"], "first, and not again as a recent item")
+        #expect(panel.launcher.tableView.selectedRow == 1, "⏎ still opens what it did")
+        press(#selector(NSResponder.moveUp(_:)), in: panel)
+        #expect(panel.launcher.stage.content.place == "Pith 0.3.1 is ready")
+        #expect(panel.launcher.stage.content.primary == "Restart")
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        #expect(run == [.installUpdate])
+    }
+
+    @Test func sparklesOwnScheduleIsOffAndUpdatesDownloadOnTheirOwn() throws {
+        // The Info.plist the app is built with: Pith asks for checks itself, with no timer (decision 48).
+        let file = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "../../Support/Info.plist")
+        let plist = try #require(NSDictionary(contentsOf: file) as? [String: Any])
+        #expect(plist["SUFeedURL"] as? String == "https://pith.edoardobertoli.xyz/appcast.xml")
+        #expect(plist["SUEnableAutomaticChecks"] as? Bool == false)
+        #expect(plist["SUAllowsAutomaticUpdates"] as? Bool == true, "else turning the schedule off stops downloads too")
+        #expect(plist["SUAutomaticallyUpdate"] as? Bool == true)
+    }
+
     @Test func commandKListsActionsAndEscapeGoesBack() async {
         let panel = makePanel(items: apps)
         await type("g", in: panel)

@@ -137,11 +137,15 @@ final class LauncherPanel: NSPanel {
     }
 
     /// Hides the panel (and its Quick Look preview) and empties it for next time.
+    /// Called after the panel closes, for work that mustn't hold up ⌘P: the daily update check.
+    var onDismiss: () -> Void = {}
+
     func dismiss() {
         guard isVisible else { return }
         launcher.closePreview()
         orderOut(nil)
         launcher.reset()
+        onDismiss()
     }
 
     /// Grows to show results, or shrinks back to the search bar, keeping the top edge in place.

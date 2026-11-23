@@ -46,7 +46,8 @@ Stage carries over unchanged: the tile shows what ⏎ acts on, the list is compa
   - the in-panel text editor and Edit Image (decisions 36, 40);
   - anything in the launcher's own modes.
 - **Anti-goals:**
-  - No network: no page titles or favicons for links, since the only network access is currency rates.
+  - No network: no page titles or favicons for links, since the only network access is currency rates and the
+    update check.
   - No grid or gallery of images.
   - No tabs, categories or filters by kind or app.
   - No animation.
@@ -186,5 +187,5 @@ A pinned item has `pin.fill` in quiet gray before its age. The selected row ends
 - Transient and auto-generated copies are skipped too (decision 38).
 - Save as File goes to Downloads (decision 39).
 - Edit Image comes after milestone 3, with the editor (decision 40).
-- Storage is SQLite, and copies are watched on a timer whose cost step 7 measures.
+- Storage is SQLite, and copies are watched on a timer whose cost step 8 measures.
 - A stable signing identity keeps the Accessibility grant across reinstalls (step 5).
