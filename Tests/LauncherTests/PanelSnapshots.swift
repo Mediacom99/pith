@@ -115,6 +115,8 @@ import Testing
         NSApp.appearance = NSAppearance(named: appearance)
         defer { NSApp.appearance = nil }
         let suffix = appearance == .darkAqua ? "dark" : "light"
+        Self.removeClipboardStores()
+        defer { Self.removeClipboardStores() }
 
         let text = try await clipboardPanel()
         text.launcher.prepareToShow(.clipboard)
@@ -234,6 +236,15 @@ import Testing
         // The made-up file is there, 2.1 MB.
         panel.launcher.fileFacts = { _ in (true, 2_143_000) }
         return panel
+    }
+
+    /// The made-up histories live in the temporary folder, one per panel: each run clears them away.
+    private static func removeClipboardStores() {
+        let temporary = FileManager.default.temporaryDirectory
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: temporary.path)) ?? []
+        for name in names where name.hasPrefix("PithSnapshots-clipboard-") {
+            try? FileManager.default.removeItem(at: temporary.appending(path: name))
+        }
     }
 
     private func representation(_ type: String, _ data: Data) -> Representation {
