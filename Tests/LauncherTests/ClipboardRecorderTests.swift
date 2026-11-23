@@ -86,6 +86,15 @@ struct ClipboardRecorderTests {
         let picture = try #require(await recorder.check())
         #expect(picture.kind == .image && picture.pixelWidth > 0)
 
+        // A spreadsheet's cell: its text, and a picture of it that isn't kept (decision 61).
+        pasteboard.clearContents()
+        pasteboard.setString("Q3 budget", forType: .string)
+        pasteboard.setData(png, forType: .png)
+        let cell = try #require(await recorder.check())
+        #expect(cell.kind == .text)
+        let items = try await ClipboardStore(folder: folder.url).items(of: cell.id)
+        #expect(items.map { $0.map(\.type) } == [["public.utf8-plain-text"]])
+
         pasteboard.clearContents()
         pasteboard.setString("https://acme.example/quarterly", forType: .string)
         let link = try #require(await recorder.check())

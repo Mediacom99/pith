@@ -21,9 +21,9 @@ public enum ClipReading {
     static let plainText = "public.utf8-plain-text"
     static let textTypes: Set<String> = [plainText, "public.utf16-external-plain-text"]
     static let richTypes: Set<String> = ["public.rtf", "com.apple.flat-rtfd", "public.html"]
-    /// In order of preference: PNG is stored as it is, the others are converted to PNG.
-    static let imageOrder = ["public.png", "public.tiff", "public.jpeg", "public.heic"]
-    static let imageTypes = Set(imageOrder)
+    /// In order of preference: PNG is stored as it is, the others are converted to PNG. Only one is read (decision 61).
+    public static let imageOrder = ["public.png", "public.tiff", "public.jpeg", "public.heic"]
+    public static let imageTypes = Set(imageOrder)
     static let fileURL = "public.file-url"
     static let linkSchemes: Set<String> = ["http", "https", "mailto", "ftp", "ftps", "sftp", "ssh"]
 
@@ -32,24 +32,24 @@ public enum ClipReading {
     ///
     /// Files win over everything (Finder's copies carry the file's name as text and its icon as an image). An image
     /// counts only without text (a screenshot, Copy Image); text that is one URL is a link; text with RTF or HTML is
-    /// rich text.
+    /// rich text. Text and files keep no image, which is only the app's picture of them (decision 61).
     public static func content(of items: [[Representation]]) -> ClipContent? {
         let items = items.map { $0.filter { types.contains($0.type) } }.filter { !$0.isEmpty }
         let all = items.joined()
+        let withoutImages = items.map { $0.filter { !imageTypes.contains($0.type) } }.filter { !$0.isEmpty }
 
         let files = items.compactMap { item in
             item.first { $0.type == fileURL }.flatMap { URL(dataRepresentation: $0.data, relativeTo: nil) }
         }.filter(\.isFileURL)
         if !files.isEmpty {
-            return ClipContent(kind: .files, text: files.map(\.path).joined(separator: "\n"), items: items)
+            return ClipContent(kind: .files, text: files.map(\.path).joined(separator: "\n"), items: withoutImages)
         }
 
         let text = Self.text(in: all)
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty, let image = imageOrder.lazy.compactMap({ type in all.first { $0.type == type } }).first {
             guard let png = isPNG(image.data) ? image.data : Self.png(image.data) else { return nil }
-            let others = items.map { $0.filter { !imageTypes.contains($0.type) } }.filter { !$0.isEmpty }
-            return ClipContent(kind: .image, text: "", items: others, image: png)
+            return ClipContent(kind: .image, text: "", items: withoutImages, image: png)
         }
 
         guard !text.isEmpty else { return nil }
@@ -57,7 +57,15 @@ public enum ClipReading {
             if isLink(trimmed) { .link } else if all.contains(where: { richTypes.contains($0.type) }) {
                 .richText
             } else { .text }
-        return ClipContent(kind: kind, text: kind == .link ? trimmed : text, items: items)
+        return ClipContent(kind: kind, text: kind == .link ? trimmed : text, items: withoutImages)
+    }
+
+    /// Whether a copy read without its images is one: no files and no text but spaces. Only then is one image format
+    /// read (decision 61), since reading a type makes the app that copied render it.
+    public static func needsImage(_ items: [[Representation]]) -> Bool {
+        let all = items.joined()
+        return !all.contains { $0.type == fileURL }
+            && text(in: all).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     /// The plain text a copy carries: its UTF-8 representation, else its UTF-16 one.

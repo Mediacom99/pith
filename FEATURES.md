@@ -127,7 +127,8 @@ A key without ⌘, ⌥ or ⌃ that types (a letter, Space, ⌫) works only while
 ### 5.1 Recording
 
 - Polls the system pasteboard (`changeCount`) in the background.
-- Records **everything**: plain text, rich text, images, files, URLs.
+- Records **everything**: plain text, rich text, images, files, URLs. A copy with text or files keeps only those, not the
+  app's picture of them; one with neither is an image (decision 61).
 - **Skips concealed copies**, which password managers mark (decision 35), and transient or auto-generated ones (decision 38). Everything else is recorded. Recording pauses from the launcher (decision 44). *(Revisit: ignore-app list.)*
 - Stored locally in SQLite; images stored as files with thumbnails.
 - Screenshots: set macOS to save screenshots to the clipboard (`⌘⇧5` → Options → Save to → Clipboard, or use `⌘⌃⇧4`). They then land in history automatically. **No code needed.**

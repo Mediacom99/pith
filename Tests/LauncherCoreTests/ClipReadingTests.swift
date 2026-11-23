@@ -45,6 +45,7 @@ struct ClipReadingTests {
             ]))
         #expect(content.kind == .files)
         #expect(content.text == "\(report.path)\n\(notes.path)")
+        #expect(!content.items.joined().contains(icon), "the icon isn't kept (decision 61)")
     }
 
     @Test func anImageWithoutTextIsAnImage() throws {
@@ -66,10 +67,21 @@ struct ClipReadingTests {
         #expect(content.items.isEmpty)
     }
 
-    @Test func anImageWithTextIsText() throws {
+    @Test func anImageWithTextIsTextWithoutTheImage() throws {
         let tiff = Representation(type: "public.tiff", data: try image(as: .tiff))
         let rtfd = Representation(type: "com.apple.flat-rtfd", data: Data("rtfd".utf8))
-        #expect(ClipReading.content(of: [[rtfd, plain("Chart for Acme"), tiff]])?.kind == .richText)
+        let content = try #require(ClipReading.content(of: [[rtfd, plain("Chart for Acme"), tiff]]))
+        #expect(content.kind == .richText)
+        #expect(content.items == [[rtfd, plain("Chart for Acme")]], "a cell's picture isn't kept (decision 61)")
+    }
+
+    /// The image is read only when there's no text and no file (decision 61).
+    @Test func anImageIsReadOnlyWithoutTextOrFiles() {
+        let html = Representation(type: "public.html", data: Data("<img src=chart.png>".utf8))
+        #expect(ClipReading.needsImage([[html]]))
+        #expect(ClipReading.needsImage([[plain(" \n")]]))
+        #expect(!ClipReading.needsImage([[plain("Chart for Acme")]]))
+        #expect(!ClipReading.needsImage([[file(URL(filePath: "/Users/me/Documents/Acme/notes.md"))]]))
     }
 
     @Test func keepsOnlyTheTypesAppsPasteWith() throws {

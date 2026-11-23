@@ -150,10 +150,13 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
         }
         let marked = items.lazy.compactMap { $0.string(forType: .init(ClipReading.sourceMarker)) }.first
         let source = marked ?? frontmostApp.withLock { $0 }
+        // Text, links and files first, without images: reading a type makes the app that copied render it, and a
+        // spreadsheet renders its cells as pictures (decision 61).
         var representations = items.map { item in
-            item.types.filter { ClipReading.types.contains($0.rawValue) }.compactMap { type in
-                item.data(forType: type).map { Representation(type: type.rawValue, data: $0) }
+            item.types.filter {
+                ClipReading.types.contains($0.rawValue) && !ClipReading.imageTypes.contains($0.rawValue)
             }
+            .compactMap { type in item.data(forType: type).map { Representation(type: type.rawValue, data: $0) } }
         }
         // Rich text with no plain text: the pasteboard converts it, so the clip has text to show and search.
         let types = Set(representations.joined().map(\.type))
@@ -163,6 +166,15 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
         {
             representations[0].append(
                 Representation(type: NSPasteboard.PasteboardType.string.rawValue, data: Data(text.utf8)))
+        }
+        // No text and no files: the image, in one format, the first in ClipReading's order an item has.
+        if ClipReading.needsImage(representations),
+            let (position, type) = ClipReading.imageOrder.lazy.compactMap({ type in
+                items.firstIndex { $0.types.contains(.init(type)) }.map { ($0, type) }
+            }).first,
+            let data = items[position].data(forType: .init(type))
+        {
+            representations[position].append(Representation(type: type, data: data))
         }
         return ClipReading.content(of: representations).map { ($0, source, Date()) }
     }

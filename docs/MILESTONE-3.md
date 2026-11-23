@@ -56,13 +56,15 @@ history can't be seen until step 4 shows it.
   - rich text (RTF, RTFD, HTML);
   - links (`public.url` and its title);
   - file URLs;
-  - images (PNG, TIFF, JPEG, HEIC).
+  - images (PNG, TIFF, JPEG, HEIC), only when there's no text and no file, and then only the first of these an item
+    has (decision 61).
 
   Other types aren't read at all, because reading one makes the app that copied render it, and apps like
   spreadsheets offer many large ones. Pasting puts back the standard types, not an app's private format.
 - **Classifying** (`ClipReading`, core library):
   - files win over everything, since Finder's copies also carry the name as text and the icon as an image;
   - an image counts only without text (screenshots, Copy Image), and is converted to PNG unless it already is one;
+    text and files keep no image (decision 61);
   - text that is one URL (http, https, mailto, ftp, ssh…) is a link;
   - text with RTF or HTML is rich text, and rich text with no plain text gets the pasteboard's conversion;
   - a copy with none of these is skipped.
@@ -376,11 +378,10 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
   8. **Fixed:** the tile and Quick Look follow a click, and a click below the rows keeps the selection; a test covers
      it. What it was: a click selected a row, but the tile and Quick Look stayed on the old one while ⏎ opened the
      clicked row.
-  9. **Images kept beside text and files.**
-     - A text or files copy keeps every image the app offered: a spreadsheet cell keeps its rendered image, a
-       Finder copy keeps the icon.
-     - Every image type is read, so a 5K screenshot also renders a TIFF of about 59 MB, which is then dropped.
-     - Memory spikes, and the 2 GB fills sooner. This needs measuring.
+  9. **Fixed** (decision 61): a copy is read without images first, and an image only when there's no text and no
+     file, in one format; text and files keep no image. Tests cover a cell with its picture and the classifying. What
+     it was, **images kept beside text and files**: a spreadsheet cell kept its rendered image and a Finder copy the
+     icon, and every image type was read, so a 5K screenshot also rendered a TIFF of about 59 MB that was dropped.
   10. **Fixed, needs Edoardo's run** (focus can't change off screen): with Quick Look up, the launcher closes when the
       keyboard goes anywhere but the launcher or the preview, also when the preview had it. What it was: with Quick
       Look open, the panel didn't close when another app took focus.
