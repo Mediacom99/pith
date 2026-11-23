@@ -264,7 +264,7 @@ What ⏎ acts on, always visible when there are results.
   - Search: `magnifyingglass`, 16 pt, quiet gray.
 
 ### Planned surfaces
-The clipboard browser and the calculator are not built. Both extend the tile: in the clipboard the tile grows (168 pt in the direction) and becomes the preview; for the calculator it shows the answer that ⏎ will copy. They use the same fills, type and keys.
+The clipboard browser and the calculator are not built. Both extend the tile: in the clipboard the tile grows to 188 pt and becomes the preview (`docs/BRIEF-CLIPBOARD.md`, built by milestone 3); for the calculator it shows the answer that ⏎ will copy. They use the same fills, type and keys.
 
 ## Do's and Don'ts
 

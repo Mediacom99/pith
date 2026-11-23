@@ -118,7 +118,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 - Polls the system pasteboard (`changeCount`) in the background.
 - Records **everything**: plain text, rich text, images, files, URLs.
-- **No filtering for now** — this includes copies from password managers. *(Revisit: concealed-type skip, ignore-app list, pause hotkey.)*
+- **Skips concealed copies**, which password managers mark (decision 35), and transient or auto-generated ones (decision 38). Everything else is recorded. *(Revisit: ignore-app list, pause hotkey.)*
 - Stored locally in SQLite; images stored as files with thumbnails.
 - Screenshots: set macOS to save screenshots to the clipboard (`⌘⇧5` → Options → Save to → Clipboard, or use `⌘⌃⇧4`). They then land in history automatically. **No code needed.**
 
@@ -126,15 +126,15 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 Both limits apply; whichever triggers first wins:
 
-- **Size cap** in GB (e.g. 2 GB) — oldest dropped first.
-- **Max age** in days (e.g. 30) — older items deleted.
+- **Size cap** in GB (2 GB by default, decision 37) — oldest dropped first.
+- **Max age** in days (30 by default) — older items deleted.
 - **Pinned items are never dropped.**
 
 ### 5.3 Browsing
 
 - Opened via `⌘⇧V` or the `c ` prefix.
 - List with preview pane (text, image, file info, URL).
-- Pinned items on top, then newest first.
+- Newest first. Pinned items are found by typing: pinned matches come first (decision 33).
 - **Search** over text content and file names.
 
 ### 5.4 Actions
@@ -146,9 +146,9 @@ Both limits apply; whichever triggers first wins:
 | `⌘K` → Paste as plain text | Strip formatting |
 | `⌘K` → Pin / Unpin | |
 | `⌘K` → Delete | |
-| `⌘K` → Edit text | In-panel editor; saving creates a new entry at the top and puts it on the clipboard (original kept) |
-| `⌘K` → Edit image | Opens in Preview; when saved, the edited image comes back as a new entry at the top |
-| `⌘K` → Save as file | Images / text to a file |
+| `⌘K` → Edit text | *After milestone 3 (decision 36).* In-panel editor; saving creates a new entry at the top and puts it on the clipboard (original kept) |
+| `⌘K` → Edit image | *After milestone 3 (decision 40).* Opens in Preview; when saved, the edited image comes back as a new entry at the top |
+| `⌘K` → Save as file | Images / text to a file in Downloads, then a notification (decision 39) |
 | `⌘K` → Open URL | For copied links, with the app set for the scheme in `[open_links]`, else the default |
 | `⌘K` → Reveal in Finder | For copied files |
 
@@ -226,8 +226,8 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 
 - Swift Package, AppKit (`NSPanel` + `NSTableView`, view reuse). SwiftUI not used in the hot path.
 - `LSUIElement` (no Dock icon), `SMAppService` for launch at login.
-- Global hotkeys: `KeyboardShortcuts` (sindresorhus) or Carbon `RegisterEventHotKey`.
-- Storage: SQLite (GRDB). Config: TOML (TOMLKit).
+- Global hotkeys: Carbon `RegisterEventHotKey`.
+- Storage: SQLite (the system library). Config: TOML (our own reader).
 - Paste: `CGEvent` ⌘V into the previously active app → requires **Accessibility** permission.
 - Icons loaded lazily, cached in `NSCache`.
 - Always build/profile in Release.
@@ -237,6 +237,6 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 ## 11. Open questions
 
 - [x] **Pick a final name:** Pith (decision 30)
-- [ ] Clipboard hotkey (default `⌘⇧V`)
-- [ ] Clipboard privacy: skip password managers? ignore-app list? pause hotkey?
-- [ ] Default size cap / max age values
+- [x] Clipboard hotkey: `⌘⇧V` (decision 34)
+- [ ] Clipboard privacy: concealed copies are skipped (decision 35); an ignore-app list? a pause hotkey?
+- [x] Default size cap / max age: 2 GB, 30 days (decision 37)
