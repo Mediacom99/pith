@@ -1303,6 +1303,7 @@ extension LauncherViewController {
     fileprivate func deliver(_ clip: Clip, _ delivery: ClipDelivery) {
         guard let clipboard else { return }
         let store = clipboard.store
+        let v = KeyLayout.keyCode(typing: "v") ?? UInt32(kVK_ANSI_V)
         Task {
             do throws(ClipboardStore.Failure) {
                 if delivery.isPlainText {
@@ -1312,14 +1313,14 @@ extension LauncherViewController {
                     ]
                     await runInBackground(qos: .userInitiated) {
                         Paster.write(plain, source: clip.source, transient: true)
-                        if delivery.presses { Paster.pressCommandV() }
+                        if delivery.presses { Paster.pressCommandV(key: v) }
                     }
                     await clipboard.moveToTop(clip.id)
                 } else {
                     let items = try await store.items(of: clip.id)
                     await runInBackground(qos: .userInitiated) {
                         Paster.write(items, source: clip.source, transient: false)
-                        if delivery.presses { Paster.pressCommandV() }
+                        if delivery.presses { Paster.pressCommandV(key: v) }
                     }
                 }
             } catch {

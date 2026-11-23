@@ -1,3 +1,4 @@
+import AppKit
 import Carbon.HIToolbox
 import LauncherCore
 
@@ -32,7 +33,7 @@ final class HotKeyCenter {
         let id = nextID
         var hotKeyRef: EventHotKeyRef?
         let status = RegisterEventHotKey(
-            hotkey.keyCode,
+            KeyLayout.keyCode(of: hotkey),
             hotkey.modifiers,
             EventHotKeyID(signature: Self.signature, id: id),
             GetEventDispatcherTarget(),
@@ -68,9 +69,37 @@ final class GlobalHotkeys {
     /// In the order they were first applied.
     private var names: [String] = []
     private var slots: [String: (current: (hotkey: Shortcut, id: HotKeyCenter.ID)?, problem: String?)] = [:]
+    private var wanted: [String: (hotkey: Shortcut?, action: (TimeInterval) -> Void)] = [:]
+    private var layoutObserver: NSObjectProtocol?
 
     init(center: HotKeyCenter = HotKeyCenter()) {
         self.center = center
+        // A hotkey is registered on the key that types its letter in the layout in use (`KeyLayout`): switching
+        // layouts moves it there.
+        layoutObserver = DistributedNotificationCenter.default().addObserver(
+            forName: NSNotification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String), object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.layoutChanged() }
+        }
+    }
+
+    isolated deinit {
+        if let layoutObserver { DistributedNotificationCenter.default().removeObserver(layoutObserver) }
+    }
+
+    /// Registers each hotkey again, on the keys of the layout now in use: the one it has, or the one configured if it
+    /// has none.
+    private func layoutChanged() {
+        for name in names {
+            guard let wanted = wanted[name], let hotkey = current(name) ?? wanted.hotkey else { continue }
+            if let current = slots[name]?.current { center.unregister(current.id) }
+            if let id = center.register(hotkey, action: wanted.action) {
+                slots[name] = ((hotkey, id), hotkey == wanted.hotkey ? nil : slots[name]?.problem)
+            } else {
+                slots[name] = (nil, "hotkeys.\(name) \"\(hotkey)\" is taken by another app")
+            }
+        }
     }
 
     /// The key `name` is registered with, if any.
@@ -87,7 +116,10 @@ final class GlobalHotkeys {
     /// another's. One that another app holds gets its old key back when it can, and its problem says so; nil lets go
     /// of it. One that didn't change keeps its key, and no longer has a problem.
     func apply(_ wanted: [(name: String, hotkey: Shortcut?, action: (TimeInterval) -> Void)]) {
-        for (name, _, _) in wanted where !names.contains(name) { names.append(name) }
+        for (name, hotkey, action) in wanted {
+            if !names.contains(name) { names.append(name) }
+            self.wanted[name] = (hotkey, action)
+        }
         let changed = wanted.filter { current($0.name) != $0.hotkey }
         for (name, _, _) in wanted where !changed.contains(where: { $0.name == name }) {
             slots[name]?.problem = nil

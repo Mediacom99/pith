@@ -402,10 +402,13 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
       - overlapping folders (`~` and `~/dev`) listed files twice, with ghosts after a deletion;
       - a configured folder moved in, trashed, or on a drive mounted later was never rescanned;
       - dropped FSEvents rescanned everything on the engine's queue, once per folder.
-  16. **Keyboard layouts.** The defaults are fine on Italian, German and French.
-      - Global hotkeys and the paste's ⌘V use US key positions. On Dvorak or Colemak, ⌘P and ⌘V land on other keys,
-        and custom hotkeys do on QWERTZ and AZERTY too.
-      - The field's ⌘V and ⌘C fail on Cyrillic and Greek layouts.
+  16. **Fixed:** `KeyLayout` finds the key that types a letter with ⌘ in the layout in use (or the last one with
+      letters); the hotkeys are registered on it, again when the layout changes, and the paste presses ⌘V on it. The
+      field's editing keys match by that character too. 2 tests on the Mac's own layout; another layout needs a run.
+      What it was, with **keyboard layouts** (the defaults were fine on Italian, German and French):
+      - global hotkeys and the paste's ⌘V used US key positions, so on Dvorak or Colemak ⌘P and ⌘V landed on other
+        keys, and custom hotkeys did on QWERTZ and AZERTY;
+      - the field's ⌘V and ⌘C failed on Cyrillic and Greek layouts.
   17. **Main-thread stalls:**
       - Deleting tens of thousands of indexed files (`cargo clean`) checks the history against every path.
       - A pasted 2,000-word query allocates about 800 MB per keystroke.

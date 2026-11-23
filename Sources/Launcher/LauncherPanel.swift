@@ -208,14 +208,17 @@ final class LauncherPanel: NSPanel {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if isKeyWindow, handleKey(event) { return true }
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        // What the key types with ⌘ alone, as the panel's keys are matched: a Russian or Greek layout still finds ⌘V.
+        let character = (event.characters(byApplyingModifiers: .command) ?? event.charactersIgnoringModifiers ?? "")
+            .lowercased()
         let action: Selector? =
-            switch (modifiers, event.charactersIgnoringModifiers ?? "") {
+            switch (modifiers, character) {
             case (.command, "x"): #selector(NSText.cut(_:))
             case (.command, "c"): #selector(NSText.copy(_:))
             case (.command, "v"): #selector(NSText.paste(_:))
             case (.command, "a"): #selector(NSText.selectAll(_:))
             case (.command, "z"): Selector(("undo:"))
-            case ([.command, .shift], "Z"): Selector(("redo:"))
+            case ([.command, .shift], "z"): Selector(("redo:"))
             default: nil
             }
         if let action, NSApp.sendAction(action, to: nil, from: self) { return true }

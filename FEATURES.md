@@ -253,7 +253,7 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 
 - Swift Package, AppKit (`NSPanel` + `NSTableView`, view reuse). SwiftUI not used in the hot path.
 - `LSUIElement` (no Dock icon), `SMAppService` for launch at login.
-- Global hotkeys: Carbon `RegisterEventHotKey`.
+- Global hotkeys: Carbon `RegisterEventHotKey`, on the key that types their letter in the keyboard layout in use.
 - Storage: SQLite (the system library). Config: TOML (our own reader).
 - Updates: Sparkle, the one dependency, from `pith.edoardobertoli.xyz` (decision 48).
 - Paste: `CGEvent` ⌘V into the previously active app → requires **Accessibility** permission.

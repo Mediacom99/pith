@@ -1,3 +1,4 @@
+import Carbon.HIToolbox
 import LauncherCore
 import Testing
 
@@ -40,5 +41,20 @@ struct GlobalHotkeysTests {
         hotkeys.apply([("launcher", first, { _ in })])
         #expect(hotkeys.current("launcher") == first)
         #expect(hotkeys.problems.isEmpty, "back on its own key: the problem is gone")
+    }
+}
+
+/// The keys of the layout in use, whatever it is on the Mac running the tests.
+@MainActor
+struct KeyLayoutTests {
+    @Test func everyLetterHasItsOwnKey() {
+        let codes = "abcdefghijklmnopqrstuvwxyz".map { KeyLayout.keyCode(typing: String($0)) }
+        #expect(!codes.contains(nil))
+        #expect(Set(codes).count == 26)
+    }
+
+    @Test func keysThatDontTypeKeepTheirPlace() {
+        #expect(KeyLayout.keyCode(of: Shortcut("cmd+up")!) == UInt32(kVK_UpArrow))
+        #expect(KeyLayout.keyCode(of: Shortcut("f19")!) == UInt32(kVK_F19))
     }
 }

@@ -27,11 +27,12 @@ nonisolated enum Paster {
         pasteboard.writeObjects(objects)
     }
 
-    /// Presses ⌘V in the app in front. Needs Accessibility access; without it macOS drops the events.
-    static func pressCommandV() {
+    /// Presses ⌘V in the app in front, with `key`, the key that types V in the layout in use (`KeyLayout`, looked up
+    /// on the main thread). Needs Accessibility access; without it macOS drops the events.
+    static func pressCommandV(key: UInt32) {
         let source = CGEventSource(stateID: .combinedSessionState)
         for isDown in [true, false] {
-            let event = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_ANSI_V), keyDown: isDown)
+            let event = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(key), keyDown: isDown)
             event?.flags = .maskCommand
             event?.post(tap: .cgAnnotatedSessionEventTap)
         }
