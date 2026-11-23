@@ -187,3 +187,4 @@ More in the docs:
 - [`docs/DESIGN.md`](docs/DESIGN.md): the design system's short map, with the full text in
   [`docs/.impeccable/design-full.md`](docs/.impeccable/design-full.md).
 - [`docs/PRODUCT.md`](docs/PRODUCT.md): who it's for.
+- [`docs/BRIEF-CLIPBOARD.md`](docs/BRIEF-CLIPBOARD.md): the clipboard's design brief.

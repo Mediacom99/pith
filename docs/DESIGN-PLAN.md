@@ -128,9 +128,12 @@ Status: **done**. Stage is built, reviewed, documented and installed.
 
 ## 6. Briefs for the planned surfaces
 
-Status: **todo**.
-- Run `/impeccable shape` for the calculator row, the clipboard browser (list, preview pane, pinned items) and the
-  text editor.
+Status: **in review** for the clipboard, **todo** for the calculator.
+- Clipboard: `docs/BRIEF-CLIPBOARD.md`, waiting for Edoardo. Shaped with him: what he copies (text, links, images,
+  files), that he mostly wants the last few copies, and decisions 33–36 (newest first, ⌘⇧V, concealed copies
+  skipped, the editor after milestone 3).
+- Calculator: run `/impeccable shape` for its row when its milestone comes. The text editor gets its own brief after
+  milestone 3 (decision 36).
 - Their milestone plans point to the briefs.
 
 ## 7. Polish

@@ -72,8 +72,8 @@ rates. Settings are a text file, not a settings window.
   - Config problems shown as rows.
 - **Planned (`FEATURES.md`):**
   - The calculator: an inline top row for math, units, currency and programmer expressions (§6).
-  - The clipboard manager (§5): opened with ⌘⇧V or the `c ` prefix. A list with a preview pane, pinned items on top,
-    search, paste into the previous app, and an in-panel text editor.
+  - The clipboard manager (§5): opened with ⌘⇧V or the `c ` prefix. A list with a preview pane, newest first, pinned
+    items found by typing, search and paste into the previous app; an in-panel text editor after milestone 3.
   - The design covers these before they're built (decision 26).
 - **Constraints:**
   - The `FEATURES.md` §1 performance targets are requirements.
@@ -83,7 +83,7 @@ rates. Settings are a text file, not a settings window.
 - **Out of scope:** themes and a settings window (`FEATURES.md` §9). Behavior is configurable, but the look isn't
   themable.
 - **Terms:** panel, search bar, rows, empty state, ⌘K actions, commands, config problems, clipboard mode.
-- **Undecided:** a public release, the clipboard hotkey, clipboard privacy.
+- **Undecided:** a public release; for the clipboard, an ignore-app list and a pause hotkey.
 
 ## Brand Commitments
 

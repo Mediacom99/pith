@@ -118,7 +118,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 - Polls the system pasteboard (`changeCount`) in the background.
 - Records **everything**: plain text, rich text, images, files, URLs.
-- **No filtering for now** — this includes copies from password managers. *(Revisit: concealed-type skip, ignore-app list, pause hotkey.)*
+- **Skips concealed copies**, which password managers mark (decision 35). Everything else is recorded. *(Revisit: ignore-app list, pause hotkey.)*
 - Stored locally in SQLite; images stored as files with thumbnails.
 - Screenshots: set macOS to save screenshots to the clipboard (`⌘⇧5` → Options → Save to → Clipboard, or use `⌘⌃⇧4`). They then land in history automatically. **No code needed.**
 
@@ -134,7 +134,7 @@ Both limits apply; whichever triggers first wins:
 
 - Opened via `⌘⇧V` or the `c ` prefix.
 - List with preview pane (text, image, file info, URL).
-- Pinned items on top, then newest first.
+- Newest first. Pinned items are found by typing: pinned matches come first (decision 33).
 - **Search** over text content and file names.
 
 ### 5.4 Actions
@@ -146,7 +146,7 @@ Both limits apply; whichever triggers first wins:
 | `⌘K` → Paste as plain text | Strip formatting |
 | `⌘K` → Pin / Unpin | |
 | `⌘K` → Delete | |
-| `⌘K` → Edit text | In-panel editor; saving creates a new entry at the top and puts it on the clipboard (original kept) |
+| `⌘K` → Edit text | *After milestone 3 (decision 36).* In-panel editor; saving creates a new entry at the top and puts it on the clipboard (original kept) |
 | `⌘K` → Edit image | Opens in Preview; when saved, the edited image comes back as a new entry at the top |
 | `⌘K` → Save as file | Images / text to a file |
 | `⌘K` → Open URL | For copied links, with the app set for the scheme in `[open_links]`, else the default |
@@ -237,6 +237,6 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 ## 11. Open questions
 
 - [x] **Pick a final name:** Pith (decision 30)
-- [ ] Clipboard hotkey (default `⌘⇧V`)
-- [ ] Clipboard privacy: skip password managers? ignore-app list? pause hotkey?
+- [x] Clipboard hotkey: `⌘⇧V` (decision 34)
+- [ ] Clipboard privacy: concealed copies are skipped (decision 35); an ignore-app list? a pause hotkey?
 - [ ] Default size cap / max age values
