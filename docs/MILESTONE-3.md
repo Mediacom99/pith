@@ -314,8 +314,8 @@ release with them, for Edoardo to install as a new user would.
   (so nothing is quarantined), mounts it hidden, refuses a Pith not signed with the local certificate, replaces and
   quits a copy already there, and opens it from /Applications (~/Applications if that isn't writable). Tested into a
   scratch folder: installed 0.3.5 with no quarantine flag; a wrong certificate installs nothing.
-- **The notification icon** (settled: only Edoardo's Mac): Pith's banners show a blank square there, while macOS's
-  request to allow Pith's notifications shows its icon.
+- **The notification icon** (fixed on Edoardo's Mac, 2026-11-23: macOS's icon cache): Pith's banners showed a blank
+  square there, while macOS's request to allow Pith's notifications showed its icon.
   - Ruled out: macOS draws Pith's icon from its path (`NSWorkspace.icon(forFile:)`); LaunchServices knows one copy;
     restarting NotificationCenter and `usernoted`; 0.3.6's asset catalog; and a full clean install, which made
     `usernoted` drop its 2026-11-22 record of Pith.
@@ -324,7 +324,8 @@ release with them, for Edoardo to install as a new user would.
     banner that showed the icon. So Pith is built right, and a first install elsewhere shows it. What's left is
     something the Mac keeps for `dev.edoardo.pith`, most likely the icon cache
     (`/Library/Caches/com.apple.iconservices.store`), from before Pith had an icon. The test app is deleted.
-  - Edoardo's fix, if he wants it: `sudo rm -rf /Library/Caches/com.apple.iconservices.store`, then restart the Mac.
+  - The fix, without a restart: the cache deleted and the processes holding icons restarted (AGENTS.md, Traps). The
+    banners show Pith's icon since.
 - **Still open** (FEATURES §11): asking each permission only when its feature first needs it; the Desktop,
   Documents and Downloads prompts are done (decision 60, step 12). A Homebrew cask wouldn't avoid the dialog: Homebrew
   marks what it installs as downloaded too.

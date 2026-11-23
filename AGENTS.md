@@ -98,6 +98,9 @@ Traps:
 - DESIGN.md: *move* the edited full text over `docs/DESIGN.md` before `impeccable design-compact --write`; it refuses while `docs/.impeccable/design-full.md` exists.
 - Page captures: `impeccable shot` for phone widths (headless Chrome won't go below about 500 px); `impeccable motion-capture` takes waits up to 2000 ms, arrow keys but not Page Down or Home, and no playback over 10 s.
 - A scrolled page can't be captured: `impeccable shot` resets the scroll, and headless Chrome draws a blank frame after a scripted scroll. Measure instead: inject a script that scrolls, writes `getBoundingClientRect()` values into a `data-` attribute, and read it with Chrome's `--headless=new --dump-dom`.
+- A banner with a blank icon while the app has one is macOS's icon cache, kept from before the icon existed (step
+  11): `sudo rm -rf /Library/Caches/com.apple.iconservices.store; sudo killall iconservicesd; killall
+  iconservicesagent NotificationCenter usernoted`, which Edoardo runs himself (it needs his password). No restart.
 - macOS's notification system (`usernoted`) keeps an app's record, by bundle id, until no copy of the app is left, then drops it when it restarts. `tccutil reset All dev.edoardo.pith` works only while LaunchServices still knows a copy. `sfltool dumpbtm` hangs waiting for a password. `make app` copies get registered with LaunchServices too (`lsregister -u .build/Pith.app` drops one).
 
 ## Layout
