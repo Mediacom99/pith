@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400" viewBox="0 0 640 400">
+  <!-- The installer's window (decision 56), behind Pith at (160, 176) and Applications at (480, 176), 128 pt icons.
+       Finder draws the icons' names black in light mode and white in dark, over whatever is here: #767676 is 4.6:1
+       against black and 4.5:1 against white. Everything that matters is in the top 372 pt, in case Finder counts its
+       title bar in the window's height. `make icon` draws it at 1x and 2x. -->
+  <rect width="640" height="400" fill="#767676"/>
+  <g fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, sans-serif" text-anchor="middle">
+    <text x="320" y="62" font-size="20" font-weight="600">Drag Pith into Applications</text>
+    <text x="320" y="318" font-size="13">Then open it. The first time, macOS stops it, because Pith isn’t notarized:</text>
+    <text x="320" y="338" font-size="13">in System Settings, Privacy &amp; Security, press Open Anyway.</text>
+  </g>
+  <g fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M252 176 H386"/>
+    <path d="M374 164 L388 176 L374 188"/>
+  </g>
+</svg>

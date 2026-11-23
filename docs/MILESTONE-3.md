@@ -293,3 +293,18 @@ lookup. With the default keys the snapshots are unchanged. Needs Edoardo's run w
   the Clipboard History tile's hotkey, from the config.
 - **Docs:** the template, the README's keys and config, FEATURES §3 and §8, the landing page's #config section.
 - **Tests:** parsing and every problem; the panel with keys rebound and turned off.
+
+## 11. First install
+
+Status: **in review** (decision 56). The installer and the landing page are built and checked; 0.3.5 is the first
+release with them, for Edoardo to install as a new user would.
+- **The disk image:** `make package` also makes `Pith-<version>.dmg` with dmgbuild, which writes the window's layout
+  without opening Finder: Pith and Applications side by side, an arrow, and a line on the first open's Open Anyway.
+  Its background is drawn from `Support/DMGBackground.svg` by `make icon`, at 1x and 2x.
+- **Publishing:** `make publish` puts `Pith.dmg` at the fixed address; the feed keeps the versioned zip.
+- **The landing page** (impeccable polish): "Set it up once." in four steps on a subgrid, each with what it looks
+  like (the Pith.dmg key, the installer's window drawn small, System Settings' "“Pith” was blocked…" row), then
+  Changing a setting (type "config", Open Config, save) and Updates (daily, Update Pith, Check for Updates). The config
+  file stays pinned and scrolls inside itself: 705 px in an 813 px window, its 931 px of lines scrolling, and
+  lighting a setting scrolls its line into view without moving the page. Checked at 1440 × 900 and 390 × 844.
+- **Still open** (FEATURES §11): asking each permission only when its feature first needs it, and a Homebrew cask.

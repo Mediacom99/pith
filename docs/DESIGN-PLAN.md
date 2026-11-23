@@ -160,7 +160,8 @@ snapshots are final for the launcher.
 ## 8. The landing page
 
 Status: **in review**. Built, through impeccable's finish review (a fix round: the panel at its real size, the keys as
-a list on phones, a truthful "te" demo, drawn arrow keys, a visible hover, a config sample that fits), and documented
+a list on phones, a truthful "te" demo, drawn arrow keys, a visible hover, a config sample that fits; on 2026-11-23 a polish of the
+setup, settings and updates for the installer, decision 56), and documented
 in `DESIGN.md`'s Website section. `site/index.html` on `pith.edoardobertoli.xyz` (decision 51): Raycast's structure, pinned by
 Edoardo, in Stage's world carried to the web. The direction contract is in `.impeccable/surfaces/site-index-html.md`.
 - **First viewport:** the claim "Fast, small, and out of your way.", Download for Mac, four key caps (⌘P, te, ⌘K,
@@ -168,7 +169,9 @@ Edoardo, in Stage's world carried to the web. The direction contract is in `.imp
 - **Below:** a keyboard of key caps where Pith's keys are lit and explain themselves, four reasons with measured
   numbers (44 MB and 0 % CPU idle on 2026-11-23), rows for the launcher, ⌘K and the clipboard, a configuration
   section (the whole `config.toml` beside every setting, its default and what it does, each lighting the other),
-  Edoardo's why, the three first-open steps, and a closing ⌘P with Download.
+  Edoardo's why, setting it up in four steps (Download, the installer's window, Open Anyway in System Settings, ⌘P),
+  each with what it looks like, then how a setting changes and how updates arrive, and a closing ⌘P with Download.
+  The config file stays pinned beside the settings and scrolls inside itself when it's taller than the window.
 - **Motion** (decision 53), in the keys only: presses, a one-time hero tour, chords, a retyped config value; the
   snapshots change in one frame, and Reduce Motion plays nothing by itself. Checked by impeccable's motion review.
 - **Web-only additions to Stage**, in `DESIGN.md`'s Website section: a page ground (#ECECEC light, #141414 dark),

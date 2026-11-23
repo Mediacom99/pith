@@ -109,9 +109,11 @@ These are the defaults: every one of them can be changed in the config, under `[
 
 ## Install
 
-Download [Pith.zip](https://pith.edoardobertoli.xyz/Pith.zip) (macOS 26 Tahoe or later, Apple Silicon), unzip it and
-move Pith to Applications. Pith isn't notarized, so macOS blocks it the first time: open System Settings, Privacy &
-Security, and press Open Anyway. Then press ⌘P. It updates itself from then on.
+Download [Pith.dmg](https://pith.edoardobertoli.xyz/Pith.dmg) (macOS 26 Tahoe or later, Apple Silicon) and open it. In
+the window that opens, drag Pith onto Applications. Pith isn't notarized, so macOS stops it the first time you open it:
+press Done, then in System Settings, Privacy & Security, press Open Anyway and confirm. Then press ⌘P. The first paste
+from the clipboard history asks for Accessibility, which pasting needs. Pith starts at login and updates itself from
+then on.
 
 ### From source
 
@@ -140,10 +142,11 @@ Pith updates itself with [Sparkle](https://sparkle-project.org) from `pith.edoar
 - **Each release:**
   1. Raise the version in `Support/Info.plist`: 0.\<milestone\>.\<patch\>.
   2. Commit.
-  3. Run `make publish`. It builds, signs and zips the app, tags the commit `v<version>`, and puts the zip and the
-     signed update feed online.
+  3. Run `make publish`. It builds and signs the app, zips it for the feed, makes the installer, tags the commit
+     `v<version>`, and puts the zip, the installer and the signed update feed online.
 - **What people get:**
-  - A first install comes from `https://pith.edoardobertoli.xyz/Pith.zip`.
+  - A first install comes from `https://pith.edoardobertoli.xyz/Pith.dmg`, the installer: a window to drag Pith into
+    Applications from, which says how to get past the first open.
   - After that, Pith checks at most once a day and downloads an update in the background. Update Pith in the
     launcher restarts into it; otherwise it installs when Pith quits.
   - Check for Updates in the launcher checks right away, without waiting for the day.
@@ -152,7 +155,8 @@ Pith updates itself with [Sparkle](https://sparkle-project.org) from `pith.edoar
   - The Quit Pith tile shows the version, so a report can say which build it's about.
 
 Pith isn't notarized, so the first install is blocked once, and they press Open Anyway in System Settings, Privacy &
-Security. Their Mac needs macOS 26 and Apple Silicon. `make package` alone makes the zip without publishing it.
+Security. Their Mac needs macOS 26 and Apple Silicon. `make package` alone makes the zip and the installer without
+publishing them.
 
 The site's front page is `site/index.html`, the landing page to send people to. `make publish` deploys it with each
 release; to change only the page, `make page` assembles it in `.build/site` to look at, and `make site` deploys it.

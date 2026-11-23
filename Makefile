@@ -18,12 +18,16 @@ FEED     := https://pith.edoardobertoli.xyz
 # The version in Info.plist, 0.<milestone>.<patch> (decision 47): `make package` names the zip and the tag after it.
 VERSION  = $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Support/Info.plist)
 PACKAGE  = .build/$(APP_NAME)-$(VERSION).zip
+# The installer (decision 56): a disk image to drag Pith into Applications from. Built with dmgbuild, pinned by hash in
+# Support/dmgbuild-requirements.txt, which lays out the window without opening Finder.
+DMG      = .build/$(APP_NAME)-$(VERSION).dmg
+DMGBUILD := .build/dmgbuild/bin/dmgbuild
 # What the Worker serves (Support/wrangler.toml): the landing page and its snapshots, the feed and the builds.
 SITE     := .build/site
 SNAPSHOTS := recent search actions clipboard-text long-names
 
 .DEFAULT_GOAL := help
-.PHONY: help build app icon package publish site page update-key certificate run install uninstall stop logs stats test bench snapshots lint format clean
+.PHONY: help build app icon package dmg publish site page update-key certificate run install uninstall stop logs stats test bench snapshots lint format clean
 
 help: ## List the targets
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z-]+:.*## / { printf "  make %-11s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -51,9 +55,10 @@ app: build ## Assemble .build/Pith.app and sign it (with the local certificate, 
 	codesign --force --sign "$(SIGN_AS)" $(APP)
 
 # The icon's source is Support/AppIcon.svg (decision 54). Chrome draws it at 1024 px on a transparent canvas; sips and
-# iconutil make the sizes macOS wants. The .icns is committed, so building the app doesn't need Chrome.
+# iconutil make the sizes macOS wants. The installer's background (decision 56) is drawn at 1x and 2x. Both are
+# committed, so building doesn't need Chrome.
 CHROME := /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
-icon: ## Redraw Support/AppIcon.icns from Support/AppIcon.svg (needs Google Chrome)
+icon: ## Redraw Support/AppIcon.icns and the installer's background from their SVGs (needs Google Chrome)
 	@[ -x "$(CHROME)" ] || { echo "make icon draws the SVG with Google Chrome, which isn't installed"; exit 1; }
 	@work=$$(mktemp -d); trap 'rm -rf "$$work"' EXIT; \
 	"$(CHROME)" --headless=new --disable-gpu --hide-scrollbars --no-first-run --user-data-dir="$$work/chrome" \
@@ -64,10 +69,17 @@ icon: ## Redraw Support/AppIcon.icns from Support/AppIcon.svg (needs Google Chro
 		sips -z $$size $$size "$$work/1024.png" --out "$$work/AppIcon.iconset/icon_$${size}x$${size}.png" > /dev/null && \
 		sips -z $$((size * 2)) $$((size * 2)) "$$work/1024.png" --out "$$work/AppIcon.iconset/icon_$${size}x$${size}@2x.png" > /dev/null; \
 	done && \
-	iconutil -c icns "$$work/AppIcon.iconset" -o Support/AppIcon.icns && echo "Support/AppIcon.icns redrawn"
+	iconutil -c icns "$$work/AppIcon.iconset" -o Support/AppIcon.icns && echo "Support/AppIcon.icns redrawn" && \
+	for scale in 1 2; do \
+		"$(CHROME)" --headless=new --disable-gpu --hide-scrollbars --no-first-run --user-data-dir="$$work/chrome" \
+			--window-size=640,400 --force-device-scale-factor=$$scale --screenshot="$$work/background-$$scale.png" \
+			"file://$(CURDIR)/Support/DMGBackground.svg" > /dev/null 2>&1 || exit 1; \
+	done && \
+	cp "$$work/background-1.png" Support/DMGBackground.png && cp "$$work/background-2.png" Support/DMGBackground@2x.png && \
+	echo "Support/DMGBackground.png and @2x redrawn"
 
 # A build that goes out comes from a commit, tagged v<version>; a version already tagged elsewhere has to be raised.
-package: ## Zip the app to send to someone and tag it v<version>: signed with the local certificate, not notarized
+package: ## Zip the app for the update feed, make its installer and tag it v<version>: signed with the local certificate, not notarized
 	@[ "$(SIGN_AS)" != "-" ] || { echo "Run make certificate first: an ad hoc signature loses their permissions at every update"; exit 1; }
 	@[ -z "$$(git status --porcelain)" ] || { echo "Commit first: the build is tagged v$(VERSION)"; exit 1; }
 	@tagged=$$(git rev-parse -q --verify "refs/tags/v$(VERSION)^{commit}"); \
@@ -75,11 +87,24 @@ package: ## Zip the app to send to someone and tag it v<version>: signed with th
 	$(MAKE) app
 	rm -f $(PACKAGE)
 	ditto -c -k --keepParent $(APP) $(PACKAGE)
+	$(MAKE) dmg
 	@git rev-parse -q --verify "refs/tags/v$(VERSION)" > /dev/null || git tag "v$(VERSION)"
-	@echo "$(PACKAGE), tagged v$(VERSION)"
+	@echo "$(PACKAGE) and $(DMG), tagged v$(VERSION)"
 
-# The feed lists only the newest build; Pith.zip is the same build at a fixed address, for a first install. The private
-# key leaves the keychain only for generate_appcast, in a temporary folder that's removed after.
+dmg: $(DMGBUILD) ## Make the installer from the built app: a disk image to drag Pith into Applications from
+	rm -f $(DMG)
+	$(DMGBUILD) -s Support/dmg-settings.py -D app=$(APP) $(APP_NAME) $(DMG) > /dev/null
+	@echo "$(DMG)"
+
+$(DMGBUILD): Support/dmgbuild-requirements.txt
+	rm -rf .build/dmgbuild
+	/usr/bin/python3 -m venv .build/dmgbuild
+	.build/dmgbuild/bin/pip install --quiet --disable-pip-version-check --require-hashes --only-binary=:all: \
+		-r Support/dmgbuild-requirements.txt
+
+# The feed lists only the newest build, as a zip; Pith.dmg is its installer at a fixed address, for a first install
+# (decision 56). The private key leaves the keychain only for generate_appcast, in a temporary folder that's removed
+# after.
 publish: package ## Put the packaged build and its update feed on pith.edoardobertoli.xyz, for every copy to update to
 	@[ -n "$$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' Support/Info.plist)" ] || { echo "Run make update-key first"; exit 1; }
 	rm -rf $(SITE) .build/feed
@@ -89,10 +114,10 @@ publish: package ## Put the packaged build and its update feed on pith.edoardobe
 	$(TOOLS)/generate_keys --account pith -x "$$secret/key" > /dev/null && \
 	$(TOOLS)/generate_appcast --ed-key-file "$$secret/key" --download-url-prefix $(FEED)/ --maximum-versions 1 .build/feed
 	cp .build/feed/appcast.xml $(PACKAGE) $(SITE)/
-	cp $(PACKAGE) $(SITE)/$(APP_NAME).zip
+	cp $(DMG) $(SITE)/$(APP_NAME).dmg
 	$(MAKE) page
 	WRANGLER_SEND_METRICS=false npx --yes wrangler@4.166.0 deploy --config Support/wrangler.toml
-	@echo "Published $(VERSION): $(FEED)/$(APP_NAME).zip"
+	@echo "Published $(VERSION): $(FEED)/$(APP_NAME).dmg"
 
 # A deploy replaces everything the Worker serves, so the page goes out with the feed and builds `make publish` left.
 site: page ## Put the landing page (site/) on pith.edoardobertoli.xyz, keeping the published feed and builds
