@@ -311,12 +311,27 @@ release with them, for Edoardo to install as a new user would.
   (so nothing is quarantined), mounts it hidden, refuses a Pith not signed with the local certificate, replaces and
   quits a copy already there, and opens it from /Applications (~/Applications if that isn't writable). Tested into a
   scratch folder: installed 0.3.5 with no quarantine flag; a wrong certificate installs nothing.
-- **The notification icon** (fixed, Edoardo, 2026-11-23): Pith's banners showed a blank square on Edoardo's Mac
-  because the notification system kept its record of Pith from 2026-11-22, before Pith had an icon, and never took
-  the icon up later; restarting it, reinstalling and 0.3.6's asset catalog changed nothing. `usernoted` drops the
-  record of an app only when no copy of it is left, so Pith was removed completely (every copy, `.build/Pith.app`
-  included, unregistered from LaunchServices) and `usernoted` restarted. Reinstalled with the Terminal line, 0.3.6
-  shows its icon, and the install had no quarantine flag and no Open Anyway. A new user's first record already has
-  the icon.
+- **The notification icon** (open): Pith's own banners show a blank square on Edoardo's Mac, while macOS's request
+  to allow Pith's notifications shows its icon.
+  - Ruled out: macOS draws Pith's icon from its path (`NSWorkspace.icon(forFile:)`); LaunchServices knows one copy;
+    restarting NotificationCenter and `usernoted`; 0.3.6's asset catalog; and a full clean install. That install
+    removed every copy, including `.build/Pith.app`, so `usernoted` dropped its 2026-11-22 record of Pith. Pith was
+    then reinstalled with the Terminal line, with no quarantine flag and no Open Anyway.
+  - Notifier posts plain content: a title, a body and a userInfo path, no attachments.
+  - Hypothesis: banners look the icon up by bundle id in macOS's icon cache
+    (`/Library/Caches/com.apple.iconservices.store`), which still holds the blank icon from before Pith had one. If
+    so, only Edoardo's Mac is affected.
+  - To settle it: a friend's Mac (a first install there), or Edoardo runs
+    `sudo rm -rf /Library/Caches/com.apple.iconservices.store` and restarts the Mac.
 - **Still open** (FEATURES §11): asking each permission only when its feature first needs it. A Homebrew cask
   wouldn't avoid the dialog: Homebrew marks what it installs as downloaded too.
+
+## 12. Bug check before friends
+
+Status: **todo**, next. Before Edoardo sends Pith to friends:
+- Go through every feature in `FEATURES.md`, the two install paths (the Terminal line, Pith.dmg), updates, the
+  config and the keys, the clipboard, and the landing page.
+- Rank the bugs found by severity and fix them one at a time with Edoardo.
+- Still open beside it: the notification icon (step 11), repeat-to-paste (FEATURES §11, Edoardo picks), and the
+  quieter first install. A new user still gets the Desktop, Documents and Downloads prompts as the first scan of
+  `~` starts.

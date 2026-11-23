@@ -44,8 +44,8 @@ Read these before doing anything:
   `~/pith-backup-2026-11-23`, and its privacy permissions were reset (`tccutil reset All dev.edoardo.pith`). He
   reinstalled it in `/Applications`, where the installer and the Terminal install put it, and where `make install`
   now puts a branch build to try, until the next update replaces it. On the evening of 2026-11-23 it was removed
-  completely and reinstalled with the Terminal line (0.3.6, fresh config and history), which fixed its blank
-  notification icon (`docs/MILESTONE-3.md` step 11). It's signed with the
+  completely and reinstalled with the Terminal line (0.3.6, fresh config and history); its banners still show a blank
+  icon (`docs/MILESTONE-3.md` step 11). It's signed with the
   local certificate (decision 41) so its Accessibility access survives updates, and it updates itself (decisions
   48–50). A change reaches it, and whoever else has Pith, as a release: raise the version in `Support/Info.plist`,
   commit, `make publish`, then Check for Updates in the launcher. Publish from the branch he uses
@@ -97,6 +97,8 @@ Traps:
 - `make site` replaces everything the Worker serves, so it needs the feed and builds a `make publish` from this checkout left in `.build/site`.
 - DESIGN.md: *move* the edited full text over `docs/DESIGN.md` before `impeccable design-compact --write`; it refuses while `docs/.impeccable/design-full.md` exists.
 - Page captures: `impeccable shot` for phone widths (headless Chrome won't go below about 500 px); `impeccable motion-capture` takes waits up to 2000 ms, arrow keys but not Page Down or Home, and no playback over 10 s.
+- A scrolled page can't be captured: `impeccable shot` resets the scroll, and headless Chrome draws a blank frame after a scripted scroll. Measure instead: inject a script that scrolls, writes `getBoundingClientRect()` values into a `data-` attribute, and read it with Chrome's `--headless=new --dump-dom`.
+- macOS's notification system (`usernoted`) keeps an app's record, by bundle id, until no copy of the app is left, then drops it when it restarts. `tccutil reset All dev.edoardo.pith` works only while LaunchServices still knows a copy. `sfltool dumpbtm` hangs waiting for a password. `make app` copies get registered with LaunchServices too (`lsregister -u .build/Pith.app` drops one).
 
 ## Layout
 

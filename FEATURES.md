@@ -264,11 +264,13 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 - [x] Clipboard hotkey: `⌘⇧V` (decision 34)
 - [ ] Clipboard privacy: concealed copies are skipped (decision 35) and recording pauses from the launcher (decision 44); an ignore-app list?
 - [x] Every keybind configurable in `config.toml`: a `[keys]` table, and `[launcher] clipboard_alias` (decision 55)
-- [ ] Paste down the history by repeating a key (Edoardo, 2026-11-23, after the keybinds). Two readings to settle with
-  him: (a) cycle, like ⌘Tab: hold ⌘⇧, each V moves the selection one item down, letting go pastes it (Flycut and
-  Jumpcut work this way; today a second ⌘⇧V closes the panel, so that would change, and esc would still close); (b) a
-  paste stack: each press pastes the next item without showing the panel, for filling forms. Claude recommends (a): it
-  shows what will be pasted, and a quick ⌘⇧V still just opens the panel. Its key joins the configurable keys.
+- [ ] Paste down the history by repeating a key (Edoardo, 2026-11-23, after the keybinds). Three options, explained
+  to him, for him to pick: (a) cycle, like ⌘Tab: hold ⌘⇧, each V moves the selection one item down, letting go
+  pastes it, and a single ⌘⇧V still just opens the panel (Flycut and Jumpcut work this way; a second ⌘⇧V would no
+  longer close the panel, ⎋ would); (b) a paste stack on its own hotkey (⌃⌘V): each press pastes the next clip
+  without showing the panel, for filling forms, with an order and a reset rule to settle; (c) ⌘1–⌘9 in the clipboard
+  panel paste the 1st to 9th clip, each row showing its number. Claude recommends (a), optionally with (c). Its key
+  joins the configurable keys.
 - [ ] A first install and updates that follow macOS's conventions, with as few privacy prompts as possible (Edoardo,
   2026-11-23, after the keybinds). Without the paid Apple Developer Program (decision 46) Pith can't be notarized, so
   the first open always needs Open Anyway; everything else is open. To check, then propose: the prompts a new user
