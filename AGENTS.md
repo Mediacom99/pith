@@ -43,11 +43,9 @@ Read these before doing anything:
   from `Pith.dmg` as a new user would (decision 56): his config, clipboard history and Sparkle state are in
   `~/pith-backup-2026-11-23`, and its privacy permissions were reset (`tccutil reset All dev.edoardo.pith`). He
   reinstalled it in `/Applications`, where the installer and the Terminal install put it, and where `make install`
-  now puts a branch build to try, until the next update replaces it. Its notification banners showed a blank icon
-  although macOS drew its icon fine, likely from the notification system's record of Pith of 2026-11-22, before Pith
-  had an icon (`docs/MILESTONE-3.md` step 11). So on the evening of 2026-11-23 Pith was removed completely (app, data,
-  permissions, LaunchServices records, `.build/Pith.app`), and after a restart of `usernoted` that record was gone;
-  Edoardo reinstalls from the site to see whether the icon shows. It's signed with the
+  now puts a branch build to try, until the next update replaces it. On the evening of 2026-11-23 it was removed
+  completely and reinstalled with the Terminal line (0.3.6, fresh config and history), which fixed its blank
+  notification icon (`docs/MILESTONE-3.md` step 11). It's signed with the
   local certificate (decision 41) so its Accessibility access survives updates, and it updates itself (decisions
   48–50). A change reaches it, and whoever else has Pith, as a release: raise the version in `Support/Info.plist`,
   commit, `make publish`, then Check for Updates in the launcher. Publish from the branch he uses
