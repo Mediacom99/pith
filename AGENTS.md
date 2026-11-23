@@ -42,9 +42,10 @@ Read these before doing anything:
 - **Edoardo's daily copy:** he uses Pith in place of Raycast. On 2026-11-23 it was removed so he could install 0.3.5
   from `Pith.dmg` as a new user would (decision 56): his config, clipboard history and Sparkle state are in
   `~/pith-backup-2026-11-23`, and its privacy permissions were reset (`tccutil reset All dev.edoardo.pith`). He
-  reinstalled it in `/Applications`; 0.3.6 (the icon in notifications) is published for it to update to. The
-  installer puts it in `/Applications`, but `make install` and `make uninstall` use `~/Applications`, so a branch
-  build there would be a second copy fighting for ⌘P; settle that before the next `make install`. It's signed with the
+  reinstalled it in `/Applications`, where the installer and the Terminal install put it, and where `make install`
+  now puts a branch build to try, until the next update replaces it. It's 0.3.6. Its notification banners still show
+  a blank icon although macOS draws its icon fine: the notification system's record of Pith dates from 2026-11-22,
+  before Pith had an icon (`docs/MILESTONE-3.md` step 11). It's signed with the
   local certificate (decision 41) so its Accessibility access survives updates, and it updates itself (decisions
   48–50). A change reaches it, and whoever else has Pith, as a release: raise the version in `Support/Info.plist`,
   commit, `make publish`, then Check for Updates in the launcher. Publish from the branch he uses

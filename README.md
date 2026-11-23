@@ -131,7 +131,7 @@ Requirements: the same Mac, and Xcode with Swift 6.4.
 ```sh
 git clone https://github.com/Mediacom99/pith.git
 cd pith
-make install    # builds, copies to ~/Applications and launches
+make install    # builds, copies to /Applications and launches
 ```
 
 Then press ⌘P. The launcher takes ⌘P from every app, including Print; you can change the hotkey in the config.

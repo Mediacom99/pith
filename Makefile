@@ -4,7 +4,8 @@ APP_NAME := Pith
 CONFIG   ?= release
 APP      := .build/$(APP_NAME).app
 BINARY   := $(APP)/Contents/MacOS/$(APP_NAME)
-INSTALLED := $(HOME)/Applications/$(APP_NAME).app
+# Where the installer and the Terminal install put it (decisions 56, 57), so a branch build replaces that copy.
+INSTALLED := /Applications/$(APP_NAME).app
 # Matches both the dev copy and the installed one.
 PROCESS  := $(APP_NAME).app/Contents/MacOS/$(APP_NAME)
 # The local certificate (`make certificate`, decision 41) when it's in the keychain, otherwise ad hoc. A stable signature
@@ -161,13 +162,12 @@ certificate: ## Once: create the self-signed certificate that keeps Pith's permi
 run: app stop ## Build and launch the dev copy; it takes ⌘P system-wide
 	open $(APP)
 
-install: app stop ## Build, copy to ~/Applications and launch: the copy that starts at login
-	mkdir -p "$(HOME)/Applications"
+install: app stop ## Build, copy to /Applications and launch: the copy that starts at login
 	rm -rf "$(INSTALLED)"
 	cp -R $(APP) "$(INSTALLED)"
 	open "$(INSTALLED)"
 
-uninstall: stop ## Quit the app and remove the installed copy from ~/Applications
+uninstall: stop ## Quit the app and remove the installed copy from /Applications
 	rm -rf "$(INSTALLED)"
 
 stop: ## Quit the running app, dev or installed copy, and wait until it's gone
