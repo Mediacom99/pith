@@ -444,8 +444,8 @@ real folder prompts (4) on a first install.
         to Clipboard, chosen on purpose, asked for it too.
   - **Files:**
     29. A case-only rename (`report.pdf` → `Report.pdf`) leaves a duplicate row.
-    30. With 200 items remembered, a newly opened one can be forgotten at once, as older ones with many opens
-        outrank it.
+    30. **Fixed:** what was just opened is never the one forgotten; a test covers it. What it was: with 200 items
+        remembered, a newly opened one could be forgotten at once, as older ones with many opens outranked it.
     31. Recents on a drive that isn't mounted at launch are forgotten for good.
     32. Hidden files under `~` (`.zsh_history`, `.cache`) wake Pith on every write: only path rules are left out of
         FSEvents.

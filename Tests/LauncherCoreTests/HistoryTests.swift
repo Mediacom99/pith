@@ -66,6 +66,17 @@ struct HistoryTests {
         #expect(history.frecency(of: "busy", now: now) > 0, "the most used item survives")
     }
 
+    /// A full history of habits still takes in what you just opened.
+    @Test func whatWasJustOpenedIsNeverTheOneForgotten() {
+        var history = History()
+        for item in 0..<History.capacity {
+            for open in 0..<12 { history.record("habit \(item)", at: daysAgo(200 + Double(open))) }
+        }
+        history.record("new", at: now)
+        #expect(history.recent(limit: 1) == ["new"])
+        #expect(history.recent(limit: 1000).count == History.capacity)
+    }
+
     @Test func forgetsDeletedFilesAndWhatWasInDeletedFolders() {
         var history = History()
         for id in [

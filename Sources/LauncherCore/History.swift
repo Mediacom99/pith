@@ -26,8 +26,10 @@ public struct History: Sendable, Codable, Equatable {
         entry.opens.append(date.timeIntervalSince1970)
         if entry.opens.count > Self.samples { entry.opens.removeFirst(entry.opens.count - Self.samples) }
         entries[id] = entry
+        // The least used goes, but never what was just opened: it would never get to be used.
         if entries.count > Self.capacity,
-            let leastUsed = entries.keys.min(by: { frecency(of: $0, now: date) < frecency(of: $1, now: date) })
+            let leastUsed = entries.keys.filter({ $0 != id })
+                .min(by: { frecency(of: $0, now: date) < frecency(of: $1, now: date) })
         {
             entries[leastUsed] = nil
         }
