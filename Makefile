@@ -11,9 +11,12 @@ PROCESS  := $(APP_NAME).app/Contents/MacOS/$(APP_NAME)
 # keeps macOS's permissions (Accessibility, for paste) across reinstalls; an ad hoc one changes with every build.
 CERTIFICATE := Pith Local Signing
 SIGN_AS  = $(shell security find-certificate -c "$(CERTIFICATE)" >/dev/null 2>&1 && echo "$(CERTIFICATE)" || echo -)
+# What `make package` writes: the version from Info.plist and the commit it was built from.
+VERSION  = $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Support/Info.plist)
+PACKAGE  = .build/$(APP_NAME)-$(VERSION)-$(shell git rev-parse --short HEAD).zip
 
 .DEFAULT_GOAL := help
-.PHONY: help build app certificate run install uninstall stop logs stats test bench snapshots lint format clean
+.PHONY: help build app package certificate run install uninstall stop logs stats test bench snapshots lint format clean
 
 help: ## List the targets
 	@awk 'BEGIN { FS = ":.*## " } /^[a-z]+:.*## / { printf "  make %-11s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -27,6 +30,12 @@ app: build ## Assemble .build/Pith.app and sign it (with the local certificate, 
 	cp Support/Info.plist $(APP)/Contents/Info.plist
 	cp .build/$(CONFIG)/$(APP_NAME) $(BINARY)
 	codesign --force --sign "$(SIGN_AS)" $(APP)
+
+package: app ## Zip the app to send to someone: signed with the local certificate, not notarized
+	@[ "$(SIGN_AS)" != "-" ] || { echo "Run make certificate first: an ad hoc signature loses their permissions at every update"; exit 1; }
+	rm -f $(PACKAGE)
+	ditto -c -k --keepParent $(APP) $(PACKAGE)
+	@echo "$(PACKAGE)"
 
 certificate: ## Once: create the self-signed certificate that keeps Pith's permissions across reinstalls (asks for your password)
 	@if security find-certificate -c "$(CERTIFICATE)" >/dev/null 2>&1; then echo "$(CERTIFICATE) is already in the keychain"; exit 0; fi; \

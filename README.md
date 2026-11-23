@@ -121,6 +121,13 @@ The clipboard pastes into the app you were in, which needs Accessibility access 
 Run `make certificate` once before `make install`: it creates a local signing certificate (macOS asks for your
 password), so the access you give survives reinstalls.
 
+### Sending it to someone
+
+`make package` zips the release build into `.build/Pith-<version>-<commit>.zip`, signed with the local certificate.
+It isn't notarized, so the first time they open each build macOS blocks it, and they press Open Anyway in System
+Settings, Privacy & Security. Their Mac needs macOS 26 and Apple Silicon too. Each build you send keeps the same
+signature, so the Accessibility access they gave carries over.
+
 ## Configuration
 
 Settings live in `~/.config/pith/config.toml`. It's created with commented defaults on first launch, and saved
