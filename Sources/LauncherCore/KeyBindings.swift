@@ -72,6 +72,12 @@ public struct KeyBindings: Sendable, Equatable {
         var problems: [(line: Int, message: String)] = []
         var owners: [Shortcut: [PanelKey]] = [:]
         var table: [PanelKey: [Shortcut?]] = [:]
+        // `open` or `back` turned off gets its default back: reserved first, so another setting, wherever it is, can't
+        // take a key it would never fire on.
+        for key in PanelKey.allCases
+        where key.isRequired && written.contains(where: { $0.key == key && $0.shortcuts.isEmpty }) {
+            for shortcut in key.defaults.compactMap(Shortcut.init) { owners[shortcut, default: []].append(key) }
+        }
         let defaults = PanelKey.allCases.filter { key in !written.contains { $0.key == key } }.map {
             (key: $0, line: Int?.none, shortcuts: $0.defaults.compactMap(Shortcut.init))
         }
@@ -104,6 +110,9 @@ public struct KeyBindings: Sendable, Equatable {
             // ⏎ and ⎋ can't be turned off: the panel would have no way to open anything, or to go back.
             if key.isRequired, kept.isEmpty {
                 kept = key.defaults.map(Shortcut.init)
+                for case let shortcut? in kept where owners[shortcut]?.contains(key) != true {
+                    owners[shortcut, default: []].append(key)
+                }
                 let keys = key.defaults.map { "\"\($0)\"" }.joined(separator: ", ")
                 if let line {
                     problems.append((line, "line \(line): keys.\(key.rawValue) needs a key, so it's \(keys)"))

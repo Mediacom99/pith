@@ -473,7 +473,10 @@ real folder prompts (4) on a first install.
   - **Config:**
     34. **Fixed:** a hotkey that's an editing key is a problem and stays as it was; a test covers it. What it was:
         `clipboard = "cmd+v"` was accepted and took ⌘V from every app, Pith's own paste included.
-    35. A ⏎ or ⎋ given back to `open` or `back` isn't marked taken, so another key setting can list it silently.
+    35. **Confirmed and fixed:** `open` or `back` turned off has its default reserved before any setting, and one
+        given back after its keys were all taken records it as its own; a test covers both orders. What it was: a ⏎ or
+        ⎋ given back to `open` or `back` wasn't marked taken, so another setting could list it silently and never
+        fire.
     36. **Fixed:** the target's folder is watched too, again when the symlink points elsewhere; a test covers it. What
         it was: a config.toml that's a symlink (stow, dotfiles managers) didn't reload when its target was saved.
     37. **Confirmed and fixed:** only events for config.toml itself (or its target) reload it; the same test writes

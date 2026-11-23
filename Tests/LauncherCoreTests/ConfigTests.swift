@@ -306,6 +306,21 @@ struct KeysConfigTests {
         return (config.keys, problems)
     }
 
+    /// ⏎ given back to an `open` that was turned off is its own, wherever another setting asks for it: `open` comes
+    /// first, so the other would never fire on it.
+    @Test func aRestoredReturnIsTaken() {
+        let (after, afterProblems) = keys("[keys]\nopen = []\ndown = \"return\"")
+        #expect(after[.open] == [Shortcut("return")!] && after[.down].isEmpty)
+        #expect(
+            afterProblems == [
+                "line 2: keys.open needs a key, so it's \"return\"",
+                "line 3: keys.down \"return\" is already keys.open, so it's left out",
+            ])
+        let (before, beforeProblems) = keys("[keys]\ndown = \"return\"\nopen = []")
+        #expect(before[.down].isEmpty)
+        #expect(beforeProblems.first == "line 2: keys.down \"return\" is already keys.open, so it's left out")
+    }
+
     @Test func defaultsAreTheKeysTheyReplace() {
         let keys = Config().keys
         #expect(keys[.up].map(\.description) == ["up", "ctrl+k"])
