@@ -834,6 +834,7 @@ final class LauncherViewController: NSViewController {
             return
         }
         guard previewURL != nil, let preview = QLPreviewPanel.shared(), let window = view.window else { return }
+        (window as? LauncherPanel)?.previewWillShow()
         preview.level = NSWindow.Level(rawValue: window.level.rawValue + 1)
         preview.updateController()
         preview.orderFront(nil)

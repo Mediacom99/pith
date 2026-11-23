@@ -1,5 +1,4 @@
 import AppKit
-import Quartz
 
 /// Panel geometry. Visual decisions, recorded in docs/ARCHITECTURE.md (decision 29).
 enum Layout {
@@ -61,13 +60,16 @@ final class LauncherPanel: NSPanel {
         contentViewController = launcher
         setContentSize(NSSize(width: Layout.width, height: Layout.barHeight))
         displayIfNeeded()
-        // The Quick Look preview losing the keyboard to another app closes the launcher too, as the launcher losing it
-        // does (`resignKey`).
-        NotificationCenter.default.addObserver(
-            forName: NSWindow.didResignKeyNotification, object: nil, queue: .main
+        // While Quick Look is up, another app coming to the front (⌘Tab, a click on its icon) closes both.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
         ) { [weak self] notification in
-            guard notification.object is QLPreviewPanel else { return }
-            MainActor.assumeIsolated { self?.dismissUnlessFocused() }
+            let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            guard app?.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
+            MainActor.assumeIsolated {
+                guard let self, self.launcher.isPreviewing else { return }
+                self.dismiss()
+            }
         }
     }
 
@@ -157,6 +159,8 @@ final class LauncherPanel: NSPanel {
 
     func dismiss() {
         guard isVisible else { return }
+        if let previewMonitor { NSEvent.removeMonitor(previewMonitor) }
+        previewMonitor = nil
         launcher.closePreview()
         orderOut(nil)
         launcher.reset()
@@ -172,23 +176,24 @@ final class LauncherPanel: NSPanel {
         invalidateShadow()
     }
 
-    /// Clicking elsewhere, or opening an app, closes the launcher; clicking into its Quick Look preview doesn't.
+    /// Clicking elsewhere, or opening an app, closes the launcher. With Quick Look up the preview can take the
+    /// keyboard, so losing it says nothing then: `previewWillShow` watches for a click in another app instead.
     override func resignKey() {
         super.resignKey()
-        if launcher.isPreviewing {
-            dismissUnlessFocused()
-        } else {
-            dismiss()
-        }
+        if launcher.isPreviewing { return }
+        dismiss()
     }
 
-    /// With Quick Look up, the keyboard can move between the launcher and the preview; anywhere else, both close. Asked
-    /// once the window taking the keyboard has it.
-    private func dismissUnlessFocused() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self, isVisible, !isKeyWindow else { return }
-            if launcher.isPreviewing, QLPreviewPanel.shared()?.isKeyWindow == true { return }
-            dismiss()
+    /// Watches for a click in another app while Quick Look is up, which closes both; gone when the panel closes. A
+    /// global monitor sees only other apps' events, so a click on the launcher or the preview doesn't count.
+    private var previewMonitor: Any?
+
+    func previewWillShow() {
+        guard previewMonitor == nil else { return }
+        previewMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown])
+        {
+            [weak self] _ in
+            MainActor.assumeIsolated { self?.dismiss() }
         }
     }
 

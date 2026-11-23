@@ -384,9 +384,11 @@ run: Check for Updates to 0.3.7, then 10 and 14, and the real folder prompts (4)
      file, in one format; text and files keep no image. Tests cover a cell with its picture and the classifying. What
      it was, **images kept beside text and files**: a spreadsheet cell kept its rendered image and a Finder copy the
      icon, and every image type was read, so a 5K screenshot also rendered a TIFF of about 59 MB that was dropped.
-  10. **Fixed, needs Edoardo's run** (focus can't change off screen): with Quick Look up, the launcher closes when the
-      keyboard goes anywhere but the launcher or the preview, also when the preview had it. What it was: with Quick
-      Look open, the panel didn't close when another app took focus.
+  10. **Fixed again, needs Edoardo's run** (focus can't change off screen): with Quick Look up, a click in another
+      app or another app coming to the front closes both (a global mouse monitor while the preview is up, and
+      NSWorkspace's activation notice). 0.3.7 broke ⌘Y: it closed the launcher when it lost the keyboard while the
+      preview opened, which the preview takes; losing it is ignored again while previewing, as in 0.3.6. What it
+      was: with Quick Look open, the panel didn't close when another app took focus.
   11. **Fixed:** `GlobalHotkeys` lets go of every hotkey that changed before registering, and one that didn't change
       loses its problem; two tests cover it, on F18 and F19. What it was: moving a hotkey onto the other's key, or
       swapping them, failed as "taken by another app", and a "taken" row stayed after going back to the old key.
