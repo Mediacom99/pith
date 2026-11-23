@@ -71,11 +71,13 @@ supersede an earlier one.
 ```
 Sources/
   LauncherCore/            pure Swift, no AppKit, unit-tested
-    Item.swift             Item (an app, file, folder or Command) with a stable id; Command (Clipboard History, Open/Reload
+    Item.swift             Item (an app, file, folder or Command) with a stable id; Command (Clipboard History, Pause and
+                           Resume Recording, Clear Clipboard History, Update Pith, Check for Updates, Open and Reload
                            Config, Quit) and its aliases
     SearchKey.swift        text → lowercased, diacritic-folded UTF-8 + per-byte bonus + 64-bit byte mask
     KeyStore.swift         many search keys in four flat buffers (for the file index)
     FuzzyMatcher.swift     query × key → score (fzf v2-style dynamic programming)
+    QueryTerms.swift       a query split into words, at spaces and `/`, each matched on its own
     SearchIndex.swift      apps and commands + keys + id lookup; scored search with boosts
     FileIndex.swift        files and folders as a tree in flat arrays, O(1) path lookup, parallel top-k search
     FileScanner.swift      fts walk of the configured folders; IgnoreRules; FileRules

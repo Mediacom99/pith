@@ -83,7 +83,8 @@ check and currency rates. Settings are a text file, not a settings window.
 - **Out of scope:** themes and a settings window (`FEATURES.md` §9). Behavior is configurable, but the look isn't
   themable.
 - **Terms:** panel, search bar, rows, empty state, ⌘K actions, commands, config problems, clipboard mode.
-- **Undecided:** a public release; for the clipboard, an ignore-app list and a pause hotkey.
+- **Distribution:** a zip from `pith.edoardobertoli.xyz`, not notarized, that updates itself (decisions 46, 48).
+- **Undecided:** for the clipboard, an ignore-app list.
 
 ## Brand Commitments
 

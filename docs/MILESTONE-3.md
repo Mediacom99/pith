@@ -222,7 +222,7 @@ Status: **in review**. Built and tested; the commands and settings need Edoardo'
 
 ## 7. Updates
 
-Status: **in review**. Built and tested (decisions 48–50). On Edoardo's Mac on 2026-11-23:
+Status: **done** (Edoardo, 2026-11-23). Built and tested (decisions 48–50). On Edoardo's Mac on 2026-11-23:
 - 0.3.0 → 0.3.1 downloaded 11 s after the panel closed, and ⏎ to 0.3.1 running took under a second.
 - 0.3.2 → 0.3.3: macOS presented "Pith updated to 0.3.3" 0.4 s after the restart (in the log; Edoardo didn't
   catch the banner), and Check for Updates then said "Pith is up to date".

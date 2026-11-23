@@ -119,7 +119,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 - Polls the system pasteboard (`changeCount`) in the background.
 - Records **everything**: plain text, rich text, images, files, URLs.
-- **Skips concealed copies**, which password managers mark (decision 35), and transient or auto-generated ones (decision 38). Everything else is recorded. *(Revisit: ignore-app list, pause hotkey.)*
+- **Skips concealed copies**, which password managers mark (decision 35), and transient or auto-generated ones (decision 38). Everything else is recorded. Recording pauses from the launcher (decision 44). *(Revisit: ignore-app list.)*
 - Stored locally in SQLite; images stored as files with thumbnails.
 - Screenshots: set macOS to save screenshots to the clipboard (`⌘⇧5` → Options → Save to → Clipboard, or use `⌘⌃⇧4`). They then land in history automatically. **No code needed.**
 
@@ -233,6 +233,7 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 - `LSUIElement` (no Dock icon), `SMAppService` for launch at login.
 - Global hotkeys: Carbon `RegisterEventHotKey`.
 - Storage: SQLite (the system library). Config: TOML (our own reader).
+- Updates: Sparkle, the one dependency, from `pith.edoardobertoli.xyz` (decision 48).
 - Paste: `CGEvent` ⌘V into the previously active app → requires **Accessibility** permission.
 - Icons loaded lazily, cached in `NSCache`.
 - Always build/profile in Release.
@@ -243,5 +244,5 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 
 - [x] **Pick a final name:** Pith (decision 30)
 - [x] Clipboard hotkey: `⌘⇧V` (decision 34)
-- [ ] Clipboard privacy: concealed copies are skipped (decision 35); an ignore-app list? a pause hotkey?
+- [ ] Clipboard privacy: concealed copies are skipped (decision 35) and recording pauses from the launcher (decision 44); an ignore-app list?
 - [x] Default size cap / max age: 2 GB, 30 days (decision 37)

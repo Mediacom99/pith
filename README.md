@@ -3,12 +3,12 @@
 **A keyboard-only launcher for macOS that opens in one keystroke and stays out of the way.**
 
 Press ⌘P from any app, type a few letters, press ⏎. Apps, files and folders in one ranked list, with the actions you
-need on ⌘K. Native AppKit, always resident, no dependencies, no account, no telemetry.
+need on ⌘K. Native AppKit, always resident, no account, no telemetry.
 
 ![macOS 26+](https://img.shields.io/badge/macOS-26%2B-000?logo=apple&logoColor=white)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-only-000)
 ![Swift 6.4](https://img.shields.io/badge/Swift-6.4-F05138?logo=swift&logoColor=white)
-![Dependencies: 0](https://img.shields.io/badge/dependencies-0-2ea44f)
+![Dependencies: 1](https://img.shields.io/badge/dependencies-1%20%28Sparkle%29-2ea44f)
 
 <p align="center">
   <picture>
@@ -30,7 +30,7 @@ justify a subscription.
 
 - **Instant.** Built at launch, indexes in memory: ⌘P only shows what's ready.
 - **Keyboard only.** The row you want is usually the first.
-- **Small.** Native AppKit and Swift, zero dependencies, ~0 % CPU when idle.
+- **Small.** Native AppKit and Swift, one dependency (Sparkle, for updates), ~0 % CPU when idle.
 - **Private.** No account, no telemetry, no AI. The network is only for a daily update check, and currency rates for
   the planned calculator.
 - **Native.** It follows the system's appearance and is configured with a text file.
@@ -107,7 +107,13 @@ bar icon.
 
 ## Install
 
-Requirements: macOS 26 Tahoe or later, Apple Silicon, and Xcode with Swift 6.4.
+Download [Pith.zip](https://pith.edoardobertoli.xyz/Pith.zip) (macOS 26 Tahoe or later, Apple Silicon), unzip it and
+move Pith to Applications. Pith isn't notarized, so macOS blocks it the first time: open System Settings, Privacy &
+Security, and press Open Anyway. Then press ⌘P. It updates itself from then on.
+
+### From source
+
+Requirements: the same Mac, and Xcode with Swift 6.4.
 
 ```sh
 git clone https://github.com/Mediacom99/pith.git
@@ -158,6 +164,7 @@ clipboard = "cmd+shift+v"
 
 [launcher]
 empty_state = "recent"      # "recent", "running" or "none"
+launch_at_login = true
 folders = ["~"]
 ignore = [".*", "~/Library", "node_modules", ".build", "*.photoslibrary"]
 max_depth = 6
@@ -199,6 +206,7 @@ How it gets there:
 
 - [x] Launcher: apps, files, folders, ⌘K actions, Quick Look, Zip
 - [x] Stage, the visual design: the tile, compact rows, light and dark
+- [x] Updates: Pith updates itself from `pith.edoardobertoli.xyz`, with Check for Updates in the launcher
 - [ ] Clipboard manager (⌘⇧V, in progress): history with previews, pinned items, search, paste into the previous app
 - [ ] The clipboard's text editor and Edit Image (after the clipboard, decisions 36 and 40)
 - [ ] Calculator: math, units, currency and programmer expressions, inline as the top result
