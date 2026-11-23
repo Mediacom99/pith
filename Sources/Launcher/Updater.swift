@@ -21,6 +21,8 @@ final class Updater: NSObject, SPUUpdaterDelegate {
     private var schedule = UpdateSchedule()
     /// The version the current check found, for a failure to name.
     private var found: String?
+    /// Whether the current check was asked for (Check for Updates), so its outcome is reported whatever it is.
+    private var asked = false
     /// The update that's ready, saved for the next launch to say how it went.
     private var pending: PendingUpdate?
     /// Installs the downloaded update and relaunches; Sparkle hands it over once the update is ready.
@@ -37,6 +39,19 @@ final class Updater: NSObject, SPUUpdaterDelegate {
     /// at launch.
     func checkIfDue(now: Date = .now) {
         guard Self.isEnabled, install == nil, schedule.take(at: now) else { return }
+        check()
+    }
+
+    /// Checks right away, whatever the schedule (Check for Updates, decision 50): a notification says whether an
+    /// update is ready, Pith is up to date, or the check failed. A check already under way reports instead.
+    func checkNow() {
+        guard Self.isEnabled, install == nil else { return }
+        schedule.takeNow(at: .now)
+        asked = true
+        check()
+    }
+
+    private func check() {
         if updater == nil {
             let bundle = Bundle.main
             let updater = SPUUpdater(
@@ -46,12 +61,15 @@ final class Updater: NSObject, SPUUpdaterDelegate {
                 try updater.start()
             } catch {
                 Log.app.error("Couldn't start the updater: \(error.localizedDescription, privacy: .public)")
+                report(.checkFailed(reason: error.localizedDescription))
                 return
             }
             self.updater = updater
         }
+        // A check under way carries on, and reports if this one was asked for.
+        guard let updater, !updater.sessionInProgress else { return }
         found = nil
-        updater?.checkForUpdatesInBackground()
+        updater.checkForUpdatesInBackground()
     }
 
     /// Installs the update that's ready, and relaunches into it. It's saved as asked for first, so a relaunch that
@@ -72,11 +90,22 @@ final class Updater: NSObject, SPUUpdaterDelegate {
         guard Self.isEnabled else { return }
         let bundle = Bundle.main
         let build = bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
-        let version = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let version = Self.version
         Task {
             let last = await runInBackground(qos: .utility) { PendingUpdate.take() }
             if let result = last?.result(runningBuild: build, runningVersion: version) { onResult(result) }
         }
+    }
+
+    private static var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
+
+    /// The outcome of a check that was asked for; the scheduled ones only report failed updates.
+    private func report(_ result: UpdateResult) {
+        guard asked else { return }
+        asked = false
+        onResult(result)
     }
 
     /// Whether `error` is about an update that was found (its download, its signature, its install) rather than about
@@ -93,6 +122,10 @@ final class Updater: NSObject, SPUUpdaterDelegate {
         found = item.displayVersionString
     }
 
+    func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
+        report(.upToDate(Self.version))
+    }
+
     func updater(
         _ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem,
         immediateInstallationBlock immediateInstallHandler: @escaping () -> Void
@@ -103,6 +136,7 @@ final class Updater: NSObject, SPUUpdaterDelegate {
         Task { await runInBackground(qos: .utility) { pending.save() } }
         Log.app.info("Pith \(item.displayVersionString, privacy: .public) is downloaded and ready to install")
         onReady(item.displayVersionString)
+        report(.ready(item.displayVersionString))
         return true
     }
 
@@ -113,7 +147,14 @@ final class Updater: NSObject, SPUUpdaterDelegate {
         }
         Log.app.error("Couldn't update: \(error.localizedDescription, privacy: .public)")
         schedule.failed(at: .now)
-        guard Self.isUpdateProblem(error) else { return }
+        guard Self.isUpdateProblem(error) else {
+            // The error beneath Sparkle's says what went wrong ("A server with the specified hostname could not be
+            // found.").
+            let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError
+            report(.checkFailed(reason: (underlying ?? error).localizedDescription))
+            return
+        }
+        asked = false
         // It's dropped: the next check finds it again and downloads it from the start.
         if install != nil {
             install = nil
@@ -125,10 +166,33 @@ final class Updater: NSObject, SPUUpdaterDelegate {
     }
 }
 
-/// How an update went, for a notification (decision 49).
+/// How an update went (decision 49), or what Check for Updates found (decision 50), for a notification.
 enum UpdateResult: Equatable {
     case updated(to: String)
     case failed(to: String, reason: String)
+    case ready(String)
+    /// With the version that's running.
+    case upToDate(String)
+    case checkFailed(reason: String)
+
+    var title: String {
+        switch self {
+        case .updated(let version): "Pith updated to \(version)"
+        case .failed(let version, _): "Couldn't update Pith to \(version)"
+        case .ready(let version): "Pith \(version) is ready"
+        case .upToDate: "Pith is up to date"
+        case .checkFailed: "Couldn't check for updates"
+        }
+    }
+
+    var body: String {
+        switch self {
+        case .updated: ""
+        case .failed(_, let reason), .checkFailed(let reason): reason
+        case .ready: "Update Pith in the launcher restarts into it."
+        case .upToDate(let version): "\(version) is the newest version."
+        }
+    }
 }
 
 /// An update that was ready to install, kept in Pith's defaults so the next launch can say how it went.
@@ -173,8 +237,13 @@ struct UpdateSchedule {
     /// Whether a check is due at `now`. If it is, it's taken, and the next one is a day later.
     mutating func take(at now: Date) -> Bool {
         if let next, now < next { return false }
-        next = now + Self.interval
+        takeNow(at: now)
         return true
+    }
+
+    /// A check at `now` that was asked for, due or not: the next one is a day later.
+    mutating func takeNow(at now: Date) {
+        next = now + Self.interval
     }
 
     /// The last check failed: the next is due an hour from `now`.

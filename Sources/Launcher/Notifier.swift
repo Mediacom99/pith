@@ -62,10 +62,11 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    /// Pith restarted into an update (decision 49).
-    func updated(to version: String) {
+    /// How an update went (decision 49), or what Check for Updates found (decision 50).
+    func update(_ result: UpdateResult) {
         let content = UNMutableNotificationContent()
-        content.title = "Pith updated to \(version)"
+        content.title = result.title
+        content.body = result.body
         Task {
             guard await Self.allowed() else { return }
             await Self.post(content)

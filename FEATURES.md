@@ -176,6 +176,8 @@ Since there is no menu bar icon, these are searchable commands:
 - **Pause / resume clipboard recording**: only the one that applies is listed, and a pause lasts through a relaunch
   (decisions 44, 45)
 - **Clear clipboard history** (keeps pinned, after a second ⏎)
+- **Check for updates**: checks right away, and a notification says what it found (decision 50)
+- **Update Pith**: listed once an update is downloaded; restarts into it (decisions 48, 49)
 - **Quit Pith**
 
 ---

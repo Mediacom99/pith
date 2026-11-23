@@ -74,6 +74,8 @@ public enum Command: String, Sendable, CaseIterable {
     case clearClipboard = "clear-clipboard"
     /// Installs a downloaded update and relaunches; listed only once one is ready (decision 48).
     case installUpdate = "install-update"
+    /// Checks right away, whatever the schedule; listed while Pith updates itself and no update is ready (decision 50).
+    case checkForUpdates = "check-for-updates"
     case openConfig = "open-config"
     case reloadConfig = "reload-config"
     case quit
@@ -85,6 +87,7 @@ public enum Command: String, Sendable, CaseIterable {
         case .resumeClipboard: "Resume Clipboard Recording"
         case .clearClipboard: "Clear Clipboard History"
         case .installUpdate: "Update Pith"
+        case .checkForUpdates: "Check for Updates"
         case .openConfig: "Open Config"
         case .reloadConfig: "Reload Config"
         case .quit: "Quit Pith"

@@ -138,6 +138,7 @@ Pith updates itself with [Sparkle](https://sparkle-project.org) from `pith.edoar
   - A first install comes from `https://pith.edoardobertoli.xyz/Pith.zip`.
   - After that, Pith checks at most once a day and downloads an update in the background. Update Pith in the
     launcher restarts into it; otherwise it installs when Pith quits.
+  - Check for Updates in the launcher checks right away, without waiting for the day.
   - A notification says when it has updated, or why it couldn't.
   - Settings, history and Accessibility access carry over.
   - The Quit Pith tile shows the version, so a report can say which build it's about.

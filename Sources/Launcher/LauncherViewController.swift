@@ -104,6 +104,8 @@ final class LauncherViewController: NSViewController {
     /// The version of a downloaded update, ready to install: Update Pith is listed first in the empty state, and
     /// found by search, until then.
     var readyUpdate: String?
+    /// Whether this copy updates itself (`Updater.isEnabled`), so Check for Updates does something (decision 50).
+    var checksForUpdates = false
     /// Pith's version, on the Quit Pith tile, so whoever tries a build can say which one it is (decision 47).
     var version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
     /// ⌘ plus these run a ⌘K list's actions, the first to the seventh: the top row under the left hand (decision 43).
@@ -397,7 +399,12 @@ final class LauncherViewController: NSViewController {
 
     private func isHidden(_ item: Item) -> Bool {
         guard case .command(let command) = item.kind else { return false }
-        return hiddenCommands.contains(command) || (command == .installUpdate && readyUpdate == nil)
+        if hiddenCommands.contains(command) { return true }
+        return switch command {
+        case .installUpdate: readyUpdate == nil
+        case .checkForUpdates: !checksForUpdates || readyUpdate != nil
+        default: false
+        }
     }
 
     /// The index's item for a running app, or one made up for an app outside the indexed folders.
@@ -711,6 +718,10 @@ final class LauncherViewController: NSViewController {
             return StageView.Content(
                 icon: icons.symbol(Symbols.command(.installUpdate), size: .tile), name: item.name,
                 place: "Pith \(readyUpdate ?? "") is ready", kind: "Pith restarts into it", primary: "Restart")
+        case .command(.checkForUpdates):
+            return StageView.Content(
+                icon: icons.symbol(Symbols.command(.checkForUpdates), size: .tile), name: item.name,
+                place: "Pith command", kind: version.map { "Pith \($0)" } ?? "", primary: "Check")
         case .command(.clearClipboard):
             return StageView.Content(
                 icon: icons.symbol(Symbols.command(.clearClipboard), size: .tile), name: item.name,

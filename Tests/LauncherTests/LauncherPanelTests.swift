@@ -347,6 +347,56 @@ struct LauncherPanelTests {
         #expect(due == [true, false, true, false, true, false], "first chance, a day later, an hour after a failure")
     }
 
+    @Test func checkForUpdatesIsListedOnlyWhenItCanDoSomething() async {
+        let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))
+        var run: [Command] = []
+        panel.launcher.runCommand = { run.append($0) }
+        panel.launcher.version = "0.3.2"
+        await type("check for updates", in: panel)
+        #expect(panel.launcher.rows.isEmpty, "a copy that doesn't update itself, like make run's")
+
+        panel.launcher.checksForUpdates = true
+        await type("check for updates", in: panel)
+        #expect(names(panel) == ["Check for Updates"])
+        #expect(panel.launcher.stage.content.kind == "Pith 0.3.2")
+        #expect(panel.launcher.stage.content.primary == "Check")
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        #expect(run == [.checkForUpdates])
+
+        panel.launcher.readyUpdate = "0.3.3"
+        await type("check for updates", in: panel)
+        #expect(panel.launcher.rows.isEmpty, "Update Pith is listed instead")
+    }
+
+    @Test func aCheckThatWasAskedForPutsTheNextADayLater() {
+        let start = Date(timeIntervalSince1970: 1_790_000_000)
+        let hour: TimeInterval = 3_600
+        var schedule = UpdateSchedule()
+        let first = schedule.take(at: start)
+        schedule.takeNow(at: start + 5 * hour)
+        let dayAfterTheFirst = schedule.take(at: start + 24 * hour)
+        let dayAfterTheAsked = schedule.take(at: start + 29 * hour)
+        #expect(first)
+        #expect(!dayAfterTheFirst, "not due a day after the scheduled check")
+        #expect(dayAfterTheAsked, "a day after the one asked for")
+    }
+
+    @Test func eachUpdateNotificationSaysWhatHappened() {
+        let said = [
+            UpdateResult.updated(to: "0.3.2"), .failed(to: "0.3.3", reason: "The update is improperly signed."),
+            .ready("0.3.3"), .upToDate("0.3.2"),
+            .checkFailed(reason: "A server with the specified hostname could not be found."),
+        ].map { [$0.title, $0.body] }
+        #expect(
+            said == [
+                ["Pith updated to 0.3.2", ""],
+                ["Couldn't update Pith to 0.3.3", "The update is improperly signed."],
+                ["Pith 0.3.3 is ready", "Update Pith in the launcher restarts into it."],
+                ["Pith is up to date", "0.3.2 is the newest version."],
+                ["Couldn't check for updates", "A server with the specified hostname could not be found."],
+            ])
+    }
+
     @Test func theLaunchAfterAnUpdateSaysHowItWent() {
         var ready = PendingUpdate(build: "202611231214", version: "0.3.1")
         #expect(ready.result(runningBuild: "202611231214", runningVersion: "0.3.1") == .updated(to: "0.3.1"))

@@ -90,14 +90,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { self?.updater.checkIfDue() }
         }
         updater.onReady = { [weak self] version in self?.panel?.launcher.readyUpdate = version }
-        updater.onResult = { [weak self] result in
-            switch result {
-            case .updated(let version): self?.notifier.updated(to: version)
-            case .failed(let version, let reason):
-                self?.notifier.failed("Couldn't update Pith to \(version)", item: nil, reason: reason)
-            }
-        }
+        updater.onResult = { [weak self] result in self?.notifier.update(result) }
         updater.reportLastUpdate()
+        launcher.checksForUpdates = Updater.isEnabled
         checkAccessibility()
 
         configStore.onChange = { [weak self] previous in self?.apply(previous: previous) }
@@ -262,6 +257,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .resumeClipboard: setRecordingPaused(false)
         case .clearClipboard: clearClipboard()
         case .installUpdate: updater.installNow()
+        case .checkForUpdates: updater.checkNow()
         case .openConfig: configStore.open()
         case .reloadConfig: configStore.reload()
         case .quit: NSApp.terminate(nil)

@@ -222,7 +222,7 @@ Status: **in review**. Built and tested; the commands and settings need Edoardo'
 
 ## 7. Updates
 
-Status: **in review**. Built and tested (decisions 48, 49). 0.3.0 → 0.3.1 arrived on Edoardo's Mac on 2026-11-23:
+Status: **in review**. Built and tested (decisions 48–50). 0.3.0 → 0.3.1 arrived on Edoardo's Mac on 2026-11-23:
 downloaded 11 s after the panel closed, and ⏎ to 0.3.1 running in under a second. The notifications come next: 0.3.1
 doesn't save the update it installs, so the first one shows going from 0.3.2 to a later version.
 - `Updater` wraps Sparkle 2.10.1, the one dependency:
@@ -237,6 +237,9 @@ doesn't save the update it installs, so the first one shows going from 0.3.2 to 
     reads it on a worker and says "Pith updated to 0.3.1" if it runs that build, or "Couldn't update Pith to 0.3.1"
     if Update Pith was chosen and it doesn't. A found update that fails to download, verify or install says so at
     once and is dropped, for the next check to find again. A check that can't reach the site stays quiet.
+  - Check for Updates (decision 50) checks right away and always reports: "Pith 0.3.3 is ready", "Pith is up to
+    date", or "Couldn't check for updates" with the reason beneath Sparkle's. The next scheduled check is a day after
+    it. It's listed only where `Updater.isEnabled`, and not while an update is ready.
 - **Make targets:**
   - `make app` embeds Sparkle's framework (2.9 MB, so the app is 4.9 MB) and signs it from the inside out with the
     app.
@@ -246,8 +249,9 @@ doesn't save the update it installs, so the first one shows going from 0.3.2 to 
     `pith.edoardobertoli.xyz` with `Pith-<version>.zip` and `Pith.zip`, the newest at a fixed address for a first
     install.
 - **Tests:** the update row (first, not selected, ⏎ restarts, hidden until ready), the schedule (daily, an hour after
-  a failure), what the launch after an update reports, which errors are reported, and Info.plist keeping Sparkle's
-  schedule off with downloads on. Snapshot: `update-ready`.
+  a failure, a day after a check that was asked for), Check for Updates (listed only when it can do something), what
+  the launch after an update reports, which errors are reported, each notification's words, and Info.plist keeping
+  Sparkle's schedule off with downloads on. Snapshot: `update-ready`.
 
 ## 8. Performance
 
