@@ -245,7 +245,7 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 - [x] **Pick a final name:** Pith (decision 30)
 - [x] Clipboard hotkey: `⌘⇧V` (decision 34)
 - [ ] Clipboard privacy: concealed copies are skipped (decision 35) and recording pauses from the launcher (decision 44); an ignore-app list?
-- [ ] Every keybind configurable in `config.toml` (Edoardo, 2026-11-23, the next task): today only `[hotkeys] launcher` and `clipboard` are; the panel's keys (§3: ↑ ↓ ⌃K ⌃J, ⏎, ⌘K, ⌘Q–⌘U, ⎋, Space and ⌘Y, ⌫, the `c ` prefix) are fixed.
+- [x] Every keybind configurable in `config.toml`: a `[keys]` table, and `[launcher] clipboard_alias` (decision 55)
 - [ ] Paste down the history by repeating a key (Edoardo, 2026-11-23, after the keybinds). Two readings to settle with
   him: (a) cycle, like ⌘Tab: hold ⌘⇧, each V moves the selection one item down, letting go pastes it (Flycut and
   Jumpcut work this way; today a second ⌘⇧V closes the panel, so that would change, and esc would still close); (b) a

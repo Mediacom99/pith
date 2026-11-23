@@ -274,3 +274,20 @@ Status: **todo**.
   - the SF Mono preview;
   - orange for any setup problem.
 - The values go in the Visual decisions table.
+
+## 10. Configurable keys
+
+Status: **in progress** (decision 55).
+- **Core:**
+  - `Shortcut` (was `Hotkey`) reads any key: `cmd+k`, `ctrl+j`, `up`, `space`. Whether it can be a global hotkey
+    (cmd, ctrl or alt, or an F key) and whether it types are properties of it.
+  - `Config` reads `[keys]` (a string or a list each) and `[launcher] clipboard_alias`, and `""` for a hotkey.
+  - Problems: a value that isn't a key keeps the default; a key given twice, a hotkey's key or an editing key
+    (⌘X C V A Z ⇧⌘Z) is left out of the later setting; `open` and `back` can't be empty.
+- **The panel:** one lookup from the key pressed to what it does, in place of the fixed checks in `sendEvent`,
+  `performKeyEquivalent` and the field editor's commands; Quick Look's ↑ ↓ too. A key that types acts only on an
+  empty field. ⌘K lists check `run_actions` first.
+- **What it shows:** the tile's keys (↩, Actions ⌘K, Back esc), the action rows' shortcuts, the selected row's ↩, and
+  the Clipboard History tile's hotkey, from the config.
+- **Docs:** the template, the README's keys and config, FEATURES §3 and §8, the landing page's #config section.
+- **Tests:** parsing and every problem; the panel with keys rebound and turned off.
