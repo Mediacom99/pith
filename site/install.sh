@@ -44,6 +44,14 @@ codesign --verify --deep --strict -R="$requirement" "$mount/Pith.app" 2>/dev/nul
     fail "the download isn't signed with Pith's certificate, so it wasn't installed."
 version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$mount/Pith.app/Contents/Info.plist")
 
+# An update this Pith downloaded waits to install as soon as Pith quits, even when it's stopped: it's dropped first,
+# so it can't put an older build over this one. Sparkle downloads the newest again on its next check.
+if [ -d "$app" ]; then
+    launchctl remove dev.edoardo.pith-sparkle-updater 2>/dev/null || true
+    launchctl remove dev.edoardo.pith-sparkle-progress 2>/dev/null || true
+    pkill -f "$app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate" 2>/dev/null || true
+    rm -rf "$HOME/Library/Caches/dev.edoardo.pith/org.sparkle-project.Sparkle"
+fi
 if pkill -f "$app/Contents/MacOS/Pith" 2>/dev/null; then
     tries=0
     while pgrep -f "$app/Contents/MacOS/Pith" >/dev/null && [ "$tries" -lt 50 ]; do

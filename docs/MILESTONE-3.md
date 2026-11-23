@@ -484,8 +484,12 @@ real folder prompts (4) on a first install.
     38. **Fixed:** FEATURES §8 and §4.2 show today's `folders` and `ignore`, and `[calculator]` as not read yet. What
         it was: the example was out of date, `[calculator]` an unknown setting today.
   - **Install:**
-    39. The Terminal line stops Pith with a signal. If an update was waiting, Sparkle's installer may then put that
-        older build over the new copy (suspect).
+    39. **Premise confirmed, guarded:** Sparkle's own docs say a downloaded update installs whenever the app
+        terminates, and its installer waits as a process of its own (Tailscale's showed it, on Edoardo's Mac). Whether
+        it then beats the Terminal line's copy is timing. Before replacing an installed Pith, `install.sh` now removes
+        its waiting installer and its download (Sparkle finds the newest again). Checked into a scratch folder, which
+        doesn't touch the installed copy's updates. What it was: the Terminal line stopped Pith with a signal, and a
+        waiting update could put an older build over the new copy.
 - **Still open beside it:**
   - repeat-to-paste (FEATURES §11, Edoardo picks);
   - the quieter first install's other prompts (FEATURES §11).
