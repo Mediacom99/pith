@@ -36,7 +36,7 @@ public final class FileSearchEngine: @unchecked Sendable {
             self.rules = rules
             pendingEvents = []
             watcher = DirectoryWatcher(
-                paths: rules.roots, excluding: rules.ignore.paths, fileEvents: true, latency: 0.5, queue: queue
+                paths: rules.roots, excluding: rules.excludedPaths, fileEvents: true, latency: 0.5, queue: queue
             ) { [weak self] events in self?.receive(events) }
             return true
         }
@@ -118,7 +118,7 @@ public final class FileSearchEngine: @unchecked Sendable {
             guard known || index.entry(at: Self.parent(of: path)) != nil else { continue }
 
             var info = stat()
-            guard lstat(path, &info) == 0, !rules.ignore.ignores(name: Self.name(of: path), path: path) else {
+            guard lstat(path, &info) == 0, !rules.ignore(at: path).ignores(name: Self.name(of: path), path: path) else {
                 if known {
                     index.remove(path)
                     removed.append(path)

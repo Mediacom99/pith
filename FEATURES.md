@@ -87,7 +87,8 @@ A key without ⌘, ⌥ or ⌃ that types (a letter, Space, ⌫) works only while
 ### 4.2 Files
 
 - Indexed from a **configured list of folders** only (e.g. `~/Desktop`, `~/Documents`, `~/dev`).
-- Skips noise: `.git`, `node_modules`, `.build`, caches, hidden files (configurable ignore patterns).
+- Skips noise: `.git`, `node_modules`, `.build`, caches, hidden files (configurable ignore patterns). A configured
+  folder is searched even inside one the patterns skip (Dropbox in `~/Library/CloudStorage`, `~/.config`).
 - Kept fresh via FSEvents; index lives in memory.
 
 | Key | Action |

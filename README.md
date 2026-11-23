@@ -195,7 +195,7 @@ to_launcher = "backspace"   # from the clipboard back to the launcher
 empty_state = "recent"      # "recent", "running" or "none"
 clipboard_alias = "c"       # "c" lists Clipboard History first; "c " opens the clipboard
 launch_at_login = true
-folders = ["~"]
+folders = ["~"]             # a folder here is searched even inside one ignore skips: "~/Dropbox", "~/.config"
 ignore = [".*", "~/Library", "node_modules", ".build", "*.photoslibrary"]
 max_depth = 6
 

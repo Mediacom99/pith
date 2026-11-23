@@ -44,6 +44,22 @@ private func paths(_ engine: FileSearchEngine, _ query: String) async -> [String
         #expect(await eventually { await paths(engine, "inner-notes") == [root + "/Bundle/inner-notes.md"] })
     }
 
+    /// A folder asked for inside an ignored one (Dropbox in `~/Library/CloudStorage`) gets its live updates too.
+    @Test func picksUpNewFilesInARootInsideAnIgnoredFolder() async throws {
+        let home = try TemporaryDirectory()
+        try home.makeFolder("Library/CloudStorage/Dropbox")
+        let root = home.canonicalPath
+        let dropbox = root + "/Library/CloudStorage/Dropbox"
+        let engine = FileSearchEngine()
+        await engine.rebuild(
+            FileRules(roots: [root, dropbox], ignore: IgnoreRules([".*", "~/Library"], home: root), maxDepth: 6))
+
+        try home.makeFile("Library/CloudStorage/Dropbox/synced-plan.txt")
+        try home.makeFile("Library/Caches/cached-plan.txt")
+        #expect(await eventually { await paths(engine, "synced-plan") == [dropbox + "/synced-plan.txt"] })
+        #expect(await paths(engine, "cached-plan").isEmpty)
+    }
+
     @Test func dropsDeletedAndRenamedItemsAndReportsThem() async throws {
         let folder = try TemporaryDirectory()
         try folder.makeFile("Old/stale-doc.txt")

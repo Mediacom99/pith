@@ -320,7 +320,8 @@ public struct Config: Sendable, Equatable {
         # Start the launcher when you log in (for the copy installed in an Applications folder).
         launch_at_login = true
 
-        # Where files and folders are searched. "~" is your home folder.
+        # Where files and folders are searched. "~" is your home folder. A folder here is searched even inside one
+        # that ignore skips, like "~/Dropbox" (in ~/Library) or "~/.config".
         folders = ["~"]
         # What to skip: names ("node_modules"), patterns (".*" is every hidden file, "*.photoslibrary"),
         # or paths ("~/Library").

@@ -361,10 +361,10 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
      - **Fixed:** the newest rebuild wins, so an older scan that finishes after it is dropped; a test covers it. A
        config change during the first scan used to be overwritten by it.
      - The first two are part of the quieter first install, for Edoardo to decide.
-  5. **A folder in `folders` under `~/Library`, or starting with a dot, is never indexed, and no problem row says
-     so.**
-     - This covers Dropbox, Google Drive and OneDrive (`~/Library/CloudStorage`), iCloud Drive and `~/.config`.
-     - The cause: the ignore rules apply to the roots themselves.
+  5. **Fixed:** a folder in `folders` is never skipped, and inside it the path rules that hold it don't apply, in the
+     scan, the live updates and FSEvents' exclusions; two tests cover it, and the template says so. What it was: **a
+     folder in `folders` under `~/Library`, or starting with a dot, was never indexed, and no problem row said so**:
+     Dropbox, Google Drive and OneDrive (`~/Library/CloudStorage`), iCloud Drive, `~/.config`.
 - **Medium:**
   6. A copy that lands while the clipboard is open moves the selection to the newest clip. ⏎ can then paste another
      clip than the one chosen, since the recorder sees a copy up to 0.75 s late.

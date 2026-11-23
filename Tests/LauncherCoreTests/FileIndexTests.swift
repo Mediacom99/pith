@@ -88,6 +88,32 @@ struct FileScannerTests {
         #expect(!index.contains(root.url.path + "/Link/inside.txt"))
     }
 
+    /// A folder that was asked for is indexed even inside an ignored one (Dropbox in `~/Library/CloudStorage`) or
+    /// when it's hidden (`~/.config`); the rest of the ignored folder stays out.
+    @Test func aRootIsIndexedEvenWhereTheRulesWouldSkipIt() throws {
+        let home = try TemporaryDirectory()
+        let dropbox = home.url.path + "/Library/CloudStorage/Dropbox"
+        try home.makeFile("Library/CloudStorage/Dropbox/Acme/report.pdf")
+        try home.makeFile("Library/Caches/junk.txt")
+        try home.makeFile(".config/pith/config.toml")
+        try home.makeFile("notes.md")
+        let rules = FileRules(
+            roots: [home.url.path, dropbox, home.url.path + "/.config"],
+            ignore: IgnoreRules([".*", "~/Library"], home: home.url.path), maxDepth: 6)
+        var index = FileIndex()
+        FileScanner.scan(rules, into: &index)
+        #expect(index.contains(dropbox + "/Acme/report.pdf"))
+        #expect(index.contains(home.url.path + "/.config/pith/config.toml"))
+        #expect(index.contains(home.url.path + "/notes.md"))
+        #expect(!index.contains(home.url.path + "/Library/Caches/junk.txt"))
+        #expect(index.count == 5, "each once: Acme, pith and the three files")
+        #expect(rules.excludedPaths.isEmpty, "FSEvents still sees ~/Library, which holds a root")
+        #expect(!rules.ignore(at: dropbox + "/Acme").ignores(name: "Acme", path: dropbox + "/Acme"))
+        #expect(
+            rules.ignore(at: home.url.path + "/Library/Caches").ignores(
+                name: "Caches", path: home.url.path + "/Library/Caches"))
+    }
+
     @Test func rescansASubtreeAtItsDepth() throws {
         let root = try TemporaryDirectory()
         try root.makeFile("a/b/c/d.txt")
