@@ -102,7 +102,8 @@ public final class ClipboardStore: @unchecked Sendable {
     // MARK: Writing
 
     /// Stores what was just copied and returns its clip. If the same content is already in the history, that clip
-    /// moves to `date` with the new source and keeps its pin, instead of a second copy being stored.
+    /// moves to `date` and keeps its pin, instead of a second copy being stored; it takes the new source, unless that
+    /// one is unknown.
     public func add(_ content: ClipContent, from source: String?, at date: Date) async throws(Failure) -> Clip {
         try await run { () throws(Failure) in
             let database = try self.database()
@@ -113,7 +114,7 @@ public final class ClipboardStore: @unchecked Sendable {
             if try existing.step() {
                 let id = existing.integer(0)
                 existing.reset()
-                try database.prepare("UPDATE clip SET copied = ?, source = ? WHERE id = ?")
+                try database.prepare("UPDATE clip SET copied = ?, source = coalesce(?, source) WHERE id = ?")
                     .run([.real(date.timeIntervalSince1970), sourceValue, .integer(id)])
                 return try self.clip(id, in: database)
             }

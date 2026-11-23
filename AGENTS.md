@@ -63,7 +63,9 @@ It's a small app, so it has to be excellent: fast, and light on memory, threads 
   - Never block Swift's cooperative pool: no blocking calls inside `Task.detached` or other async code.
   - Spread independent CPU work over the cores with `DispatchQueue.concurrentPerform`, never one thread per item.
   - When newer work supersedes an in-flight job (a newer index, a newer query), drop the old result instead of applying it.
-- **Idle means idle:** no timers, polling or busy-waiting. React to events (hotkey, FSEvents, notifications).
+- **Idle means idle:** no timers, polling or busy-waiting. React to events (hotkey, FSEvents, notifications). The one
+  exception is the clipboard's change-count timer, because macOS has no notification for a copy (`docs/MILESTONE-3.md`
+  step 2).
 - **Prepare ahead of time:** windows are built at launch, search keys at index time, and icons are rendered once at their exact pixel size. Showing something means displaying what's already prepared.
 - **Hot paths** (per keystroke × per item) don't allocate, block or log above debug level. Reuse buffers, and skip work whose result didn't change: no table reload when the matches are the same.
 - **Memory:** keep what's displayed at display size (icon bitmaps at exact pixels, never full-size images). Keep only what the index needs, and prune caches when the index changes.

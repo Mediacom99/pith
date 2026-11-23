@@ -16,7 +16,7 @@ Status: **done** (core library; the app uses it from step 2).
   - thumbnails rendered once with ImageIO at their exact pixel sizes (40 px for rows, the preview box at 2x).
 - Each entry records:
   - its kind (text, rich text, link, image, files);
-  - the pasteboard types it came with, so a paste puts back everything it was copied with;
+  - the pasteboard types it came with (the standard ones, step 2), so a paste puts them all back;
   - the source app, the time, a pin, and its size.
 - **Retention:**
   - 2 GB and 30 days by default (decision 37), oldest unpinned first; pins are never dropped.
@@ -37,17 +37,42 @@ Status: **done** (core library; the app uses it from step 2).
 
 ## 2. Recording
 
-Status: **todo**.
-- **Watching:** a GCD timer reads the pasteboard's change count, because macOS has no notification for a new copy.
-  - It starts at 0.5 s, with leeway so the system can coalesce wakeups.
-  - It pauses while the screens sleep or the session is switched away.
-  - Step 7 measures what it costs at idle.
-- **What's read:** plain text, rich text (RTF, HTML), links, images (PNG, TIFF) and file URLs, plus the frontmost
-  app as the source.
-- **Skipped:** concealed, transient and auto-generated copies (decisions 35, 38).
-- **Duplicates:** copying something already in the history moves that entry to the top and keeps its pin (matched by
-  a hash of its content).
-- **Tests** use a private named pasteboard, never the general one, so they never touch your clipboard.
+Status: **in review**. Built and tested on a private pasteboard. The installed app records from launch, but the
+history can't be seen until step 4 shows it.
+- **Watching:** `ClipboardRecorder` runs a GCD timer on its own queue, `launcher.clipboard.watch`, because macOS has
+  no notification for a new copy.
+  - Every 0.5 s it reads the pasteboard's change count, with 0.25 s of leeway so the system can coalesce wakeups.
+  - It stops while the screens sleep or another user's session is in front. Step 7 measures what it costs at idle.
+  - What's on the clipboard at launch isn't recorded, so starting Pith never reads the clipboard by itself.
+- **Clipboard permission:** macOS can ask before an app reads the clipboard (`accessBehavior`, since 15.4).
+  - "Ask" (or never asked yet): the copy is read, and macOS may ask Edoardo the first time.
+  - "Never": nothing is read, and the log says so once. Step 4 shows it in the panel.
+- **Skipped:** copies with a concealed, transient or auto-generated marker (decisions 35, 38). Only the types are
+  read for this check, so a password's data is never fetched.
+- **What's read:** only the standard types apps paste with:
+  - plain text (UTF-8, UTF-16);
+  - rich text (RTF, RTFD, HTML);
+  - links (`public.url` and its title);
+  - file URLs;
+  - images (PNG, TIFF, JPEG, HEIC).
+
+  Other types aren't read at all, because reading one makes the app that copied render it, and apps like
+  spreadsheets offer many large ones. Pasting puts back the standard types, not an app's private format.
+- **Classifying** (`ClipReading`, core library):
+  - files win over everything, since Finder's copies also carry the name as text and the icon as an image;
+  - an image counts only without text (screenshots, Copy Image), and is converted to PNG unless it already is one;
+  - text that is one URL (http, https, mailto, ftp, ssh…) is a link;
+  - text with RTF or HTML is rich text, and rich text with no plain text gets the pasteboard's conversion;
+  - a copy with none of these is skipped.
+- **Source:** the app named by the copy's `org.nspasteboard.source` marker, otherwise the app in front.
+- **Duplicates:** a copy that is already in the history moves that clip to the top, keeping its pin. An unknown
+  source doesn't overwrite a known one, so pasting from the history won't record "from Pith".
+- **Old history** is pruned to 2 GB and 30 days at launch and after each copy.
+- **Tests:**
+  - 10 on classifying.
+  - 6 on the recorder, on a private named pasteboard, so they never read or change your clipboard. They cover:
+    source; nothing at launch; passwords and temporary copies skipped; files, images and links; RTF-only text; a
+    paste from the history moving instead of duplicating.
 
 ## 3. History in memory and search
 

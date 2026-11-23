@@ -75,6 +75,7 @@ Sources/
     ClipboardStore.swift   the clipboard history on disk, on its own serial queue: SQLite, image files, retention
     SQLiteDatabase.swift   a thin wrapper over the system SQLite: open, prepare, bind, step, transactions
     ImageThumbnails.swift  a copied image's row and preview thumbnails, decoded by ImageIO at their exact pixel sizes
+    ClipReading.swift      a copy's pasteboard items → a clip: the types read, markers skipped, kind, text, PNG
     AppScanner.swift       walks the app folders (+ Finder) → [Item] with resolved-path ids
     DirectoryWatcher.swift FSEvents → folders or per-file events with flags, with source-level exclusions
     Config.swift           config.toml settings, defaults, problems with line numbers, the commented template
@@ -97,6 +98,7 @@ Sources/
                            row view (the quiet selection)
     Palette.swift          the few colors the system doesn't have: quiet gray, fills, edge, red and orange
     Notifier.swift         notifications for a finished Zip and failed actions, reveal on click
+    ClipboardRecorder.swift  the pasteboard's change count on a timer; each new copy read, classified and stored
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement), copied in by `make app`
 ```
 
@@ -106,9 +108,11 @@ Files the app keeps:
 |---|---|---|
 | `~/.config/pith/config.toml` | Settings (FEATURES §8) | Created with commented defaults on first launch; then only by you |
 | `~/Library/Application Support/pith/history.json` | What you opened and when (≤ 200 items × 10 times); deleted files are dropped | After every open or deletion, on a serial worker, atomically |
+| `~/Library/Application Support/pith/clipboard/` | The clipboard history: `history.sqlite` (clips, their text and what a paste puts back) and `images/` (each image and its two thumbnails). 2 GB and 30 days, pins kept | After each copy, on the store's serial queue |
 
 **Startup.** `AppDelegate` builds and draws the panel, loads the history, then the config, and registers the
-configured hotkey. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
+configured hotkey. The clipboard history is pruned to its limits, and the recorder starts watching from
+what's on the clipboard now. The app folders and Finder are scanned on a worker, and the launcher's commands are added, minus
 the launcher itself. The new `SearchIndex` goes to the view controller, which has `IconStore` render the icons it
 doesn't have yet. FSEvents streams trigger a rescan when the app folders change (unless the change is inside a bundle)
 and a reload when the config's folder changes. The newest rescan or reload always wins.
@@ -156,9 +160,11 @@ it to the front) or runs the command. Losing focus also hides the panel. Every h
 | GCD worker (`runInBackground` or `global`) | Full file scans (`.utility`); the app scan and index build; config reading, parsing and app resolution; loading the history; opening files; Reveal, Copy, Trash, Zip (`ditto`, `.utility`); Open With… choices; login item registration | Touching UI or shared state |
 | GCD workers (`concurrentPerform`, one per core, `.userInitiated`) | Rendering missing icons in parallel, each into its own slot | Touching UI or shared state |
 | Serial GCD queue `launcher.history` (`.utility`) | Saving the history, in order; quitting waits for it | Touching UI or shared state |
+| Serial GCD queue `launcher.clipboard.watch` (`.utility`) | The clipboard timer: reads the change count, and on a change the copy's types and data | Touching UI |
+| Serial GCD queue `launcher.clipboard` (`.userInitiated`) | Owns the clipboard database and image files: stores, prunes, loads, reads for a paste | Touching UI |
 | Swift cooperative pool | Only awaiting; nothing blocks on it | Blocking calls |
 
-At idle, nothing is scheduled: no timers, no polling. Workers exist only while there is work.
+At idle, one thing is scheduled: the clipboard's change-count check every 0.5 s, with 0.25 s of leeway, stopped while the screens sleep. macOS has no notification for a new copy. Nothing else polls, and workers exist only while there is work.
 
 ### Matching and ranking
 
@@ -262,7 +268,7 @@ No third-party dependencies.
 | Clipboard storage | SQLite through the system `SQLite3` module, behind a small wrapper (`SQLiteDatabase`) | Thousands of entries written one at a time, each copy an atomic insert. The history lives in memory for search, so the database only loads and saves. GRDB, the `FEATURES.md` candidate, is excellent but would be the first third-party dependency for a handful of queries. |
 | Clipboard thumbnails | ImageIO `CGImageSourceCreateThumbnailAtIndex` (system) | Decodes straight to the exact pixel size without loading the full image. |
 | Clipboard duplicates | SHA-256 from CryptoKit (system) | A copy of content already in the history must find it, and a collision would move the wrong clip, so a 64-bit hash isn't enough. |
-| Watching the clipboard (milestone 3) | `NSPasteboard.changeCount` on a GCD timer with leeway | macOS has no notification for a new copy, so this is the only way; leeway lets the system coalesce the wakeups. |
+| Watching the clipboard | `NSPasteboard.changeCount` on a GCD timer with leeway | macOS has no notification for a new copy, so this is the only way; leeway lets the system coalesce the wakeups. |
 | Paste (milestone 3) | `CGEvent` ⌘V posted to the HID tap (CoreGraphics, system) | How every clipboard manager pastes; it needs Accessibility access. |
 | Tests | Swift Testing (toolchain) | The current standard over XCTest. |
 | Panel snapshots | `NSView.cacheDisplay(in:to:)` into a 2× bitmap, written as PNG (AppKit, system) | Draws real panels that are never on screen, so it runs anytime. swift-snapshot-testing would add a dependency for image comparisons we don't do. |

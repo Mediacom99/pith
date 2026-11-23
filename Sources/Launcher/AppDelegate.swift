@@ -34,6 +34,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var files = FileSearchEngine { [weak self] removed in
         Task { @MainActor in self?.history.forget(paths: removed) }
     }
+    private let clipboard = ClipboardStore(folder: ClipboardStore.defaultFolder)
+    private lazy var recorder = ClipboardRecorder(store: clipboard) { clip, removed in
+        Log.app.debug("Recorded a \(clip.kind.rawValue, privacy: .public) clip; dropped \(removed.count) old ones")
+    }
     private var fileRules: FileRules?
     private var panel: LauncherPanel?
     private var launcherHotkey: (hotkey: Hotkey, id: HotKeyCenter.ID)?
@@ -59,6 +63,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await history.load()
             await configStore.start()
         }
+
+        // The clipboard history keeps to its limits from launch, then records each new copy.
+        Task { [clipboard] in
+            do throws(ClipboardStore.Failure) {
+                _ = try await clipboard.prune(.standard, now: .now)
+            } catch {
+                Log.app.error("Couldn't open the clipboard history: \(error.description, privacy: .public)")
+            }
+        }
+        recorder.start()
 
         rebuildIndex()
         appsWatcher = DirectoryWatcher(paths: AppScanner.defaultRoots.map(\.path), queue: .main) { [weak self] paths in
