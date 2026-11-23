@@ -44,6 +44,20 @@ private func paths(_ engine: FileSearchEngine, _ query: String) async -> [String
         #expect(await eventually { await paths(engine, "inner-notes") == [root + "/Bundle/inner-notes.md"] })
     }
 
+    /// A rename that only changes the case of a name leaves one row, under the new name.
+    @Test func aCaseOnlyRenameLeavesOneRow() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFile("quarterly report.pdf")
+        let root = folder.canonicalPath
+        let engine = FileSearchEngine()
+        await engine.rebuild(FileRules(roots: [root], ignore: IgnoreRules([]), maxDepth: 6))
+
+        try FileManager.default.moveItem(
+            at: folder.url.appending(path: "quarterly report.pdf"),
+            to: folder.url.appending(path: "Quarterly Report.pdf"))
+        #expect(await eventually { await paths(engine, "quarterly") == [root + "/Quarterly Report.pdf"] })
+    }
+
     /// A folder inside another one that's also configured: a file deleted there leaves no copy behind.
     @Test func aFileDeletedInANestedFolderIsGone() async throws {
         let home = try TemporaryDirectory()

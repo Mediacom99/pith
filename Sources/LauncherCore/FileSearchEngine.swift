@@ -1,5 +1,6 @@
 import Darwin
 import Dispatch
+import Foundation
 import Synchronization
 
 /// Owns the `FileIndex` on a private serial queue: patches from FSEvents and searches run there one at a time, so the
@@ -190,7 +191,7 @@ public final class FileSearchEngine: @unchecked Sendable {
                 if event.mustRescan || event.isAddedRemovedOrMoved { rebuildAll = true }
                 continue
             }
-            if let gone = update(path, rules: rules) { removed.append(gone) }
+            if let gone = update(path, moved: event.isAddedRemovedOrMoved, rules: rules) { removed.append(gone) }
             // Events dropped under a folder: what's in it is read again.
             if event.mustRescan, index.isFolder(path) == true {
                 index.removeDescendants(of: path)
@@ -202,12 +203,17 @@ public final class FileSearchEngine: @unchecked Sendable {
     }
 
     /// Brings `path` in line with the disk: added, removed, or a file that became a folder. Returns it if it was
-    /// removed.
-    private func update(_ path: String, rules: FileRules) -> String? {
+    /// removed. `moved` is an event that added, removed or renamed it.
+    private func update(_ path: String, moved: Bool, rules: FileRules) -> String? {
         let known = index.contains(path)
         guard known || index.entry(at: Self.parent(of: path)) != nil else { return nil }
         var info = stat()
-        guard lstat(path, &info) == 0, !rules.ignore(at: path).ignores(name: Self.name(of: path), path: path) else {
+        // A rename that changes only the case of a name: the disk ignores case, so the old name still finds the file,
+        // under its new name.
+        let renamedCase = known && moved && Self.nameOnDisk(path).map { $0 != Self.name(of: path) } == true
+        guard lstat(path, &info) == 0, !renamedCase,
+            !rules.ignore(at: path).ignores(name: Self.name(of: path), path: path)
+        else {
             guard known else { return nil }
             index.remove(path)
             return path
@@ -228,5 +234,10 @@ public final class FileSearchEngine: @unchecked Sendable {
 
     private static func name(of path: String) -> String {
         String(FileIndex.name(of: path))
+    }
+
+    /// The name the disk has for `path`'s last part, in its own case; nil if there's nothing there.
+    private static func nameOnDisk(_ path: String) -> String? {
+        try? URL(filePath: path).resourceValues(forKeys: [.nameKey]).name
     }
 }

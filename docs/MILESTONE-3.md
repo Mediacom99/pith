@@ -444,7 +444,8 @@ real folder prompts (4) on a first install.
     28. **Fixed:** only ⏎ on a clip, meant to paste, asks for Accessibility; a test covers it. What it was: ⌘K → Copy
         to Clipboard, chosen on purpose, asked for it too.
   - **Files:**
-    29. A case-only rename (`report.pdf` → `Report.pdf`) leaves a duplicate row.
+    29. **Fixed:** on a rename, a known path whose name on disk differs in case is removed; a test covers it. What it
+        was: a case-only rename (`report.pdf` → `Report.pdf`) left a duplicate row.
     30. **Fixed:** what was just opened is never the one forgotten; a test covers it. What it was: with 200 items
         remembered, a newly opened one could be forgotten at once, as older ones with many opens outranked it.
     31. Recents on a drive that isn't mounted at launch are forgotten for good.
