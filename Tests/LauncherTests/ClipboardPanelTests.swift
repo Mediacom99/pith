@@ -377,6 +377,28 @@ struct ClipboardPanelTests {
         for _ in 0..<row { press("down", in: panel) }
     }
 
+    /// A copy that lands while you choose keeps your clip selected: ⏎ pastes what the tile shows.
+    @Test func aCopyLandingWhileOpenKeepsTheSelection() async throws {
+        let folder = try TemporaryDirectory()
+        let copied = CopiedClips()
+        let panel = try await clipboardPanel(
+            folder.url, [(text("older"), nil, 10), (text("newer"), nil, 5)], copied: copied)
+        panel.launcher.prepareToShow(.clipboard)
+        press("down", in: panel)
+        #expect(panel.launcher.tableView.selectedRow == 1)
+
+        let history = try #require(panel.launcher.clipboard)
+        history.recorded(try await history.store.add(text("just copied"), from: nil, at: .now))
+        #expect(panel.launcher.rows.count == 3)
+        #expect(panel.launcher.tableView.selectedRow == 2)
+        press("return", in: panel)
+        #expect(copied.clips.map(\.text) == ["older"])
+
+        panel.launcher.reset()
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(panel.launcher.tableView.selectedRow == 0, "opened again: the newest")
+    }
+
     /// A thumbnail that can't be read is asked for once and draws nothing new: a redraw would ask again, forever,
     /// with a core busy until Pith quits.
     @Test func anUnreadableThumbnailIsAskedForOnce() async throws {

@@ -368,8 +368,9 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
      folder in `folders` under `~/Library`, or starting with a dot, was never indexed, and no problem row said so**:
      Dropbox, Google Drive and OneDrive (`~/Library/CloudStorage`), iCloud Drive, `~/.config`.
 - **Medium:**
-  6. A copy that lands while the clipboard is open moves the selection to the newest clip. ⏎ can then paste another
-     clip than the one chosen, since the recorder sees a copy up to 0.75 s late.
+  6. **Fixed:** a change to the history while the clipboard is open keeps the selected clip selected; a test covers
+     it. What it was: a copy that landed while the clipboard was open moved the selection to the newest clip, so ⏎
+     could paste another clip than the one chosen (the recorder sees a copy up to 0.75 s late).
   7. Keypad Enter and fn+Return do nothing. `open` matches only Return's key code, and since step 10 the field
      swallows `insertNewline:`.
   8. A click selects a row, but the tile and Quick Look stay on the old one, while ⏎ opens the clicked row.

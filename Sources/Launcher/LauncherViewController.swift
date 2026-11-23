@@ -1133,10 +1133,17 @@ extension LauncherViewController {
     }
 
     /// A new copy, or clips pinned or dropped: ready the newest images, and show the change if the clipboard is up.
+    /// The clip you're on stays selected, so a copy that lands while you choose (the recorder sees it up to 0.75 s
+    /// late) doesn't move ⏎ to another clip.
     func clipboardChanged() {
         guard let clipboard else { return }
         clipImages.preload(clipboard.index, store: clipboard.store)
-        if mode == .clipboard, sublist == nil { refresh() }
+        guard mode == .clipboard, sublist == nil else { return }
+        let selected = tableView.selectedRow
+        if keepSelection == nil, rows.indices.contains(selected), case .clip(let clip) = rows[selected] {
+            keepSelection = (clip.id, selected)
+        }
+        refresh()
     }
 
     /// The app a text or link was copied from, or the kind's symbol when there's no such app; nil while it's looked up,
