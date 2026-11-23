@@ -41,7 +41,8 @@ Read these before doing anything:
 - **His Mac is in use:** never play sound, open his mics, bring windows forward or move his mouse without asking first, each time (he may be on a call or watching something). Headless checks (builds, tests) are fine anytime. `make run` and `make install` are not headless: they launch the app, which takes ⌘P from every app, so ask first.
 - **Edoardo's daily copy:** he uses Pith in place of Raycast. On 2026-11-23 it was removed so he could install 0.3.5
   from `Pith.dmg` as a new user would (decision 56): his config, clipboard history and Sparkle state are in
-  `~/pith-backup-2026-11-23`, and its privacy permissions were reset (`tccutil reset All dev.edoardo.pith`). The
+  `~/pith-backup-2026-11-23`, and its privacy permissions were reset (`tccutil reset All dev.edoardo.pith`). He
+  reinstalled it in `/Applications`; 0.3.6 (the icon in notifications) is published for it to update to. The
   installer puts it in `/Applications`, but `make install` and `make uninstall` use `~/Applications`, so a branch
   build there would be a second copy fighting for ⌘P; settle that before the next `make install`. It's signed with the
   local certificate (decision 41) so its Accessibility access survives updates, and it updates itself (decisions
