@@ -132,6 +132,15 @@ struct ClipboardPanelTests {
         #expect(asked == 1, "the first ⏎ without access asks for it")
 
         panel.launcher.reset()
+        panel.launcher.prepareToShow(.clipboard)
+        panel.launcher.toggleActions()
+        await type("copy to", in: panel)
+        press("return", in: panel)
+        #expect(copied.deliveries.map(\.delivery) == [.copy, .copy])
+        #expect(asked == 1, "Copy to Clipboard, chosen on purpose, doesn't ask")
+        copied.deliveries.removeLast()
+
+        panel.launcher.reset()
         panel.launcher.canPaste = true
         panel.launcher.prepareToShow(.clipboard)
         #expect(panel.launcher.stage.content.primary == "Paste")

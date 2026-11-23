@@ -440,7 +440,8 @@ real folder prompts (4) on a first install.
     26. Update Pith is selected when the empty state is empty (a new user with no history), so ⏎ on an empty field
         restarts into the update.
     27. A copied file's facts (size, whether it's still there) are cached until relaunch.
-    28. ⌘K → Copy to Clipboard, chosen on purpose, still asks for Accessibility.
+    28. **Fixed:** only ⏎ on a clip, meant to paste, asks for Accessibility; a test covers it. What it was: ⌘K → Copy
+        to Clipboard, chosen on purpose, asked for it too.
   - **Files:**
     29. A case-only rename (`report.pdf` → `Report.pdf`) leaves a duplicate row.
     30. With 200 items remembered, a newly opened one can be forgotten at once, as older ones with many opens

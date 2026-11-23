@@ -980,6 +980,8 @@ final class LauncherViewController: NSViewController {
             runCommand(.openConfig)
         case (.clip(let clip), _):
             perform(canPaste ? .paste : .copy, on: clip)
+            // ⏎ meant to paste: without access it copies, and the first time asks for it. Copy to Clipboard doesn't.
+            if !canPaste { askForAccessibility() }
         case (.clipAction(let action), .clipActions(let clip)?):
             perform(action, on: clip)
         case (.clipAction, _):
@@ -1288,8 +1290,6 @@ extension LauncherViewController {
         case .paste: deliverClip(clip, .paste)
         case .copy:
             deliverClip(clip, .copy)
-            // The first ⏎ without access asks for it.
-            if !canPaste { askForAccessibility() }
         case .pastePlainText: deliverClip(clip, canPaste ? .pastePlainText : .copyPlainText)
         case .openLink:
             if let url = URL(string: clip.text) { open(url, with: linkApp(for: clip)?.url) }
