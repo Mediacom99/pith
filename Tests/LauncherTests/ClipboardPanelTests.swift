@@ -100,9 +100,13 @@ struct ClipboardPanelTests {
     @Test func cSpaceOpensTheClipboardAndBackspaceComesBack() async throws {
         let folder = try TemporaryDirectory()
         let panel = try await clipboardPanel(folder.url, [(text("Acme"), nil, 1)])
+        var checks = 0
+        panel.launcher.onShowClipboard = { checks += 1 }
         panel.launcher.prepareToShow()
+        #expect(checks == 0)
         await type("c ", in: panel)
         #expect(panel.launcher.mode == .clipboard)
+        #expect(checks == 1, "Accessibility is checked again, as ⌘⇧V does: it may have been given since")
         #expect(panel.launcher.searchField.stringValue.isEmpty)
         #expect(titles(panel) == ["Acme"])
 

@@ -287,7 +287,8 @@ final class LauncherViewController: NSViewController {
         refresh()
     }
 
-    /// Switches between the launcher and the clipboard while the panel is showing, from an empty field.
+    /// Switches between the launcher and the clipboard while the panel is showing, from an empty field. The clipboard
+    /// checks access again, as it does when ⌘⇧V opens it: it may have been given since.
     func switchMode(to new: Mode) {
         guard new != mode else { return }
         sublist = nil
@@ -296,6 +297,7 @@ final class LauncherViewController: NSViewController {
         mode = new
         applyMode()
         setQuery("")
+        if new == .clipboard { onShowClipboard() }
         refresh()
     }
 

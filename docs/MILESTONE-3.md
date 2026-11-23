@@ -167,7 +167,8 @@ Status: **in review**. Built and tested; paste itself, which types into another 
 snapshots: `clipboard-actions`, `clipboard-delete-pinned`, `clipboard-accessibility`.
 - **Built:**
   - ⏎ pastes, or copies without Accessibility access and asks for it once per launch.
-  - Access is checked on a worker at launch and on each ⌘⇧V, since it can be given in System Settings at any time.
+  - Access is checked on a worker at launch and each time the clipboard opens (⌘⇧V, `c `, Clipboard History), since
+    it can be given in System Settings at any time.
   - Without access, the notice "Paste needs Accessibility access" comes first, and ⏎ on it opens the setting.
   - A paste writes everything the clip was copied with, naming its source app (`org.nspasteboard.source`), so the
     recorder moves the clip to the top instead of recording it again.
@@ -347,9 +348,9 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
      - The same reset turned launch at login and the clipboard hotkey back on, and rescanned `~`.
      - TextEdit, the fallback editor, turns typed quotes curly, which the reader rejects.
 - **High:**
-  2. **Accessibility given after the first paste isn't seen when the clipboard opens from the launcher** (`c `,
-     Clipboard History, or ⌘⇧V with the launcher open). Only launch and ⌘⇧V on a closed panel check it, so ⏎ keeps
-     copying instead of pasting until a relaunch.
+  2. **Fixed:** switching to the clipboard checks Accessibility again, as ⌘⇧V on a closed panel does; a test covers
+     `c `. What it was: **access given after the first paste wasn't seen when the clipboard opened from the
+     launcher** (`c `, Clipboard History, or ⌘⇧V with the launcher open), so ⏎ kept copying until a relaunch.
   3. **A clip's thumbnail that can't be read is asked for forever, and one core stays busy until Pith quits.**
      - A failed decode still calls `onChange`, which redraws the rows, and each row asks again.
      - Triggers: a missing thumbnail file, or an image clip pruned while its row is still in the closed panel.
