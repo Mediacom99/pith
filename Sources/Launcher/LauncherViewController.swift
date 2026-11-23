@@ -279,6 +279,8 @@ final class LauncherViewController: NSViewController {
         if running.sync() { loadIcons() }
         boosts = history.history.boosts(for: index)
         files.setBoosts(history.history.fileBoosts())
+        // A folder refused at its prompt may have been allowed in System Settings since (decision 60).
+        files.recheckRefused()
         if mode != self.mode {
             self.mode = mode
             applyMode()

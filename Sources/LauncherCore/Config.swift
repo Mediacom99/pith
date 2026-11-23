@@ -52,6 +52,9 @@ public struct Config: Sendable, Equatable {
             maxAge: clipboardMaxAgeDays.map { TimeInterval($0) * 86_400 } ?? .infinity)
     }
 
+    /// The folders in the home folder that macOS asks about before an app reads them (decision 60).
+    static let protectedFolders = ["Desktop", "Documents", "Downloads", "Library/Mobile Documents/com~apple~CloudDocs"]
+
     /// What a wrong setting falls back to at launch, when Pith has no settings yet: its default, except the
     /// clipboard's limits, which drop nothing until the file sets them right (decision 59).
     static var atLaunch: Config {
@@ -80,7 +83,9 @@ public struct Config: Sendable, Equatable {
             while path.count > 1, path.hasSuffix("/") { path.removeLast() }
             return path
         }
-        return FileRules(roots: roots, ignore: IgnoreRules(ignore, home: home), maxDepth: maxDepth)
+        return FileRules(
+            roots: roots, ignore: IgnoreRules(ignore, home: home), maxDepth: maxDepth,
+            protected: Self.protectedFolders.map { home + "/" + $0 })
     }
 
     /// The settings in `text`, plus a problem for every setting that's wrong or unknown (decision 59). `previous` is

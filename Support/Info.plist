@@ -30,6 +30,13 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<!-- What macOS's prompts say under "“Pith” would like to access files in your … folder" (decision 60). -->
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Pith searches your Desktop, so its files show up as you type. Nothing leaves your Mac.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Pith searches your Documents, so its files show up as you type. Nothing leaves your Mac.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Pith searches your Downloads, so its files show up as you type. Nothing leaves your Mac.</string>
 	<!-- Updates (decision 48): Sparkle's own schedule is off, since Pith asks after the panel closes, at most once a
 	     day. Found updates download in the background and install on Update Pith or at quit. The key is set by
 	     `make update-key`; until then, updates are off. -->

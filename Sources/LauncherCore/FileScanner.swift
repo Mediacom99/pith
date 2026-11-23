@@ -13,14 +13,37 @@ public struct FileRules: Sendable, Equatable {
     public let ignore: IgnoreRules
     /// How many folders below a root are indexed: 1 means only a root's direct contents.
     public let maxDepth: Int
+    /// Folders macOS asks about before an app reads them (Desktop, Documents, Downloads, iCloud Drive): the index
+    /// leaves each out until it's allowed (decision 60).
+    public let protected: [String]
     /// `ignore` inside each root, in `roots`' order: without the path rules that hold the root.
     let ignoreInRoots: [IgnoreRules]
 
-    public init(roots: [String], ignore: IgnoreRules, maxDepth: Int) {
+    public init(roots: [String], ignore: IgnoreRules, maxDepth: Int, protected: [String] = []) {
         self.roots = roots
         self.ignore = ignore
         self.maxDepth = maxDepth
+        self.protected = protected
         ignoreInRoots = roots.map { ignore.inside($0) }
+    }
+
+    /// The protected folders a scan would read: in a root and not ignored there, or holding a root.
+    var protectedFolders: [String] {
+        protected.filter { folder in
+            roots.contains { root in
+                IgnoreRules.holds(folder, root)
+                    || IgnoreRules.holds(root, folder)
+                        && !ignore(at: folder).ignores(name: String(FileIndex.name(of: folder)), path: folder)
+            }
+        }
+    }
+
+    /// These rules without `folders`: a root in one is left out, and inside the other roots they're skipped.
+    func deferring(_ folders: Set<String>) -> FileRules {
+        guard !folders.isEmpty else { return self }
+        let roots = roots.filter { root in !folders.contains { IgnoreRules.holds($0, root) } }
+        return FileRules(
+            roots: roots, ignore: ignore.adding(folders.sorted()), maxDepth: maxDepth, protected: protected)
     }
 
     /// The rules for `path`: those of the innermost root it's in.
@@ -91,6 +114,14 @@ public struct IgnoreRules: Sendable, Equatable {
     func inside(_ root: String) -> IgnoreRules {
         var rules = self
         rules.paths = paths.filter { !Self.holds($0, root) }
+        rules.pathBytes = rules.paths.map { Array($0.utf8CString.dropLast()) }
+        return rules
+    }
+
+    /// These rules, also skipping `paths` and everything under them.
+    func adding(_ paths: [String]) -> IgnoreRules {
+        var rules = self
+        rules.paths += paths
         rules.pathBytes = rules.paths.map { Array($0.utf8CString.dropLast()) }
         return rules
     }

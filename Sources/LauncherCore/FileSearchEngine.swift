@@ -5,11 +5,24 @@ import Synchronization
 /// Owns the `FileIndex` on a private serial queue: patches from FSEvents and searches run there one at a time, so the
 /// index needs no locks and the main thread never waits on it. Full scans run on a worker, and the result is swapped
 /// in.
+///
+/// The folders macOS asks about (`FileRules.protected`, decision 60) are each read once on a worker of their own, which
+/// shows the prompt and waits for the answer. The index leaves out a folder until it's allowed, so the rest is
+/// searchable at once, and is rebuilt with it as soon as it is. A refused folder is read again as the panel opens
+/// (`recheckRefused`): it doesn't ask again, and once allowed in System Settings it joins the index.
 public final class FileSearchEngine: @unchecked Sendable {
+    /// What macOS said about a protected folder.
+    private enum Access { case asking, allowed, refused }
+
     // State below is only touched on `queue`.
     private let queue = DispatchQueue(label: "launcher.files", qos: .userInitiated)
     private var index = FileIndex()
+    /// The rules as asked for, and as scanned: without the protected folders that aren't allowed yet.
+    private var requested: FileRules?
     private var rules: FileRules?
+    private var access: [String: Access] = [:]
+    /// The protected folders the index leaves out.
+    private var deferred: Set<String> = []
     private var boosts: [String: Int32] = [:]
     private var watcher: DirectoryWatcher?
     /// Events that arrive while a scan runs, applied once its index is swapped in.
@@ -19,11 +32,24 @@ public final class FileSearchEngine: @unchecked Sendable {
     /// How many rebuilds were asked for. A rebuild that a newer one overtakes stops, or drops its scan.
     private let rebuilds = Atomic<Int>(0)
     private let onRemoved: @Sendable ([String]) -> Void
+    private let canRead: @Sendable (String) -> Bool
 
     /// `onRemoved` gets the files and folders that disappeared from disk (folders stand for everything in them), on
-    /// the engine's queue.
-    public init(onRemoved: @escaping @Sendable ([String]) -> Void = { _ in }) {
+    /// the engine's queue. `canRead` reads a protected folder, waiting on its prompt; tests swap it.
+    public init(
+        onRemoved: @escaping @Sendable ([String]) -> Void = { _ in },
+        canRead: @escaping @Sendable (String) -> Bool = FileSearchEngine.canRead
+    ) {
+        self.canRead = canRead
         self.onRemoved = onRemoved
+    }
+
+    /// Whether this process may list `folder`. The first time, macOS shows its prompt and the call waits for the
+    /// answer; after that it answers at once. A folder that isn't there has nothing to ask about.
+    public static func canRead(_ folder: String) -> Bool {
+        guard let directory = opendir(folder) else { return errno == ENOENT }
+        closedir(directory)
+        return true
     }
 
     /// Scans `rules` into a fresh index on a worker, swaps it in, and keeps it current with FSEvents from then on. The
@@ -31,20 +57,25 @@ public final class FileSearchEngine: @unchecked Sendable {
     /// after it is dropped, so it can't put back folders the config no longer lists.
     public func rebuild(_ rules: FileRules) async {
         let generation = rebuilds.wrappingAdd(1, ordering: .relaxed).newValue
-        let isNewest = await run { [self] () -> Bool in
-            guard rebuilds.load(ordering: .relaxed) == generation else { return false }
-            self.rules = rules
+        // Asked first, so the folders already answered are in this scan; one whose prompt is up joins later.
+        await ask(about: rules.protectedFolders, waiting: .milliseconds(100))
+        let scanned = await run { [self] () -> FileRules? in
+            guard rebuilds.load(ordering: .relaxed) == generation else { return nil }
+            requested = rules
+            deferred = Set(rules.protectedFolders.filter { access[$0] != .allowed })
+            let scanned = rules.deferring(deferred)
+            self.rules = scanned
             pendingEvents = []
             watcher = DirectoryWatcher(
-                paths: rules.roots, excluding: rules.excludedPaths, fileEvents: true, latency: 0.5, queue: queue
+                paths: scanned.roots, excluding: scanned.excludedPaths, fileEvents: true, latency: 0.5, queue: queue
             ) { [weak self] events in self?.receive(events) }
-            return true
+            return scanned
         }
-        guard isNewest else { return }
+        guard let scanned else { return }
         let fresh = await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .utility).async {
                 var fresh = FileIndex()
-                FileScanner.scan(rules, into: &fresh)
+                FileScanner.scan(scanned, into: &fresh)
                 fresh.trim()
                 continuation.resume(returning: fresh)
             }
@@ -56,6 +87,50 @@ public final class FileSearchEngine: @unchecked Sendable {
             let events = pendingEvents ?? []
             pendingEvents = nil
             apply(events)
+        }
+    }
+
+    /// Reads the protected folders that were refused again, in case they've been allowed in System Settings since:
+    /// called as the panel opens. A refused folder doesn't prompt again, so each answers at once, on a worker.
+    public func recheckRefused() {
+        queue.async { [self] in
+            let refused = access.compactMap { $0.value == .refused ? $0.key : nil }
+            if !refused.isEmpty { startAsking(refused, group: nil) }
+        }
+    }
+
+    /// Reads each folder of `folders` that isn't allowed or being asked about, and returns once all are answered or
+    /// `wait` has passed. An answer that comes later and allows a folder the index left out rebuilds it.
+    private func ask(about folders: [String], waiting wait: DispatchTimeInterval) async {
+        guard !folders.isEmpty else { return }
+        let group = DispatchGroup()
+        await run { [self] in
+            startAsking(folders.filter { access[$0] == nil || access[$0] == .refused }, group: group)
+        }
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                _ = group.wait(timeout: .now() + wait)
+                continuation.resume()
+            }
+        }
+    }
+
+    /// On `queue`: reads each of `folders` on a worker of its own, since a prompt can wait for minutes.
+    private func startAsking(_ folders: [String], group: DispatchGroup?) {
+        for folder in folders {
+            access[folder] = .asking
+            group?.enter()
+            DispatchQueue.global(qos: .utility).async { [self] in
+                let allowed = canRead(folder)
+                queue.async { [self] in
+                    access[folder] = allowed ? .allowed : .refused
+                    if allowed, deferred.contains(folder), let requested {
+                        deferred.remove(folder)
+                        Task { await self.rebuild(requested) }
+                    }
+                    group?.leave()
+                }
+            }
         }
     }
 

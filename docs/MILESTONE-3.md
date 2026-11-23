@@ -324,8 +324,9 @@ release with them, for Edoardo to install as a new user would.
     so, only Edoardo's Mac is affected.
   - To settle it: a friend's Mac (a first install there), or Edoardo runs
     `sudo rm -rf /Library/Caches/com.apple.iconservices.store` and restarts the Mac.
-- **Still open** (FEATURES §11): asking each permission only when its feature first needs it. A Homebrew cask
-  wouldn't avoid the dialog: Homebrew marks what it installs as downloaded too.
+- **Still open** (FEATURES §11): asking each permission only when its feature first needs it; the Desktop,
+  Documents and Downloads prompts are done (decision 60, step 12). A Homebrew cask wouldn't avoid the dialog: Homebrew
+  marks what it installs as downloaded too.
 
 ## 12. Bug check before friends
 
@@ -355,12 +356,13 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
      it. What it was: **a clip's thumbnail that couldn't be read was asked for forever, with one core busy until Pith
      quit.** A failed decode still called `onChange`, which redrew the rows, and each row asked again. Triggers: a
      missing thumbnail file, or an image clip pruned while its row was still in the closed panel.
-  4. **The first scan of `~`:**
-     - There are no file results until every privacy prompt (Desktop, Documents, Downloads) is answered.
-     - A folder allowed later in System Settings is never rescanned.
-     - **Fixed:** the newest rebuild wins, so an older scan that finishes after it is dropped; a test covers it. A
-       config change during the first scan used to be overwritten by it.
-     - The first two are part of the quieter first install, for Edoardo to decide.
+  4. **Fixed** (decision 60): each protected folder (Desktop, Documents, Downloads, iCloud Drive) is read on a worker
+     of its own, and the index leaves it out until it's allowed, so the rest is searchable at once. A refused folder
+     is read again as the panel opens. Each prompt says why (Info.plist), and the newest rebuild wins. 6 new tests;
+     what a real prompt does needs a first install. What it was, on **the first scan of `~`**:
+     - there were no file results until every privacy prompt was answered;
+     - a folder allowed later in System Settings was never rescanned;
+     - a config change during that scan could be overwritten by it.
   5. **Fixed:** a folder in `folders` is never skipped, and inside it the path rules that hold it don't apply, in the
      scan, the live updates and FSEvents' exclusions; two tests cover it, and the template says so. What it was: **a
      folder in `folders` under `~/Library`, or starting with a dot, was never indexed, and no problem row said so**:
@@ -427,4 +429,4 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
 - **Still open beside it:**
   - the notification icon (step 11);
   - repeat-to-paste (FEATURES §11, Edoardo picks);
-  - the quieter first install, which item 4 is part of.
+  - the quieter first install's other prompts (FEATURES §11).

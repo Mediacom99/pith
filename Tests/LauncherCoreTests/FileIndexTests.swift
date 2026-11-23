@@ -1,8 +1,19 @@
 import Foundation
+import Synchronization
 import TestSupport
 import Testing
 
 @testable import LauncherCore
+
+/// Polls `condition` until it holds or `timeout` passes.
+private func eventually(within timeout: Duration = .seconds(5), _ condition: () async -> Bool) async -> Bool {
+    let deadline = ContinuousClock.now + timeout
+    while ContinuousClock.now < deadline {
+        if await condition() { return true }
+        try? await Task.sleep(for: .milliseconds(20))
+    }
+    return await condition()
+}
 
 struct IgnoreRulesTests {
     private let rules = IgnoreRules(
@@ -112,6 +123,34 @@ struct FileScannerTests {
         #expect(
             rules.ignore(at: home.url.path + "/Library/Caches").ignores(
                 name: "Caches", path: home.url.path + "/Library/Caches"))
+    }
+
+    /// The protected folders a scan would read, and the rules without them (decision 60).
+    @Test func protectedFoldersAreLeftOutUntilAllowed() throws {
+        let home = "/Users/acme"
+        let rules = FileRules(
+            roots: [home, home + "/Documents/dev"],
+            ignore: IgnoreRules([".*", "~/Library", "~/Downloads"], home: home),
+            maxDepth: 6,
+            protected: ["Desktop", "Documents", "Downloads", "Library/Mobile Documents"].map { home + "/" + $0 })
+        #expect(rules.protectedFolders == [home + "/Desktop", home + "/Documents"], "ignored ones aren't asked about")
+        let deferred = rules.deferring([home + "/Documents"])
+        #expect(deferred.roots == [home], "a root in a folder left out waits for it")
+        #expect(deferred.ignore(at: home + "/Documents").ignores(name: "Documents", path: home + "/Documents"))
+        #expect(deferred.excludedPaths.contains(home + "/Documents"))
+        #expect(rules.deferring([]) == rules)
+    }
+
+    /// Reading a folder: allowed, refused, or not there (nothing to ask about).
+    @Test func canReadAFolder() throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFolder("Locked")
+        let locked = folder.url.path + "/Locked"
+        #expect(FileSearchEngine.canRead(folder.url.path))
+        #expect(FileSearchEngine.canRead(folder.url.path + "/Missing"))
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: locked)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked) }
+        #expect(!FileSearchEngine.canRead(locked))
     }
 
     @Test func rescansASubtreeAtItsDepth() throws {
@@ -294,6 +333,45 @@ struct FileSearchEngineTests {
         await first.value
         #expect(await engine.count == 1)
         #expect(await engine.search("old-file", limit: 5, generation: 1) == [])
+    }
+
+    /// A protected folder whose prompt is up is left out, the rest is searchable at once, and the folder joins as
+    /// soon as it's allowed (decision 60).
+    @Test func aFolderWaitingOnItsPromptJoinsOnceAllowed() async throws {
+        let home = try TemporaryDirectory()
+        try home.makeFile("Documents/Acme/report.pdf")
+        try home.makeFile("notes.md")
+        let documents = home.url.path + "/Documents"
+        let prompt = DispatchSemaphore(value: 0)
+        let engine = FileSearchEngine(canRead: { folder in
+            if folder == documents { prompt.wait() }
+            return true
+        })
+        await engine.rebuild(
+            FileRules(roots: [home.url.path], ignore: IgnoreRules([]), maxDepth: 6, protected: [documents]))
+        #expect(await engine.search("notes", limit: 5, generation: 1)?.count == 1, "searchable at once")
+        #expect(await engine.search("report", limit: 5, generation: 2) == [])
+
+        prompt.signal()
+        #expect(await eventually { await engine.search("report", limit: 5, generation: 3)?.count == 1 })
+    }
+
+    /// A refused folder is read again as the panel opens, and joins once allowed in System Settings.
+    @Test func aRefusedFolderJoinsOnceAllowedLater() async throws {
+        let home = try TemporaryDirectory()
+        try home.makeFile("Downloads/invoice.pdf")
+        let downloads = home.url.path + "/Downloads"
+        let allowed = Mutex(false)
+        let engine = FileSearchEngine(canRead: { _ in allowed.withLock { $0 } })
+        await engine.rebuild(
+            FileRules(roots: [home.url.path], ignore: IgnoreRules([]), maxDepth: 6, protected: [downloads]))
+        #expect(await engine.search("invoice", limit: 5, generation: 1) == [])
+        engine.recheckRefused()
+        #expect(await engine.search("invoice", limit: 5, generation: 2) == [], "still refused")
+
+        allowed.withLock { $0 = true }
+        engine.recheckRefused()
+        #expect(await eventually { await engine.search("invoice", limit: 5, generation: 3)?.count == 1 })
     }
 
     @Test func staleSearchesSkip() async {

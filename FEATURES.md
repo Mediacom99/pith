@@ -276,10 +276,10 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
   joins the configurable keys.
 - [ ] A first install and updates that follow macOS's conventions, with as few privacy prompts as possible (Edoardo,
   2026-11-23, after the keybinds). Without the paid Apple Developer Program (decision 46) Pith can't be notarized, so
-  the first open always needs Open Anyway; everything else is open. To check, then propose: the prompts a new user
-  gets today and when (Desktop, Documents and Downloads on the first scan of `~`, Accessibility on the first paste,
-  clipboard access, notifications, the login item), asking each one only when its feature first needs it with a line
-  saying why, and whether a Homebrew cask in a tap of Edoardo's is worth adding beside the zip. And no zip to
+  the first open always needs Open Anyway; everything else is open. The Desktop, Documents and Downloads prompts now
+  say why, and don't hold back the rest of the files while they wait (decision 60). Still to check, then propose: the
+  other prompts a new user gets and when (Accessibility on the first paste, clipboard access, notifications, the login
+  item), asking each one only when its feature first needs it with a line saying why, and whether a Homebrew cask in a tap of Edoardo's is worth adding beside the zip. And no zip to
   download (Edoardo, 2026-11-23): the first install is an installer, the window that opens with Pith and an arrow to
   drag it into Applications (a disk image, decision 56), and one line in Terminal skips the dialog (decision 57).
 - [x] Default size cap / max age: 2 GB, 30 days (decision 37)
