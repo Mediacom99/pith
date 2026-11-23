@@ -39,7 +39,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 ## 3. Keyboard
 
 Every key below is a default: `[hotkeys]` and `[keys]` in the config change them (§8, decision 55). The text editing
-keys of the search field (`⌘X`, `⌘C`, `⌘V`, `⌘A`, `⌘Z`, `⇧⌘Z`) are fixed.
+keys of the search field (`⌘X`, `⌘C`, `⌘V`, `⌘A`, `⌘Z`, `⇧⌘Z`) are fixed, and no hotkey can take them from every app.
 
 ### Global hotkeys
 

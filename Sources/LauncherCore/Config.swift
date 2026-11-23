@@ -150,7 +150,14 @@ public struct Config: Sendable, Equatable {
                     hotkeyLines[key] = entry.line
                     config.clipboardHotkey = nil
                 case ("hotkeys.launcher", .string(let text)), ("hotkeys.clipboard", .string(let text)):
-                    if let hotkey = Shortcut(text), hotkey.isGlobal {
+                    if let hotkey = Shortcut(text),
+                        let editing = KeyBindings.editingKeys.first(where: {
+                            $0.shortcut == hotkey
+                        })
+                    {
+                        // A hotkey takes its key from every app: ⌘V would paste nowhere, Pith's own paste included.
+                        problem("\(name) \"\(text)\" is \(editing.name) in every app, so it's left as it was")
+                    } else if let hotkey = Shortcut(text), hotkey.isGlobal {
                         hotkeyLines[key] = entry.line
                         if key == "launcher" { config.launcherHotkey = hotkey } else { config.clipboardHotkey = hotkey }
                     } else {

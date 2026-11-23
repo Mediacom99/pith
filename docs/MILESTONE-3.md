@@ -452,8 +452,8 @@ real folder prompts (4) on a first install.
         FSEvents.
     33. The file-type icon cache never shrinks (about 43 KB per extension seen).
   - **Config:**
-    34. `clipboard = "cmd+v"` is accepted and takes ⌘V from every app; the editing keys are reserved only in
-        `[keys]`.
+    34. **Fixed:** a hotkey that's an editing key is a problem and stays as it was; a test covers it. What it was:
+        `clipboard = "cmd+v"` was accepted and took ⌘V from every app, Pith's own paste included.
     35. A ⏎ or ⎋ given back to `open` or `back` isn't marked taken, so another key setting can list it silently.
     36. A config.toml that's a symlink (stow, dotfiles managers) doesn't reload when its target is saved.
     37. Any file written in its folder reloads it, vim's swap file included (harmless, some wakeups).

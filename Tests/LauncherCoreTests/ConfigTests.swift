@@ -130,6 +130,13 @@ struct ConfigTests {
             ])
     }
 
+    /// A hotkey takes its key from every app, so the editing keys stay theirs.
+    @Test func aHotkeyCantBeAnEditingKey() {
+        let (config, problems) = Config.parse("[hotkeys]\nclipboard = \"cmd+v\"")
+        #expect(config.clipboardHotkey == Config().clipboardHotkey)
+        #expect(problems == ["line 2: hotkeys.clipboard \"cmd+v\" is Paste in every app, so it's left as it was"])
+    }
+
     /// A wrong value keeps what Pith has now; what's right applies, and what isn't written goes back to its default.
     @Test func aWrongSettingStaysAsItWas() {
         var current = Config()
