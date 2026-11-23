@@ -271,6 +271,6 @@ Don't:
 - Don't set text below 11 pt, or use uppercase labels or letter-spacing for hierarchy.
 - Don't hide what ⏎ does in a footer or leave it unsaid.
 - Don't add an accent, gradient hero, glow or product video.
-- Don't animate, fade or slide anything on the page.
+- Don't fade, slide or cross-fade a panel snapshot; it changes in one frame.
 - Don't carry the web tokens (ground, tracking, key-cap shadows) into the app panel.
 Full: .impeccable/design-full.md (read a section when you need its detail)

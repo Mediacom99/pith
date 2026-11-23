@@ -452,12 +452,12 @@ Panel-shaped surfaces use the panel's 14 px radius (the keyboard tray scales its
 
 **The Keys-Are-the-Interface Rule.** Every control and every mention of a shortcut on the page is a key cap; there is no second button or chip style besides Download.
 
-**The One-Frame Page Rule.** No transition, animation, fade or scroll effect. The hero swaps snapshots by toggling `hidden`; key presses and the bar's border change instantly.
+**The Keys-Move Rule.** The panel snapshots still change in one frame, as the app does; the motion lives in the keys. A key goes down in 60 ms (2 px, filled with the label color) and comes up in 180 ms on cubic-bezier(0.16, 1, 0.3, 1). The hero plays a tour once (t e, ⌘K, ⌘⇧V, ⌘P), with a 2 px line under the shown state that fills over 3 s until the next press; it pauses off screen, in a hidden tab and on any key or click, and a text button pauses or replays it. The ⌘K and ⌘⇧V rows press their heading's keys once as they come into view and switch their snapshot; the config block retypes `terminal` with a caret that holds solid while typing; the drawn keyboard plays each combination as a chord when a lit key is pointed at. Small feedback: the Download arrow drops 2 px on hover, fills step in 160 ms, the meaning line rises 5 px in 220 ms. With Reduce Motion, nothing plays by itself, keys change color without moving, and every section shows its end state (the actions and clipboard snapshots, "Ghostty", "Saved, and Pith has it").
 
 ### Do's and Don'ts
 - **Do** show the real panel snapshots, light and dark, at their real size, as the page's proof.
 - **Do** write every shortcut as key caps, and fill only Download and lit keys with the action color.
 - **Do** keep Faint for decoration the page also says in text (the keyboard's unlit legends), never for content.
 - **Don't** add an accent, gradient hero, glow or product video.
-- **Don't** animate, fade or slide anything on the page.
+- **Don't** fade, slide or cross-fade a panel snapshot; it changes in one frame. Motion is the keys' and ends where it started, and nothing loops.
 - **Don't** carry the web tokens (ground, tracking, key-cap shadows) into the app panel.

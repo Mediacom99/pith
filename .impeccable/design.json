@@ -78,7 +78,7 @@
     ],
     "motion": [
       { "name": "none", "value": "none", "purpose": "The panel appears, resizes and disappears in one frame, with no animation (animationBehavior = .none)." },
-      { "name": "web-none", "value": "none", "purpose": "Website only: no transition, animation, fade or scroll effect; the hero swaps snapshots by toggling hidden, in one frame." }
+      { "name": "web-keys", "value": "60ms down, 180ms cubic-bezier(0.16, 1, 0.3, 1) up", "purpose": "Website only: the keys move (presses, chords, a one-time hero tour, typing in the config block); panel snapshots still change in one frame; Reduce Motion plays nothing by itself." }
     ],
     "breakpoints": [
       { "name": "web-wide-short", "value": "max-height: 980px and min-width: 761px (tighter hero)" },
@@ -199,7 +199,7 @@
       { "name": "The Flat-Inside Rule", "body": "Only the panel casts a shadow, and it is the system's. Nothing inside the panel is lifted.", "section": "elevation" },
       { "name": "The Label-Is-the-Action Rule", "body": "The page's one filled control is filled with the label color itself (#1C1C1C / #EDEDED). No accent, gradient, glow or brand hue anywhere on the page.", "section": "colors" },
       { "name": "The Keys-Are-the-Interface Rule", "body": "Every control and every mention of a shortcut on the page is a key cap; there is no second button or chip style besides Download.", "section": "components" },
-      { "name": "The One-Frame Page Rule", "body": "No transition, animation, fade or scroll effect. The hero swaps snapshots by toggling `hidden`; key presses and the bar's border change instantly.", "section": "components" }
+      { "name": "The Keys-Move Rule", "body": "The panel snapshots change in one frame, as the app does; the motion lives in the keys: 60 ms down, 180 ms eased up, a one-time hero tour with a 3 s fill line, chords on the drawn keyboard and the ⌘K and ⌘⇧V rows, a retyped config value. It pauses off screen and on any input; with Reduce Motion nothing plays by itself and every section shows its end state." }
     ],
     "dos": [
       "**Do** show what ⏎ acts on in the tile, with the ⏎ key's words in semibold label color.",
@@ -222,7 +222,7 @@
       "**Don't** set text below 11 pt, or use uppercase labels or letter-spacing for hierarchy.",
       "**Don't** hide what ⏎ does in a footer or leave it unsaid.",
       "**Don't** add an accent, gradient hero, glow or product video.",
-      "**Don't** animate, fade or slide anything on the page.",
+      "**Don't** fade, slide or cross-fade a panel snapshot; motion is the keys' and nothing loops.",
       "**Don't** carry the web tokens (ground, tracking, key-cap shadows) into the app panel."
     ]
   }

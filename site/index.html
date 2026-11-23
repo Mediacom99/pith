@@ -40,6 +40,8 @@
   --display: var(--sans);
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --page: 1120px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --key-down: #E2E2E2;
   --gutter: clamp(16px, 4vw, 32px);
   --section: clamp(88px, 11vw, 152px);
 }
@@ -61,6 +63,7 @@
     --on-action: #141414;
     --panel-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.9), 0 28px 70px rgba(0, 0, 0, 0.55), 0 8px 20px rgba(0, 0, 0, 0.35);
     --select: rgba(255, 255, 255, 0.22);
+    --key-down: #3A3A3A;
   }
 }
 
@@ -94,10 +97,18 @@ kbd, .cap {
   border: 1px solid var(--key-edge);
   border-radius: 7px;
   box-shadow: var(--key-shadow);
+  transition: transform 180ms var(--ease), box-shadow 180ms var(--ease), background-color 180ms var(--ease), color 180ms var(--ease);
+}
+/* A key going down: fast in, eased out. The panel itself never animates: it changes in one frame, as in the app. */
+kbd.down {
+  transform: translateY(2px);
+  background: var(--action); color: var(--on-action); border-color: transparent;
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0), 0 0 0 rgba(0, 0, 0, 0);
+  transition-duration: 60ms;
 }
 
 /* Bar */
-.bar { position: sticky; top: 0; z-index: 10; background: var(--ground); border-bottom: 1px solid transparent; }
+.bar { position: sticky; top: 0; z-index: 10; background: var(--ground); border-bottom: 1px solid transparent; transition: border-color 240ms var(--ease); }
 .bar.scrolled { border-bottom-color: var(--edge); }
 .bar .wrap { display: flex; align-items: center; gap: 28px; height: 60px; }
 .wordmark { font: 700 1.1875rem/1 var(--display); letter-spacing: -0.02em; text-decoration: none; display: inline-flex; align-items: center; gap: 9px; }
@@ -112,7 +123,10 @@ kbd, .cap {
   padding: 15px 22px 15px 20px; border-radius: 10px;
   text-decoration: none;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2), 0 6px 16px rgba(0, 0, 0, 0.14);
+  transition: background-color 160ms var(--ease), box-shadow 240ms var(--ease), transform 80ms var(--ease);
 }
+.button svg { transition: transform 260ms var(--ease); }
+.button:hover svg { transform: translateY(2px); }
 .button:hover { text-decoration: none; background: var(--action-hover); box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2), 0 10px 24px rgba(0, 0, 0, 0.2); }
 .button:active { transform: translateY(1px); box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2); }
 .button svg { width: 18px; height: 18px; flex: none; }
@@ -147,7 +161,9 @@ kbd, .cap {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
 }
 .try button {
+  position: relative;
   display: inline-flex; align-items: center; gap: 6px;
+  transition: background-color 160ms var(--ease);
   font: 500 0.9375rem/1 var(--sans); color: var(--label);
   background: none; border: 0; border-radius: 7px;
   padding: 7px 12px 7px 8px; cursor: pointer;
@@ -157,6 +173,19 @@ kbd, .cap {
 .try button:hover { background: var(--fill); }
 .try button[aria-pressed="true"] { background: var(--fill); }
 .try button[aria-pressed="true"] span { color: var(--label); }
+/* During the tour, a line under the shown state fills until the next keys are pressed. */
+.try button::after {
+  content: ""; position: absolute; left: 10px; right: 10px; bottom: 2px; height: 2px; border-radius: 1px;
+  opacity: 0.5;
+  background: linear-gradient(var(--label), var(--label)) no-repeat left center / 0% 100%;
+}
+.try button.filling::after { animation: dwell var(--dwell, 3000ms) linear forwards; }
+@keyframes dwell { to { background-size: 100% 100%; } }
+.tour-toggle {
+  font: inherit; color: var(--quiet); background: none; border: 0; padding: 0; cursor: pointer;
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;
+}
+.tour-toggle:hover { color: var(--label); }
 .try-note { margin-top: 18px; font-size: 0.875rem; color: var(--quiet); }
 
 /* Keys */
@@ -202,12 +231,13 @@ h2 { font-size: clamp(2rem, 1.2rem + 2.7vw, 3.375rem); line-height: 1.06; letter
 .cluster svg { width: calc(var(--u) * 0.22); height: calc(var(--u) * 0.22); }
 button.k {
   cursor: pointer; color: var(--label); font-weight: 500;
-  background: var(--key); border-color: var(--key-edge); box-shadow: var(--key-shadow);
+  background: var(--key); border-color: var(--key-edge); box-shadow: 0 0 0 0 transparent, var(--key-shadow);
   font-size: calc(var(--u) * 0.3);
 }
 button.k.letter { align-items: center; padding: 0; font-size: calc(var(--u) * 0.36); }
-button.k.on, button.k.down { background: var(--action); color: var(--on-action); border-color: transparent; }
-button.k.down { transform: translateY(1px); box-shadow: none; }
+.k { transition: transform 180ms var(--ease), box-shadow 180ms var(--ease), background-color 180ms var(--ease), color 180ms var(--ease); }
+button.k.on { box-shadow: 0 0 0 1.5px var(--label), var(--key-shadow); }
+button.k.down { background: var(--action); color: var(--on-action); border-color: transparent; transform: translateY(2px); box-shadow: 0 0 0 0 transparent, 0 0 0 rgba(0, 0, 0, 0), 0 0 0 rgba(0, 0, 0, 0); transition-duration: 60ms; }
 .meaning {
   margin: 28px auto 0; min-height: 3.2em; max-width: 40rem;
   display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;
@@ -217,6 +247,8 @@ button.k.down { transform: translateY(1px); box-shadow: none; }
 .meaning .combo kbd { font-size: 0.95rem; }
 .meaning .what { color: var(--quiet); }
 .meaning .what strong { color: var(--label); font-weight: 600; }
+.meaning.swap > * { animation: rise 220ms var(--ease); }
+@keyframes rise { from { opacity: 0; transform: translateY(5px); } }
 
 .keylist { display: none; margin: 36px auto 0; padding: 0; list-style: none; max-width: 30rem; }
 .keylist li { display: grid; grid-template-columns: 6.5rem 1fr; gap: 14px; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--edge); }
@@ -264,6 +296,14 @@ button.k.down { transform: translateY(1px); box-shadow: none; }
 .code .c { color: var(--quiet); }
 .code .s { color: var(--quiet); }
 .code .t { font-weight: 600; }
+.code .saved { margin-left: auto; color: var(--label); }
+.code .saved:not([hidden]) { animation: rise 260ms var(--ease); }
+.caret {
+  display: inline-block; width: 2px; height: 1.15em; margin-left: 1px; vertical-align: -0.2em;
+  background: var(--label);
+}
+.caret.waiting { animation: blink 1s steps(1) 2; }
+@keyframes blink { 50% { opacity: 0; } }
 .also {
   margin: var(--section) auto 0; max-width: 46rem; text-align: center;
   font-size: 1.1875rem; color: var(--quiet);
@@ -324,6 +364,12 @@ footer a { color: var(--quiet); }
   .try { display: grid; grid-template-columns: 1fr 1fr; width: auto; margin-left: 0; translate: none; }
   .try button { justify-content: flex-start; }
   .meaning { font-size: 1.0625rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  kbd.down, button.k.down { transform: none; }
+  .button:hover svg { transform: none; }
+  .meaning.swap > *, .code .saved:not([hidden]) { animation: none; }
+  .try button::after { display: none; }
 }
 @media (max-height: 980px) and (min-width: 761px) {
   .hero { padding-top: 44px; }
@@ -387,7 +433,7 @@ footer a { color: var(--quiet); }
             <img src="snapshots/clipboard-text-light.png" width="680" height="423" alt="The clipboard history: copied YAML previewed on the tile with Paste, then a link, an image, a PDF and a pinned note.">
           </picture>
         </div>
-        <p class="try-note">Real screens from Pith. Press the keys on your own keyboard, too.</p>
+        <p class="try-note">Real screens from Pith. Press the keys on your own keyboard, too. <button type="button" class="tour-toggle" hidden>Pause the tour</button></p>
       </div>
     </div>
   </section>
@@ -507,8 +553,12 @@ footer a { color: var(--quiet); }
         <p>Reveal in Finder, copy the path, open with another app, Quick Look, zip, move to the Trash, quit or force quit.</p>
         <p class="detail"><kbd>⌘</kbd> <kbd>Q</kbd> to <kbd>⌘</kbd> <kbd>U</kbd> run the first seven straight away, and Force Quit waits for a second <kbd>⏎</kbd>.</p>
       </div>
-      <div class="shot">
-        <picture>
+      <div class="shot" data-play>
+        <picture data-step="before" hidden>
+          <source media="(prefers-color-scheme: dark)" srcset="snapshots/recent-dark.png">
+          <img src="snapshots/recent-light.png" width="680" height="423" loading="lazy" alt="Pith open on its recent list, before ⌘K.">
+        </picture>
+        <picture data-step="after">
           <source media="(prefers-color-scheme: dark)" srcset="snapshots/actions-dark.png">
           <img src="snapshots/actions-light.png" width="680" height="423" loading="lazy" alt="⌘K on a PDF: the file stays on the tile and its actions are listed, Open, Reveal in Finder, Copy Path and more, each with its ⌘Q to ⌘U key.">
         </picture>
@@ -523,8 +573,12 @@ footer a { color: var(--quiet); }
         <p>Text, links, images and files, with a preview big enough to know it at a glance. <kbd>⏎</kbd> pastes it into the app you were in.</p>
         <p class="detail">Pin what you reuse. The rest stays on your Mac for 30 days, up to 2&nbsp;GB, and copies from password managers are never recorded.</p>
       </div>
-      <div class="shot">
-        <picture>
+      <div class="shot" data-play>
+        <picture data-step="before" hidden>
+          <source media="(prefers-color-scheme: dark)" srcset="snapshots/recent-dark.png">
+          <img src="snapshots/recent-light.png" width="680" height="423" loading="lazy" alt="Pith open on its recent list, before ⌘⇧V.">
+        </picture>
+        <picture data-step="after">
           <source media="(prefers-color-scheme: dark)" srcset="snapshots/clipboard-text-dark.png">
           <img src="snapshots/clipboard-text-light.png" width="680" height="423" loading="lazy" alt="The clipboard history: copied YAML previewed on the tile with Paste, then a link, an image, a PDF and a pinned note.">
         </picture>
@@ -540,7 +594,7 @@ footer a { color: var(--quiet); }
         <p class="detail">A mistake shows up as a row at the top of the launcher, and <kbd>⏎</kbd> opens the file.</p>
       </div>
       <figure class="code" style="margin:0">
-        <figcaption class="title">~/.config/pith/config.toml</figcaption>
+        <figcaption class="title">~/.config/pith/config.toml <span class="saved" hidden>Saved, and Pith has it</span></figcaption>
 <pre><code><span class="t">[hotkeys]</span>
 launcher  = <span class="s">"cmd+p"</span>
 clipboard = <span class="s">"cmd+shift+v"</span>
@@ -552,7 +606,7 @@ folders = [<span class="s">"~"</span>]
 ignore  = [<span class="s">".*"</span>, <span class="s">"node_modules"</span>]
 
 <span class="t">[actions]</span>
-terminal = <span class="s">"Ghostty"</span>
+terminal = <span class="s">"<span id="terminal">Ghostty</span>"</span>
 
 <span class="t">[open_with]</span>
 md  = <span class="s">"Visual Studio Code"</span>
@@ -600,7 +654,7 @@ pdf = <span class="s">"Preview"</span></code></pre>
 
   <section class="close" aria-labelledby="close-title">
     <div class="wrap">
-      <div class="caps" aria-hidden="true"><kbd>⌘</kbd><kbd>P</kbd></div>
+      <div class="caps" aria-hidden="true"><kbd data-code="MetaLeft MetaRight">⌘</kbd><kbd data-code="KeyP">P</kbd></div>
       <h2 id="close-title">One keystroke away.</h2>
       <div class="get">
         <a class="button" href="Pith.zip" download>
@@ -624,55 +678,164 @@ pdf = <span class="s">"Preview"</span></code></pre>
 
 <script>
 (() => {
-  // The hero panel: one state at a time, switched in one frame like the app itself.
+  // Motion lives in the keys; the panel itself changes in one frame, as in the app.
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const stopped = () => new DOMException('stopped', 'AbortError');
+  const wait = (ms, signal) => new Promise((done, fail) => {
+    if (signal?.aborted) return fail(stopped());
+    const t = setTimeout(done, ms);
+    signal?.addEventListener('abort', () => { clearTimeout(t); fail(stopped()); }, { once: true });
+  });
+  // Presses `caps` in order, calls `onDown` as the last one goes down, holds, and lets them all up.
+  const chord = async (caps, signal, onDown, gap = 120, hold = 240) => {
+    try {
+      for (const [i, cap] of caps.entries()) {
+        cap.classList.add('down');
+        if (i === caps.length - 1) onDown?.();
+        await wait(i === caps.length - 1 ? hold : gap, signal);
+      }
+    } finally {
+      for (const cap of caps) cap.classList.remove('down');
+    }
+  };
+  const once = (el, threshold, run) => {
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      io.disconnect();
+      run();
+    }, { threshold });
+    io.observe(el);
+  };
+
+  // The hero panel, and a tour of its keys until the visitor takes over.
   const shots = [...document.querySelectorAll('#demo picture')];
-  const tries = [...document.querySelectorAll('.try button')];
+  const tryRow = document.querySelector('.try');
+  const tries = [...tryRow.querySelectorAll('button')];
+  let current = 'recent';
   const show = (state) => {
+    current = state;
     for (const p of shots) p.hidden = p.dataset.state !== state;
     for (const b of tries) b.setAttribute('aria-pressed', String(b.dataset.show === state));
   };
-  for (const b of tries) b.addEventListener('click', () => show(b.dataset.show));
+  // The tour plays once through the four states, from the one shown; pressing anything pauses it.
+  const order = ['search', 'actions', 'clipboard', 'recent'];
+  const dwell = 3000;
+  const toggle = document.querySelector('.tour-toggle');
+  const tour = { paused: calm, done: false, seen: false, started: false, run: null };
+  // The line under a state fills from its switch to the next press, so it only runs when a press follows.
+  const fill = (state) => {
+    for (const b of tries) {
+      b.classList.remove('filling');
+      if (b.dataset.show === state) { void b.offsetWidth; b.classList.add('filling'); }
+    }
+  };
+  const syncTour = () => {
+    const go = !tour.paused && !tour.done && tour.seen && !document.hidden;
+    if (go && !tour.run) {
+      const run = new AbortController();
+      tour.run = run;
+      tryRow.classList.add('touring');
+      tryRow.style.setProperty('--dwell', dwell + 'ms');
+      (async () => {
+        await wait(tour.started ? 500 : 1400, run.signal);
+        tour.started = true;
+        while (true) {
+          const state = order[(order.indexOf(current) + 1) % order.length];
+          const caps = [...tries.find((b) => b.dataset.show === state).querySelectorAll('kbd')];
+          const taps = state === 'search' ? caps.map((c) => [c]) : [caps];
+          const final = state === 'recent';
+          for (const [n, tap] of taps.entries()) {
+            const last = n === taps.length - 1;
+            await chord(tap, run.signal, last ? () => { show(state); if (!final) fill(state); } : null, 120, last ? 240 : 90);
+          }
+          await wait(dwell - 240, run.signal);
+          if (state === 'recent') break;
+        }
+        tour.done = true;
+        tour.run = null;
+        tryRow.classList.remove('touring');
+        fill(null);
+        syncTour();
+      })().catch(() => {});
+    } else if (!go && tour.run) {
+      tour.run.abort();
+      tour.run = null;
+      tryRow.classList.remove('touring');
+      fill(null);
+    }
+    toggle.hidden = false;
+    toggle.textContent = tour.done ? 'Play the tour again' : tour.paused ? 'Play the tour' : 'Pause the tour';
+  };
+  const takeOver = () => { if (tour.paused) return; tour.paused = true; syncTour(); };
+  for (const b of tries) b.addEventListener('click', () => { takeOver(); show(b.dataset.show); });
+  toggle.addEventListener('click', () => {
+    if (tour.done) { tour.done = false; tour.paused = false; } else tour.paused = !tour.paused;
+    syncTour();
+  });
+  new IntersectionObserver((entries) => { tour.seen = entries[0].isIntersecting; syncTour(); }, { threshold: 0.4 })
+    .observe(document.querySelector('.stage'));
+  document.addEventListener('visibilitychange', syncTour);
 
-  // The keyboard: what each lit key does, shown below it.
+  // The keyboard: what each lit key does, played as the chord you'd press.
   const meanings = {};
   for (const li of document.querySelectorAll('.keylist li')) meanings[li.dataset.group] = li.innerHTML;
   const groups = { open: ['MetaLeft', 'MetaRight', 'KeyP'], clipboard: ['MetaLeft', 'MetaRight', 'ShiftLeft', 'ShiftRight', 'KeyV'],
     actions: ['MetaLeft', 'MetaRight', 'KeyK'], 'actions-n': ['MetaLeft', 'MetaRight', 'KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU'],
     move: ['ArrowUp', 'ArrowDown', 'ControlLeft', 'KeyJ', 'KeyK'], return: ['Enter'], esc: ['Escape'], look: ['Space'],
     delete: ['Backspace'], c: ['KeyC', 'Space'] };
-  const keys = [...document.querySelectorAll('.keyboard button.k')];
+  const plays = { open: [['MetaLeft', 'KeyP']], clipboard: [['MetaLeft', 'ShiftLeft', 'KeyV']], actions: [['MetaLeft', 'KeyK']],
+    'actions-n': ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU'].map((k) => ['MetaLeft', k]),
+    move: [['ArrowDown'], ['ArrowDown'], ['ArrowUp']], return: [['Enter']], esc: [['Escape']], look: [['Space']],
+    delete: [['Backspace']], c: [['KeyC'], ['Space']] };
+  const keyboard = document.querySelector('.keyboard');
+  const keys = [...keyboard.querySelectorAll('button.k')];
+  // Every drawn key that answers a real key: the keyboard's and the closing ⌘ P.
   const byCode = new Map();
+  const listen = (el, code) => { if (!byCode.has(code)) byCode.set(code, []); byCode.get(code).push(el); };
   for (const k of keys) {
     const code = k.dataset.code || (k.dataset.group === 'esc' ? 'Escape' : null);
-    if (code) { k.dataset.code = code; byCode.set(code, k); }
+    if (code) { k.dataset.code = code; listen(k, code); }
   }
+  for (const cap of document.querySelectorAll('.close kbd[data-code]')) for (const code of cap.dataset.code.split(' ')) listen(cap, code);
+  const drawn = (code) => keys.find((k) => k.dataset.code === code);
   const meaning = document.getElementById('meaning');
   const idle = meaning.innerHTML;
   let shown = null;
-  const explain = (group) => {
-    if (group === shown) return;
-    shown = group;
-    for (const k of keys) k.classList.toggle('on', !!group && groups[group].includes(k.dataset.code));
-    if (!group) { meaning.innerHTML = idle; return; }
-    meaning.innerHTML = meanings[group];
+  let playing = null;
+  const explain = (group, play) => {
+    if (group !== shown) {
+      shown = group;
+      for (const k of keys) k.classList.toggle('on', !!group && groups[group].includes(k.dataset.code));
+      meaning.innerHTML = group ? meanings[group] : idle;
+      meaning.classList.remove('swap'); void meaning.offsetWidth; meaning.classList.add('swap');
+    }
+    if (!play || calm || !group) return;
+    playing?.abort();
+    const run = new AbortController();
+    playing = run;
+    (async () => {
+      const fast = plays[group].length > 3;
+      for (const tap of plays[group]) await chord(tap.map(drawn), run.signal, null, fast ? 50 : 120, fast ? 110 : 260);
+    })().catch(() => {});
   };
   for (const k of keys) {
-    k.addEventListener('mouseenter', () => explain(k.dataset.group));
-    k.addEventListener('focus', () => explain(k.dataset.group));
-    k.addEventListener('click', () => explain(k.dataset.group));
+    k.addEventListener('mouseenter', () => explain(k.dataset.group, true));
+    k.addEventListener('focus', () => explain(k.dataset.group, true));
+    k.addEventListener('click', () => explain(k.dataset.group, true));
   }
-  document.querySelector('.keyboard').addEventListener('mouseleave', () => explain(null));
+  keyboard.addEventListener('mouseleave', () => { playing?.abort(); explain(null); });
+  if (!calm) once(keyboard, 0.6, () => wait(500).then(() => { if (!shown) explain('open', true); }));
 
-  // Real keys: the drawn ones go down, and ⌘P, ⌘K, ⌘⇧V or typing switch the panel.
+  // Real keys: the drawn ones go down, and ⌘P, ⌘K, ⌘⇧V or typing "te" switch the panel.
   const down = new Set();
-  // The search screen is a search for "te", so only typing that shows it.
   let typed = '';
   let typedAt = 0;
-  const release = () => { for (const c of down) byCode.get(c)?.classList.remove('down'); down.clear(); };
+  const press = (code, on) => { for (const el of byCode.get(code) || []) el.classList.toggle('down', on); };
+  const release = () => { for (const c of down) press(c, false); down.clear(); };
   addEventListener('keydown', (e) => {
     if (e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return;
-    const k = byCode.get(e.code);
-    if (k) { k.classList.add('down'); down.add(e.code); }
+    takeOver();
+    if (byCode.has(e.code)) { press(e.code, true); down.add(e.code); }
     const key = e.key.toLowerCase();
     if (e.metaKey && e.shiftKey && key === 'v') { e.preventDefault(); show('clipboard'); explain('clipboard'); }
     else if (e.metaKey && !e.shiftKey && key === 'p') { e.preventDefault(); show('recent'); explain('open'); }
@@ -686,9 +849,46 @@ pdf = <span class="s">"Preview"</span></code></pre>
   });
   addEventListener('keyup', (e) => {
     if (e.key === 'Meta') release();
-    else { byCode.get(e.code)?.classList.remove('down'); down.delete(e.code); }
+    else { press(e.code, false); down.delete(e.code); }
   });
   addEventListener('blur', release);
+
+  // Feature rows: their heading's keys press once as the row comes in, and the panel answers.
+  for (const shot of document.querySelectorAll('.shot[data-play]')) {
+    if (calm) continue;
+    const before = shot.querySelector('[data-step="before"]');
+    const after = shot.querySelector('[data-step="after"]');
+    const caps = [...shot.closest('.feature').querySelectorAll('h2 kbd')];
+    before.hidden = false; after.hidden = true;
+    once(shot, 0.6, () => wait(450).then(() => chord(caps, null, () => { before.hidden = true; after.hidden = false; }, 150, 300)));
+  }
+
+  // The config file: a setting changes, and Pith has it on save.
+  const terminal = document.getElementById('terminal');
+  const saved = document.querySelector('.code .saved');
+  if (calm) saved.hidden = false;
+  else {
+    terminal.textContent = 'Terminal';
+    once(terminal.closest('.code'), 0.6, async () => {
+      const caret = document.createElement('span');
+      caret.className = 'caret waiting';
+      terminal.after(caret);
+      await wait(700);
+      caret.classList.remove('waiting');
+      for (let t = 'Terminal'; t; t = t.slice(0, -1)) { terminal.textContent = t; await wait(45); }
+      terminal.textContent = '';
+      await wait(250);
+      for (const ch of 'Ghostty') { terminal.textContent += ch; await wait(85); }
+      caret.classList.add('waiting');
+      await wait(500);
+      caret.remove();
+      saved.hidden = false;
+    });
+  }
+
+  // The closing ⌘ P presses itself once.
+  const closing = [...document.querySelectorAll('.close kbd')];
+  if (!calm) once(document.querySelector('.close .caps'), 0.8, () => wait(300).then(() => chord(closing, null, null, 160, 380)));
 
   // The bar gets its edge once the page scrolls.
   const bar = document.querySelector('.bar');

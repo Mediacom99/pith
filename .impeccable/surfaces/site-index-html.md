@@ -18,14 +18,14 @@ Scope: the front page of pith.edoardobertoli.xyz. Mode: Persuade.
 - **Answers (Edoardo, 2026-11-23):** the headline leads with fast and small; Edoardo's first-person "why" names
   Raycast once; features are what ships (launcher, ⌘K, clipboard, updates), and the calculator is one line under
   "coming next".
-- **Memorable moment:** the page is driven like Pith: ⌘P, ⌘K, ⌘⇧V or typing "te" switch the hero panel in one frame.
+- **Memorable moment:** the page is driven like Pith: its keys press themselves once through a tour, and ⌘P, ⌘K, ⌘⇧V or typing "te" switch the hero panel in one frame.
 - **Phones:** below 600 px the drawn keyboard becomes a list of the same keys and meanings.
 
 ## Direction contract
 
 THESIS: Pith's page is driven like Pith: the visitor presses ⌘P, ⌘K or ⌘⇧V and the real panel changes state in one frame. It refuses the category's glowing gradient hero and looping product video: the proof is the actual panel at its actual size, and quiet everywhere else.
 
-OWN-WORLD: Stage carried to the web. macOS window neutrals only: ground #141414 / #ECECEC, the panel's #1E1E1E / #FFFFFF, label at 85 %, quiet #A1A1A1 / #666666; no accent and no brand hue, and the download button is the label color itself. SF Pro (the system face, as in the app) at display sizes with tight tracking; SF Mono only for the config file. Key caps (7 px corners, an edge and a soft offset shadow) are the one component language: buttons, the demo and the keyboard are keys. State changes are instant; nothing fades or slides.
+OWN-WORLD: Stage carried to the web. macOS window neutrals only: ground #141414 / #ECECEC, the panel's #1E1E1E / #FFFFFF, label at 85 %, quiet #A1A1A1 / #666666; no accent and no brand hue, and the download button is the label color itself. SF Pro (the system face, as in the app) at display sizes with tight tracking; SF Mono only for the config file. Key caps (7 px corners, an edge and a soft offset shadow) are the one component language: buttons, the demo and the keyboard are keys. The panel snapshots change in one frame, as the app does; the motion lives in the keys (Edoardo asked for animation, 2026-11-23): keys press down and ease up, the hero plays its tour once, the ⌘K and ⌘⇧V rows press their own keys as they arrive, the config block retypes a value, the drawn keyboard plays chords. Nothing fades a panel or loops, and Reduce Motion plays nothing by itself.
 
 STORY: A friend's link opens. In one viewport they read that Pith is a fast, small launcher, see the real panel, and press a key to watch it work. Scrolling, they learn the keys and four reasons (fast, small, private, native), then the launcher, ⌘K, the clipboard and the config file, read Edoardo's why, and download knowing about Open Anyway.
 
