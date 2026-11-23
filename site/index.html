@@ -290,7 +290,7 @@ button.k.down { background: var(--action); color: var(--on-action); border-color
 }
 .code pre {
   margin: 0; padding: 20px 22px 24px;
-  font: 400 0.875rem/1.7 var(--mono); color: var(--label);
+  font: 400 0.8125rem/1.75 var(--mono); color: var(--label);
   overflow-x: auto; tab-size: 2;
 }
 .code .c { color: var(--quiet); }
@@ -304,6 +304,27 @@ button.k.down { background: var(--action); color: var(--on-action); border-color
 }
 .caret.waiting { animation: blink 1s steps(1) 2; }
 @keyframes blink { 50% { opacity: 0; } }
+/* Configuration: the whole file beside every setting; pointing at either lights the other. */
+.config {
+  margin-top: clamp(36px, 5vw, 56px);
+  display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: clamp(28px, 4vw, 56px); align-items: start;
+}
+.config .code { margin: 0; position: sticky; top: 84px; }
+.code .line { display: block; margin: 0 -22px; padding: 0 22px; transition: background-color 160ms var(--ease); }
+.code .line.lit { background: var(--fill); }
+.head code, .settings code, .config-note code { font: 400 0.9em var(--mono); overflow-wrap: anywhere; }
+.settings .table + .table { margin-top: 26px; }
+.settings h3 { font: 600 0.875rem/1 var(--mono); color: var(--quiet); letter-spacing: 0; margin-bottom: 6px; }
+.settings dl { margin: 0; }
+.setting { padding: 10px 12px; margin: 0 -12px; border-radius: 7px; transition: background-color 160ms var(--ease); }
+.setting.lit { background: var(--fill); }
+.setting dt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.setting dt code { font: 600 0.9375rem var(--mono); color: var(--label); }
+.setting .default { font: 400 0.8125rem var(--mono); color: var(--quiet); }
+.setting dd { margin: 4px 0 0; color: var(--quiet); font-size: 0.9375rem; }
+.setting dd code { color: var(--label); }
+.config-note { margin-top: 28px; color: var(--quiet); font-size: 0.9375rem; }
+.config-note kbd { font-size: 0.78em; }
 .also {
   margin: var(--section) auto 0; max-width: 46rem; text-align: center;
   font-size: 1.1875rem; color: var(--quiet);
@@ -354,6 +375,8 @@ footer a { color: var(--quiet); }
   .feature, .feature.flip { grid-template-columns: 1fr; }
   .feature.flip .text { order: 0; }
   .steps { grid-template-columns: 1fr; max-width: 34rem; }
+  .config { grid-template-columns: minmax(0, 1fr); }
+  .config .code { position: static; }
 }
 @media (max-width: 760px) {
   .bar nav { display: none; }
@@ -385,6 +408,7 @@ footer a { color: var(--quiet); }
       <a href="#keys">Keys</a>
       <a href="#launcher">Features</a>
       <a href="#clipboard">Clipboard</a>
+      <a href="#config">Config</a>
       <a href="#why">Why</a>
       <a href="#install">Install</a>
     </nav>
@@ -587,31 +611,37 @@ footer a { color: var(--quiet); }
   </section>
 
   <section id="config" aria-labelledby="config-title">
-    <div class="wrap feature flip">
-      <div class="text">
+    <div class="wrap">
+      <div class="head">
         <h2 id="config-title">One text file. No settings window.</h2>
-        <p>Hotkeys, folders, your terminal, which app opens what. Save the file and the change is live.</p>
-        <p class="detail">A mistake shows up as a row at the top of the launcher, and <kbd>⏎</kbd> opens the file.</p>
+        <p>The first time it starts, Pith writes <code>~/.config/pith/config.toml</code> with every setting at its default. Edit it in any editor: saved changes apply right away.</p>
       </div>
-      <figure class="code" style="margin:0">
-        <figcaption class="title">~/.config/pith/config.toml <span class="saved" hidden>Saved, and Pith has it</span></figcaption>
-<pre><code><span class="t">[hotkeys]</span>
-launcher  = <span class="s">"cmd+p"</span>
-clipboard = <span class="s">"cmd+shift+v"</span>
-
-<span class="t">[launcher]</span>
-<span class="c"># recent, running or none</span>
-empty_state = <span class="s">"recent"</span>
-folders = [<span class="s">"~"</span>]
-ignore  = [<span class="s">".*"</span>, <span class="s">"node_modules"</span>]
-
-<span class="t">[actions]</span>
-terminal = <span class="s">"<span id="terminal">Ghostty</span>"</span>
-
-<span class="t">[open_with]</span>
-md  = <span class="s">"Visual Studio Code"</span>
-pdf = <span class="s">"Preview"</span></code></pre>
-      </figure>
+      <div class="config">
+        <figure class="code">
+          <figcaption class="title">~/.config/pith/config.toml <span class="saved" hidden>Saved, and Pith has it</span></figcaption>
+<pre><code><span class="line"><span class="c"># Pith settings. Saved changes apply right away.</span></span><span class="line"> </span><span class="line"><span class="t">[hotkeys]</span></span><span class="line" data-key="hotkeys.launcher">launcher  = <span class="s">"cmd+p"</span></span><span class="line" data-key="hotkeys.clipboard">clipboard = <span class="s">"cmd+shift+v"</span></span><span class="line"> </span><span class="line"><span class="t">[launcher]</span></span><span class="line" data-key="launcher.empty_state">empty_state = <span class="s">"recent"</span></span><span class="line" data-key="launcher.launch_at_login">launch_at_login = true</span><span class="line" data-key="launcher.folders">folders = [<span class="s">"~"</span>]</span><span class="line" data-key="launcher.ignore">ignore = [<span class="s">".*"</span>, <span class="s">"~/Library"</span>, <span class="s">"node_modules"</span>,</span><span class="line" data-key="launcher.ignore">          <span class="s">".build"</span>, <span class="s">"*.photoslibrary"</span>]</span><span class="line" data-key="launcher.max_depth">max_depth = 6</span><span class="line"> </span><span class="line"><span class="t">[clipboard]</span></span><span class="line" data-key="clipboard.max_size_gb">max_size_gb  = 2</span><span class="line" data-key="clipboard.max_age_days">max_age_days = 30</span><span class="line"> </span><span class="line"><span class="t">[actions]</span></span><span class="line" data-key="actions.terminal">terminal = <span class="s">"<span id="terminal">Ghostty</span>"</span></span><span class="line"> </span><span class="line"><span class="t">[open_with]</span></span><span class="line" data-key="open_with.md">md  = <span class="s">"Visual Studio Code"</span></span><span class="line" data-key="open_with.pdf">pdf = <span class="s">"Preview"</span></span><span class="line"> </span><span class="line"><span class="t">[open_links]</span></span><span class="line" data-key="open_links.https">https = <span class="s">"Firefox"</span></span></code></pre>
+        </figure>
+        <div class="settings" aria-label="Every setting, with its default">
+          <div class="table"><h3>[hotkeys]</h3><dl>
+            <div class="setting" data-match="hotkeys.launcher"><dt><code>launcher</code><span class="default">&quot;cmd+p&quot;</span></dt><dd>Opens the launcher from any app: cmd, shift, alt or ctrl, plus one key.</dd></div>
+            <div class="setting" data-match="hotkeys.clipboard"><dt><code>clipboard</code><span class="default">&quot;cmd+shift+v&quot;</span></dt><dd>Opens the clipboard history from any app.</dd></div></dl></div>
+          <div class="table"><h3>[launcher]</h3><dl>
+            <div class="setting" data-match="launcher.empty_state"><dt><code>empty_state</code><span class="default">&quot;recent&quot;</span></dt><dd>What shows before you type: <code>"recent"</code>, <code>"running"</code> or <code>"none"</code>.</dd></div>
+            <div class="setting" data-match="launcher.launch_at_login"><dt><code>launch_at_login</code><span class="default">true</span></dt><dd>Starts Pith when you log in.</dd></div>
+            <div class="setting" data-match="launcher.folders"><dt><code>folders</code><span class="default">[&quot;~&quot;]</span></dt><dd>Where files and folders are searched. <code>~</code> is your home folder.</dd></div>
+            <div class="setting" data-match="launcher.ignore"><dt><code>ignore</code><span class="default">hidden files, ~/Library…</span></dt><dd>Names, patterns or paths to skip.</dd></div>
+            <div class="setting" data-match="launcher.max_depth"><dt><code>max_depth</code><span class="default">6</span></dt><dd>How many folders deep to search, 1 to 32.</dd></div></dl></div>
+          <div class="table"><h3>[clipboard]</h3><dl>
+            <div class="setting" data-match="clipboard"><dt><code>max_size_gb, max_age_days</code><span class="default">2, 30</span></dt><dd>How much history to keep. Whichever limit comes first drops the oldest items; pinned ones stay.</dd></div></dl></div>
+          <div class="table"><h3>[actions]</h3><dl>
+            <div class="setting" data-match="actions.terminal"><dt><code>terminal</code><span class="default">&quot;Terminal&quot;</span></dt><dd>The app Open in Terminal uses: Terminal, iTerm, Ghostty, Warp…</dd></div></dl></div>
+          <div class="table"><h3>[open_with]</h3><dl>
+            <div class="setting" data-match="open_with"><dt><code>extension or type</code><span class="default">none</span></dt><dd>Which app opens a file type from the launcher: an app’s name, bundle id or path. Other files open in their default app.</dd></div></dl></div>
+          <div class="table"><h3>[open_links]</h3><dl>
+            <div class="setting" data-match="open_links"><dt><code>URL scheme</code><span class="default">none</span></dt><dd>Which app opens a link from the clipboard. <code>https</code> covers <code>http</code> too.</dd></div></dl></div>
+        </div>
+      </div>
+      <p class="config-note">A mistake shows up as a row at the top of the launcher, and <kbd>⏎</kbd> opens the file. Open Config and Reload Config are commands in the launcher too.</p>
     </div>
     <p class="also wrap"><strong>Also:</strong> Quick Look with Space · Zip in the background · recent files, running apps or nothing when it opens · starts at login · updates itself, or Check for Updates when you want.</p>
   </section>
@@ -884,6 +914,23 @@ pdf = <span class="s">"Preview"</span></code></pre>
       caret.remove();
       saved.hidden = false;
     });
+  }
+
+  // Configuration: pointing at a setting lights its lines in the file, and a line lights its setting.
+  const lines = [...document.querySelectorAll('.code .line[data-key]')];
+  const settings = [...document.querySelectorAll('.setting')];
+  const owns = (setting, key) => key === setting.dataset.match || key.startsWith(setting.dataset.match + '.');
+  const light = (setting) => {
+    for (const s of settings) s.classList.toggle('lit', s === setting);
+    for (const l of lines) l.classList.toggle('lit', !!setting && owns(setting, l.dataset.key));
+  };
+  for (const setting of settings) {
+    setting.addEventListener('mouseenter', () => light(setting));
+    setting.addEventListener('mouseleave', () => light(null));
+  }
+  for (const line of lines) {
+    line.addEventListener('mouseenter', () => light(settings.find((s) => owns(s, line.dataset.key)) || null));
+    line.addEventListener('mouseleave', () => light(null));
   }
 
   // The closing ⌘ P presses itself once.

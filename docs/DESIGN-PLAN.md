@@ -166,7 +166,8 @@ Edoardo, in Stage's world carried to the web. The direction contract is in `.imp
 - **First viewport:** the claim "Fast, small, and out of your way.", Download for Mac, four key caps (⌘P, te, ⌘K,
   ⌘⇧V) that switch the real panel underneath in one frame, as do the same keys pressed on the page.
 - **Below:** a keyboard of key caps where Pith's keys are lit and explain themselves, four reasons with measured
-  numbers (44 MB and 0 % CPU idle on 2026-11-23), rows for the launcher, ⌘K, the clipboard and the config file,
+  numbers (44 MB and 0 % CPU idle on 2026-11-23), rows for the launcher, ⌘K and the clipboard, a configuration
+  section (the whole `config.toml` beside every setting, its default and what it does, each lighting the other),
   Edoardo's why, the three first-open steps, and a closing ⌘P with Download.
 - **Motion** (decision 53), in the keys only: presses, a one-time hero tour, chords, a retyped config value; the
   snapshots change in one frame, and Reduce Motion plays nothing by itself. Checked by impeccable's motion review.
