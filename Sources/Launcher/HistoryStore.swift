@@ -21,9 +21,7 @@ final class HistoryStore {
             var history = Self.read(file)
             // Files and folders deleted since: forget them, so `recent` never lists what's gone.
             for id in Array(history.ids) {
-                if let path = Item(fileID: id)?.url?.path, !FileManager.default.fileExists(atPath: path) {
-                    history.remove(id)
-                }
+                if let path = Item(fileID: id)?.url?.path, Self.isGone(path) { history.remove(id) }
             }
             return history
         }
@@ -50,6 +48,18 @@ final class HistoryStore {
     /// Waits for pending saves: called when the app quits.
     func flush() {
         writer.sync {}
+    }
+
+    /// Whether `path` was deleted: not there, on a drive that is. One on a drive that isn't plugged in, or in a folder
+    /// Pith may not read (a refused privacy prompt, decision 60), is kept.
+    nonisolated static func isGone(_ path: String) -> Bool {
+        var info = stat()
+        guard lstat(path, &info) != 0, errno == ENOENT else { return false }
+        let parts = path.split(separator: "/", maxSplits: 2)
+        if parts.count > 1, parts[0] == "Volumes" {
+            return FileManager.default.fileExists(atPath: "/Volumes/" + parts[1])
+        }
+        return true
     }
 
     private nonisolated static func read(_ file: URL) -> History {

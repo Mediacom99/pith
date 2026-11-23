@@ -459,7 +459,10 @@ real folder prompts (4) on a first install.
         was: a case-only rename (`report.pdf` → `Report.pdf`) left a duplicate row.
     30. **Fixed:** what was just opened is never the one forgotten; a test covers it. What it was: with 200 items
         remembered, a newly opened one could be forgotten at once, as older ones with many opens outranked it.
-    31. Recents on a drive that isn't mounted at launch are forgotten for good.
+    31. **Confirmed and fixed:** at launch, only what's missing (not unreadable) on a drive that's there is
+        forgotten; a test covers a drive that isn't plugged in and a folder that can't be read. What it was: recents
+        on a drive that wasn't mounted at launch, or in a folder whose privacy prompt was refused, were forgotten for
+        good.
     32. **Fixed, mostly:** FSEvents also leaves out the folders right in a root that its rules skip by name
         (`.cache`, `.npm`, `node_modules`), the most recently changed first, up to its 8; a test covers which. A hidden
         file such as `.zsh_history` can't be left out (FSEvents takes folders), so its writes still wake Pith, and are

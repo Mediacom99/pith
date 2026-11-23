@@ -53,3 +53,31 @@ struct ConfigStoreTests {
         #expect(await eventuallyTrue { store.config.clipboardMaxAgeDays == 90 })
     }
 }
+
+/// The history at launch, on temporary files: never the real `~/Library/Application Support/pith/`.
+struct HistoryStoreTests {
+    /// What was deleted is forgotten; what's on a drive that isn't plugged in, or can't be read, is kept.
+    @MainActor
+    @Test func onlyWhatsReallyGoneIsForgotten() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFile("Acme/notes.md")
+        try folder.makeFolder("Locked")
+        try folder.makeFile("Locked/plan.md")
+        let locked = folder.url.path + "/Locked"
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: locked)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked) }
+        let kept = [
+            "file:" + folder.url.path + "/Acme/notes.md", "file:/Volumes/Acme Backup \(UUID().uuidString)/report.pdf",
+            "file:" + locked + "/plan.md",
+        ]
+        let deleted = "file:" + folder.url.path + "/Acme/old.md"
+        var history = History()
+        for id in kept + [deleted] { history.record(id) }
+        let file = folder.url.appending(path: "history.json")
+        try JSONEncoder().encode(history).write(to: file)
+
+        let store = HistoryStore(file: file)
+        await store.load()
+        #expect(Set(store.history.ids) == Set(kept))
+    }
+}
