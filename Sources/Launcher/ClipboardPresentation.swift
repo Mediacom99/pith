@@ -45,9 +45,9 @@ enum ClipText {
         case .image:
             return ("Image", false)
         case .files:
-            let files = paths(of: clip)
-            let name = (files.first.map { ($0 as NSString).lastPathComponent }) ?? ""
-            return (files.count > 1 ? "\(name) and \(files.count - 1) more" : name, false)
+            // The count from the whole list: a long one is cut in memory.
+            let name = (paths(of: clip).first.map { ($0 as NSString).lastPathComponent }) ?? ""
+            return (clip.lines > 1 ? "\(name) and \((clip.lines - 1).formatted()) more" : name, false)
         }
     }
 
@@ -68,8 +68,11 @@ enum ClipText {
         return (folder as NSString).abbreviatingWithTildeInPath
     }
 
+    /// The files' paths in memory: all of them, or the first 2,500 or so of a longer list, without one cut short.
     static func paths(of clip: Clip) -> [String] {
-        clip.text.split(separator: "\n").map(String.init)
+        var paths = clip.text.split(separator: "\n").map(String.init)
+        if clip.text.utf8.count < clip.textBytes, !paths.isEmpty { paths.removeLast() }
+        return paths
     }
 
     /// What the tile previews of a text: its first lines, as they'll paste, and one more when there is one, so the

@@ -14,6 +14,8 @@ public struct Clip: Sendable, Equatable, Identifiable {
     /// How much of a clip's text is kept in memory, in characters: enough to search it and preview its first lines.
     /// The whole text stays in the store.
     public static let textLimit = 4096
+    /// The same for files' paths, one per line: about 2,500 of them.
+    public static let pathsLimit = 262_144
 
     public let id: Int64
     public var kind: Kind
@@ -24,8 +26,8 @@ public struct Clip: Sendable, Equatable, Identifiable {
     public var pinned: Bool
     /// Bytes on disk: its text, what a paste puts back, and for an image the image and its thumbnails.
     public var size: Int
-    /// The start of its text (`textLimit` characters): the text itself, a link's URL, or the files' paths one per
-    /// line. Empty for an image.
+    /// The start of its text (`textLimit` characters, `pathsLimit` for files): the text itself, a link's URL, or the
+    /// files' paths one per line. Empty for an image.
     public var text: String
     /// How many lines the whole text has, and its size in bytes.
     public var lines: Int

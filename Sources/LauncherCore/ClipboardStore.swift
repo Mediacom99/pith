@@ -337,8 +337,13 @@ public final class ClipboardStore: @unchecked Sendable {
     }
 
     /// `octet_length` reads the text's size from the row without loading the text.
-    private static let clipColumns =
-        "id, kind, copied, source, pinned, size, substr(text, 1, ?), lines, width, height, octet_length(text)"
+    /// A text keeps its first `Clip.textLimit` characters in memory; files keep `Clip.pathsLimit`, so a copy of many
+    /// files still lists them.
+    private static let clipColumns = """
+        id, kind, copied, source, pinned, size, \
+        substr(text, 1, CASE kind WHEN 'files' THEN \(Clip.pathsLimit) ELSE ? END), lines, width, height, \
+        octet_length(text)
+        """
 
     private static func clip(_ row: SQLiteDatabase.Statement) -> Clip {
         Clip(

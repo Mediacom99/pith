@@ -391,6 +391,22 @@ struct ClipboardPanelTests {
         for _ in 0..<row { press("down", in: panel) }
     }
 
+    /// A copy of many files lists them, not the first 4,096 characters' worth: the count is the whole list's, and no
+    /// path is cut.
+    @Test func aCopyOfManyFilesKeepsItsPaths() async throws {
+        let folder = try TemporaryDirectory()
+        let store = ClipboardStore(folder: folder.url)
+        let paths = (0..<3_000).map { "/Users/me/Documents/Acme/Quarterly Budget Review/scan-\($0).pdf" }
+        let items = paths.map { [Representation(type: "public.file-url", data: URL(filePath: $0).dataRepresentation)] }
+        _ = try await store.add(
+            ClipContent(kind: .files, text: paths.joined(separator: "\n"), items: items), from: nil, at: .now)
+        let clip = try #require(try await store.load().first)
+        let listed = ClipText.paths(of: clip)
+        #expect(listed.count > 2_000)
+        #expect(listed == Array(paths.prefix(listed.count)), "none cut short")
+        #expect(ClipText.title(of: clip).text == "scan-0.pdf and \(2_999.formatted()) more")
+    }
+
     /// A copy that lands while you choose keeps your clip selected: ⏎ pastes what the tile shows.
     @Test func aCopyLandingWhileOpenKeepsTheSelection() async throws {
         let folder = try TemporaryDirectory()

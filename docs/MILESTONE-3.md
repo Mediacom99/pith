@@ -24,7 +24,8 @@ Status: **done** (core library; the app uses it from step 2).
   - Applied after each copy, at launch and when the config changes the limits, so no timer is needed.
 - Every call runs on the store's own serial queue, `launcher.clipboard`, so it's off the main thread and off Swift's
   cooperative pool. The main actor gets ready-made `Clip` values.
-- In memory, a clip keeps only the first 4,096 characters of its text; the rest stays on disk for the paste.
+- In memory, a clip keeps only the first 4,096 characters of its text (files: 262,144, about 2,500 paths); the rest
+  stays on disk for the paste.
 - Duplicates are matched by a SHA-256 of the kind, every representation and the image.
 - Deleting gives the space back to the disk: incremental vacuum for the database, and the image files are removed.
   On load, image files a crash left without their clip are removed too.
@@ -423,8 +424,9 @@ real folder prompts (4) on a first install.
 - **Low** (numbered on from the others):
   - **The clipboard:**
     18. An image-only RTFD from TextEdit or Notes is a rich-text clip titled "￼", not an image (suspect).
-    19. A copy of hundreds of files is cut at 4,096 characters: the title says "and ~50 more", Reveal selects only
-        those, and the last path is cut.
+    19. **Fixed:** files keep about 2,500 paths in memory, none cut short, and the title counts the whole list; a
+        test covers 3,000 files. What it was: a copy of hundreds of files was cut at 4,096 characters, so the title
+        said "and ~50 more", Reveal selected only those, and the last path was cut.
     20. Pins over `max_size_gb` drop every new copy right after it's recorded.
     21. **Fixed:** the tables and the version are created in one transaction. What it was: a crash during the very
         first launch broke the history for good ("table already exists").
