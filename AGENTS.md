@@ -39,7 +39,16 @@ Read these before doing anything:
   - Impeccable can't run the app: `make snapshots` draws the panel's states, light and dark, into `docs/snapshots/` without putting anything on screen. Regenerate and commit them with every visual change.
   - Never use claude.ai Artifacts: anything visual is a local HTML file, opened in the browser.
 - **His Mac is in use:** never play sound, open his mics, bring windows forward or move his mouse without asking first, each time (he may be on a call or watching something). Headless checks (builds, tests) are fine anytime. `make run` and `make install` are not headless: they launch the app, which takes ⌘P from every app, so ask first.
-- **Edoardo's daily copy:** he uses the installed app (`~/Applications/Pith.app`, starts at login) in place of Raycast. It's 0.3.4 (2026-11-23, from `clipboard/milestone-3`, ahead of `staging`, which isn't pushed yet), signed with the local certificate (decision 41) so its Accessibility access survives reinstalls, and it updates itself (decisions 48–50). A change reaches it, and whoever else has Pith, as a release: raise the version in `Support/Info.plist`, commit, `make publish`, then Check for Updates in the launcher. Publish from the branch he uses. `make install` still puts a branch build on it to try, until the next publish replaces it. When he stops using it (back to another launcher), remind him and run `make uninstall`.
+- **Edoardo's daily copy:** he uses Pith in place of Raycast. On 2026-11-23 it was removed so he could install 0.3.5
+  from `Pith.dmg` as a new user would (decision 56): his config, clipboard history and Sparkle state are in
+  `~/pith-backup-2026-11-23`, and its privacy permissions were reset (`tccutil reset All dev.edoardo.pith`). The
+  installer puts it in `/Applications`, but `make install` and `make uninstall` use `~/Applications`, so a branch
+  build there would be a second copy fighting for ⌘P; settle that before the next `make install`. It's signed with the
+  local certificate (decision 41) so its Accessibility access survives updates, and it updates itself (decisions
+  48–50). A change reaches it, and whoever else has Pith, as a release: raise the version in `Support/Info.plist`,
+  commit, `make publish`, then Check for Updates in the launcher. Publish from the branch he uses
+  (`clipboard/milestone-3`, ahead of `staging`). When he stops using it (back to another launcher), remind him and
+  remove it.
 - **Secrets** never go in a repo.
 - **Edoardo's work stays out:** never mention his employer, clients or work projects anywhere: code, tests, docs, commit messages, or chat examples. Don't copy real file or folder names from his Mac into the repo either; tests and docs use made-up examples (`Acme`, `Quarterly_Budget_Review.pdf`).
 - **Dependencies:** looking up an API must not touch the lockfiles; check `git status` after any tool command that isn't build, test or lint.
