@@ -92,6 +92,8 @@ Everything goes through the `Makefile`; `make` lists the targets. Add a target t
   `make app`.
 - `Support/wrangler.toml`: `pith.edoardobertoli.xyz` on Cloudflare, where `make publish` puts the update feed and the
   builds.
+- `site/`: the landing page on `pith.edoardobertoli.xyz` (decision 51). `make page` assembles it in `.build/site` with
+  its snapshots, `make site` deploys it with the published feed; it's design work, so it goes through impeccable.
 
 ## Conventions
 

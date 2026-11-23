@@ -152,6 +152,9 @@ Pith updates itself with [Sparkle](https://sparkle-project.org) from `pith.edoar
 Pith isn't notarized, so the first install is blocked once, and they press Open Anyway in System Settings, Privacy &
 Security. Their Mac needs macOS 26 and Apple Silicon. `make package` alone makes the zip without publishing it.
 
+The site's front page is `site/index.html`, the landing page to send people to. `make publish` deploys it with each
+release; to change only the page, `make page` assembles it in `.build/site` to look at, and `make site` deploys it.
+
 ## Configuration
 
 Settings live in `~/.config/pith/config.toml`. It's created with commented defaults on first launch, and saved

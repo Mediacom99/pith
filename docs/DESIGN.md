@@ -22,6 +22,30 @@ colors:
   danger-fill-dark: "rgba(255, 69, 58, 0.16)"
   warning-light: "#C93400"
   warning-dark: "#FF9F0A"
+  web-ground-light: "#ECECEC"
+  web-ground-dark: "#141414"
+  web-label-dark: "rgba(255, 255, 255, 0.86)"
+  web-quiet-light: "#616161"
+  web-faint-light: "rgba(0, 0, 0, 0.38)"
+  web-faint-dark: "rgba(255, 255, 255, 0.36)"
+  web-edge-light: "rgba(0, 0, 0, 0.10)"
+  web-edge-dark: "rgba(255, 255, 255, 0.09)"
+  web-fill-light: "rgba(0, 0, 0, 0.07)"
+  web-fill-dark: "rgba(255, 255, 255, 0.10)"
+  web-key-light: "#FFFFFF"
+  web-key-dark: "#2A2A2A"
+  web-key-edge-light: "rgba(0, 0, 0, 0.13)"
+  web-key-edge-dark: "rgba(255, 255, 255, 0.10)"
+  web-ghost-edge-light: "rgba(0, 0, 0, 0.09)"
+  web-ghost-edge-dark: "rgba(255, 255, 255, 0.07)"
+  web-action-light: "#1C1C1C"
+  web-action-dark: "#EDEDED"
+  web-action-hover-light: "#000000"
+  web-action-hover-dark: "#FFFFFF"
+  web-on-action-light: "#FFFFFF"
+  web-on-action-dark: "#141414"
+  web-text-selection-light: "rgba(0, 0, 0, 0.14)"
+  web-text-selection-dark: "rgba(255, 255, 255, 0.22)"
 typography:
   search:
     fontFamily: "SF Pro, -apple-system, system-ui"
@@ -59,11 +83,66 @@ typography:
     fontFamily: "SF Pro, -apple-system, system-ui"
     fontSize: "11pt"
     fontWeight: 500
+  web-display:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "clamp(2.5rem, 1.15rem + 4.4vw, 4.5rem)"
+    fontWeight: 700
+    lineHeight: 1.02
+    letterSpacing: "-0.038em"
+  web-headline:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "clamp(2rem, 1.2rem + 2.7vw, 3.375rem)"
+    fontWeight: 700
+    lineHeight: 1.06
+    letterSpacing: "-0.032em"
+  web-feature-headline:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "clamp(1.875rem, 1.2rem + 2vw, 2.75rem)"
+    fontWeight: 700
+    lineHeight: 1.06
+    letterSpacing: "-0.032em"
+  web-title:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "1.1875rem"
+    fontWeight: 700
+    letterSpacing: "-0.015em"
+  web-lede:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "clamp(1.0625rem, 0.95rem + 0.45vw, 1.3125rem)"
+    fontWeight: 400
+    lineHeight: 1.5
+  web-body:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "1.0625rem"
+    fontWeight: 400
+    lineHeight: 1.55
+  web-note:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "0.875rem"
+    fontWeight: 400
+  web-button:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "1.0625rem"
+    fontWeight: 600
+    lineHeight: 1
+  web-key-cap:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "0.8em"
+    fontWeight: 500
+    lineHeight: 1
+  web-code:
+    fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace"
+    fontSize: "0.875rem"
+    fontWeight: 400
+    lineHeight: 1.7
 rounded:
   panel: "14pt"
   tile: "10pt"
   row: "7pt"
   key-cap: "5pt"
+  web-surface: "14px"
+  web-button: "10px"
+  web-key-cap: "7px"
 spacing:
   key-cap-gap: "4pt"
   label-gap: "6pt"
@@ -77,6 +156,10 @@ spacing:
   tile-keys-gap: "16pt"
   icon-x: "18pt"
   text-x: "48pt"
+  web-page: "1120px"
+  web-gutter: "clamp(16px, 4vw, 32px)"
+  web-section: "clamp(88px, 11vw, 152px)"
+  web-bar-height: "60px"
 components:
   panel:
     backgroundColor: "{colors.window-background-light}"
@@ -122,16 +205,54 @@ components:
   key-secondary:
     textColor: "{colors.quiet-light}"
     typography: "{typography.key-secondary}"
+  web-download:
+    backgroundColor: "{colors.web-action-light}"
+    textColor: "{colors.web-on-action-light}"
+    typography: "{typography.web-button}"
+    rounded: "{rounded.web-button}"
+    padding: "15px 22px 15px 20px"
+  web-download-hover:
+    backgroundColor: "{colors.web-action-hover-light}"
+    textColor: "{colors.web-on-action-light}"
+  web-download-small:
+    backgroundColor: "{colors.web-action-light}"
+    textColor: "{colors.web-on-action-light}"
+    rounded: "{rounded.web-key-cap}"
+    padding: "9px 14px 9px 12px"
+  web-key-cap:
+    backgroundColor: "{colors.web-key-light}"
+    textColor: "{colors.label-light}"
+    typography: "{typography.web-key-cap}"
+    rounded: "{rounded.web-key-cap}"
+    padding: "0 0.45em"
+    height: "1.9em"
+  web-key-cap-lit:
+    backgroundColor: "{colors.web-action-light}"
+    textColor: "{colors.web-on-action-light}"
+    rounded: "{rounded.web-key-cap}"
+  web-key-ghost:
+    textColor: "{colors.web-faint-light}"
+  web-demo-button:
+    textColor: "{colors.label-light}"
+    rounded: "{rounded.web-key-cap}"
+    padding: "7px 12px 7px 8px"
+  web-demo-button-pressed:
+    backgroundColor: "{colors.web-fill-light}"
+    textColor: "{colors.label-light}"
+    rounded: "{rounded.web-key-cap}"
+  web-surface:
+    backgroundColor: "{colors.window-background-light}"
+    rounded: "{rounded.web-surface}"
 ---
 
 # Design System: launcher
 
 <!-- impeccable:design-map -->
 Name: Pith
-Colors: window-background-light #FFFFFF, window-background-dark #1E1E1E, label-light rgba(0, 0, 0, 0.85), label-dark rgba(255, 255, 255, 0.85), quiet-light #666666, quiet-dark #A1A1A1, key-light #3C3C3C, key-dark #D6D6D6 (+12 more in the frontmatter)
-Fonts: SF Pro (search, tile-name, row-title, key-primary, key-secondary, return-mark, detail, tag, key-cap)
-Spacing: key-cap-gap 4pt, label-gap 6pt, list-bottom 6pt, tile-margin 8pt, key-words-gap 8pt, key-line-gap 8pt, grid-inner 10pt, tile-icon-gap 14pt, tile-padding 16pt, tile-keys-gap 16pt, icon-x 18pt (+1 more in the frontmatter)
-Radius: panel 14pt, tile 10pt, row 7pt, key-cap 5pt
+Colors: window-background-light #FFFFFF, window-background-dark #1E1E1E, label-light rgba(0, 0, 0, 0.85), label-dark rgba(255, 255, 255, 0.85), quiet-light #666666, quiet-dark #A1A1A1, key-light #3C3C3C, key-dark #D6D6D6 (+36 more in the frontmatter)
+Fonts: SF Pro (search, tile-name, row-title, key-primary, key-secondary, return-mark, detail, tag, key-cap, web-display, web-headline, web-feature-headline, web-title, web-lede, web-body, web-note, web-button, web-key-cap); ui-monospace (web-code)
+Spacing: key-cap-gap 4pt, label-gap 6pt, list-bottom 6pt, tile-margin 8pt, key-words-gap 8pt, key-line-gap 8pt, grid-inner 10pt, tile-icon-gap 14pt, tile-padding 16pt, tile-keys-gap 16pt, icon-x 18pt (+5 more in the frontmatter)
+Radius: panel 14pt, tile 10pt, row 7pt, key-cap 5pt, web-surface 14px, web-button 10px, web-key-cap 7px
 North Star: "Stage"
 Rules:
 - The No-Accent Rule. Nothing in the panel is filled or tinted with the accent color or any brand hue.
@@ -140,7 +261,7 @@ Rules:
 - The 11 pt Floor Rule. No text is smaller than 11 pt.
 - The Cut-in-the-Middle Rule. Names and folders that don't fit truncate in the middle, so both the start and the extension stay visible (`Quarterly_Bud…Review.pdf`).
 - The One-Baseline Rule. Everything on a row (name, folder, "running", ↩) sits on the name's baseline.
-- The Flat-Inside Rule. Only the panel casts a shadow, and it is the system's.
+- (+4 more)
 Don't:
 - Don't fill the selection, a key or anything else with the accent color or a solid color bar.
 - Don't use red or orange except for Force Quit's confirmation and config problems.
@@ -149,8 +270,7 @@ Don't:
 - Don't add shadows inside the panel.
 - Don't set text below 11 pt, or use uppercase labels or letter-spacing for hierarchy.
 - Don't hide what ⏎ does in a footer or leave it unsaid.
-Do:
-- Do show what ⏎ acts on in the tile, with the ⏎ key's words in semibold label color.
-- Do end the selected row in ↩, and keep the selection a quiet fill (black 7 % light, white 10 % dark) with 7 pt corners, inset 8 pt.
-- (+5 more)
+- Don't add an accent, gradient hero, glow or product video.
+- Don't animate, fade or slide anything on the page.
+- Don't carry the web tokens (ground, tracking, key-cap shadows) into the app panel.
 Full: .impeccable/design-full.md (read a section when you need its detail)

@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Pith · a fast, small launcher for macOS</title>
+<meta name="description" content="Press ⌘P from any app, type a few letters, press ⏎. Apps, files, folders and your clipboard history in a native Mac app that uses 44 MB and no CPU while it waits.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://pith.edoardobertoli.xyz/">
+<meta property="og:title" content="Pith · a fast, small launcher for macOS">
+<meta property="og:description" content="Press ⌘P, type a few letters, press ⏎. Apps, files, folders and your clipboard, in 44 MB.">
+<meta property="og:image" content="https://pith.edoardobertoli.xyz/snapshots/recent-dark.png">
+<meta property="og:image:width" content="1360">
+<meta property="og:image:height" content="846">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#ECECEC" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141414" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='13' fill='%231E1E1E'/%3E%3Crect x='4.5' y='4.5' width='55' height='55' rx='12.5' fill='none' stroke='%23ffffff' stroke-opacity='.14'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='-apple-system,Helvetica,Arial,sans-serif' font-size='34' font-weight='600' fill='%23EDEDED'%3EP%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  --ground: #ECECEC;
+  --panel: #FFFFFF;
+  --label: rgba(0, 0, 0, 0.85);
+  --quiet: #616161;
+  --faint: rgba(0, 0, 0, 0.38);
+  --edge: rgba(0, 0, 0, 0.10);
+  --fill: rgba(0, 0, 0, 0.07);
+  --key: #FFFFFF;
+  --key-edge: rgba(0, 0, 0, 0.13);
+  --key-shadow: 0 1px 1px rgba(0, 0, 0, 0.10), 0 3px 8px rgba(0, 0, 0, 0.06);
+  --ghost-edge: rgba(0, 0, 0, 0.09);
+  --action: #1C1C1C;
+  --action-hover: #000000;
+  --on-action: #FFFFFF;
+  --panel-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.18), 0 24px 60px rgba(0, 0, 0, 0.16), 0 6px 18px rgba(0, 0, 0, 0.08);
+  --select: rgba(0, 0, 0, 0.14);
+
+  --sans: "SF Pro", -apple-system, BlinkMacSystemFont, system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --display: var(--sans);
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --page: 1120px;
+  --gutter: clamp(16px, 4vw, 32px);
+  --section: clamp(88px, 11vw, 152px);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #141414;
+    --panel: #1E1E1E;
+    --label: rgba(255, 255, 255, 0.86);
+    --quiet: #A1A1A1;
+    --faint: rgba(255, 255, 255, 0.36);
+    --edge: rgba(255, 255, 255, 0.09);
+    --fill: rgba(255, 255, 255, 0.10);
+    --key: #2A2A2A;
+    --key-edge: rgba(255, 255, 255, 0.10);
+    --key-shadow: 0 1px 0 rgba(0, 0, 0, 0.55), 0 4px 10px rgba(0, 0, 0, 0.35);
+    --ghost-edge: rgba(255, 255, 255, 0.07);
+    --action: #EDEDED;
+    --action-hover: #FFFFFF;
+    --on-action: #141414;
+    --panel-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.9), 0 28px 70px rgba(0, 0, 0, 0.55), 0 8px 20px rgba(0, 0, 0, 0.35);
+    --select: rgba(255, 255, 255, 0.22);
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 76px; scrollbar-color: var(--faint) var(--ground); }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--label);
+  font: 400 1.0625rem/1.55 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+::selection { background: var(--select); color: inherit; }
+img { display: block; max-width: 100%; height: auto; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--label); }
+:focus-visible { outline: 2px solid var(--label); outline-offset: 3px; border-radius: 7px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; color: var(--label); margin: 0; text-wrap: balance; }
+p { margin: 0; text-wrap: pretty; }
+.wrap { width: min(var(--page), 100% - 2 * var(--gutter)); margin-inline: auto; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Key caps: the one component language. */
+kbd, .cap {
+  display: inline-grid; place-items: center;
+  min-width: 1.9em; height: 1.9em; padding: 0 0.45em;
+  font: 500 0.8em/1 var(--sans);
+  color: var(--label);
+  background: var(--key);
+  border: 1px solid var(--key-edge);
+  border-radius: 7px;
+  box-shadow: var(--key-shadow);
+}
+
+/* Bar */
+.bar { position: sticky; top: 0; z-index: 10; background: var(--ground); border-bottom: 1px solid transparent; }
+.bar.scrolled { border-bottom-color: var(--edge); }
+.bar .wrap { display: flex; align-items: center; gap: 28px; height: 60px; }
+.wordmark { font: 700 1.1875rem/1 var(--display); letter-spacing: -0.02em; text-decoration: none; display: inline-flex; align-items: center; gap: 9px; }
+.wordmark kbd { font-size: 0.72rem; min-width: 1.75rem; height: 1.75rem; }
+.bar nav { display: flex; gap: 24px; margin-right: auto; }
+.bar nav a { color: var(--quiet); text-decoration: none; font-size: 0.9375rem; }
+.bar nav a:hover { color: var(--label); }
+.button {
+  display: inline-flex; align-items: center; gap: 9px;
+  font: 600 1.0625rem/1 var(--sans);
+  color: var(--on-action); background: var(--action);
+  padding: 15px 22px 15px 20px; border-radius: 10px;
+  text-decoration: none;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2), 0 6px 16px rgba(0, 0, 0, 0.14);
+}
+.button:hover { text-decoration: none; background: var(--action-hover); box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2), 0 10px 24px rgba(0, 0, 0, 0.2); }
+.button:active { transform: translateY(1px); box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2); }
+.button svg { width: 18px; height: 18px; flex: none; }
+.button.small { font-size: 0.9375rem; padding: 9px 14px 9px 12px; border-radius: 7px; }
+.button.small svg { width: 15px; height: 15px; }
+
+/* Hero */
+.hero { padding-top: clamp(48px, 7vw, 84px); text-align: center; }
+.hero h1 {
+  font-size: clamp(2.5rem, 1.15rem + 4.4vw, 4.5rem);
+  line-height: 1.02; letter-spacing: -0.038em;
+}
+.hero .lede { margin: 22px auto 0; max-width: 35em; font-size: clamp(1.0625rem, 0.95rem + 0.45vw, 1.3125rem); line-height: 1.5; color: var(--quiet); }
+.hero .lede kbd { font-size: 0.78em; vertical-align: 0.1em; }
+.get { margin-top: 32px; display: grid; justify-items: center; gap: 14px; }
+.get .note { font-size: 0.875rem; color: var(--quiet); }
+.get .note a { color: var(--quiet); }
+
+.stage { margin: clamp(36px, 5vw, 52px) auto 0; width: min(680px, 100%); }
+.shot {
+  position: relative; display: block;
+  aspect-ratio: 1360 / 846;
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--panel-shadow);
+}
+.shot img { width: 100%; height: 100%; border-radius: 14px; }
+.stage .shot picture[hidden] { display: none; }
+.try {
+  margin: 0 0 18px 50%; translate: -50% 0;
+  width: max-content; max-width: calc(100vw - 2 * var(--gutter));
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+}
+.try button {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: 500 0.9375rem/1 var(--sans); color: var(--label);
+  background: none; border: 0; border-radius: 7px;
+  padding: 7px 12px 7px 8px; cursor: pointer;
+}
+.try button kbd { font-size: 0.8125rem; min-width: 1.85rem; height: 1.85rem; }
+.try button span { margin-left: 4px; color: var(--quiet); }
+.try button:hover { background: var(--fill); }
+.try button[aria-pressed="true"] { background: var(--fill); }
+.try button[aria-pressed="true"] span { color: var(--label); }
+.try-note { margin-top: 18px; font-size: 0.875rem; color: var(--quiet); }
+
+/* Keys */
+section { padding-top: var(--section); }
+.head { max-width: 40rem; }
+.center { margin-inline: auto; text-align: center; }
+h2 { font-size: clamp(2rem, 1.2rem + 2.7vw, 3.375rem); line-height: 1.06; letter-spacing: -0.032em; }
+.head p { margin-top: 18px; font-size: 1.1875rem; color: var(--quiet); }
+
+.keyboard {
+  --gap: clamp(3px, 0.55vw, 6px);
+  --u: calc((min(100vw - 2 * var(--gutter), 920px) - 13 * var(--gap) - 2 * var(--pad)) / 14.5);
+  --pad: clamp(10px, 1.4vw, 16px);
+  margin: clamp(40px, 6vw, 64px) auto 0;
+  width: fit-content;
+  padding: var(--pad);
+  display: grid; gap: var(--gap);
+  background: var(--panel);
+  border-radius: clamp(10px, 1.6vw, 18px);
+  box-shadow: var(--panel-shadow);
+}
+.row { display: flex; gap: var(--gap); }
+.k {
+  flex: none; width: calc(var(--w, 1) * var(--u) + (var(--w, 1) - 1) * var(--gap));
+  height: var(--u);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 0 0 calc(var(--u) * 0.16);
+  font: 400 calc(var(--u) * 0.24)/1 var(--sans);
+  color: var(--faint);
+  border: 1px solid var(--ghost-edge);
+  border-radius: calc(var(--u) * 0.14);
+  background: none;
+  user-select: none;
+}
+.k.mod { justify-content: flex-start; padding-left: calc(var(--u) * 0.16); }
+.k.mod.right { justify-content: flex-end; padding-right: calc(var(--u) * 0.16); padding-left: 0; }
+.row.fn .k { height: calc(var(--u) * 0.56); align-items: center; padding: 0; font-size: calc(var(--u) * 0.2); }
+.k.arrows { display: grid; grid-template-rows: 1fr 1fr; gap: 2px; padding: 0; border: 0; }
+.k.arrows .k { width: 100%; height: auto; align-items: center; padding: 0; }
+.cluster { display: grid; grid-template-columns: repeat(3, var(--u)); gap: var(--gap); align-items: end; }
+.cluster .k.half { height: calc(var(--u) * 0.5 - 1px); align-items: center; padding: 0; }
+.cluster .updown { display: grid; gap: 2px; }
+.cluster svg { width: calc(var(--u) * 0.22); height: calc(var(--u) * 0.22); }
+button.k {
+  cursor: pointer; color: var(--label); font-weight: 500;
+  background: var(--key); border-color: var(--key-edge); box-shadow: var(--key-shadow);
+  font-size: calc(var(--u) * 0.3);
+}
+button.k.letter { align-items: center; padding: 0; font-size: calc(var(--u) * 0.36); }
+button.k.on, button.k.down { background: var(--action); color: var(--on-action); border-color: transparent; }
+button.k.down { transform: translateY(1px); box-shadow: none; }
+.meaning {
+  margin: 28px auto 0; min-height: 3.2em; max-width: 40rem;
+  display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;
+  text-align: center; font-size: 1.1875rem;
+}
+.meaning .combo { display: inline-flex; gap: 5px; }
+.meaning .combo kbd { font-size: 0.95rem; }
+.meaning .what { color: var(--quiet); }
+.meaning .what strong { color: var(--label); font-weight: 600; }
+
+.keylist { display: none; margin: 36px auto 0; padding: 0; list-style: none; max-width: 30rem; }
+.keylist li { display: grid; grid-template-columns: 6.5rem 1fr; gap: 14px; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--edge); }
+.keylist li:last-child { border-bottom: 1px solid var(--edge); }
+.keylist .combo { display: inline-flex; gap: 4px; align-items: center; color: var(--quiet); }
+.keylist .what { color: var(--quiet); }
+.keylist .what strong { color: var(--label); font-weight: 600; }
+@media (max-width: 600px) {
+  .keyboard, .meaning { display: none; }
+  .keylist { display: block; }
+}
+.reasons {
+  margin-top: clamp(56px, 7vw, 88px);
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px clamp(24px, 3vw, 44px);
+}
+.reasons h3 { font-size: 1.1875rem; letter-spacing: -0.015em; }
+.reasons p { margin-top: 8px; color: var(--quiet); font-size: 1rem; }
+
+/* Feature rows */
+.feature {
+  display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(32px, 5vw, 72px);
+  align-items: center;
+}
+.feature.flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.feature.flip .text { order: 2; }
+.feature .text p { margin-top: 18px; font-size: 1.125rem; color: var(--quiet); }
+.feature .text p.detail { margin-top: 14px; font-size: 0.9375rem; }
+.feature .text kbd { font-size: 0.78em; vertical-align: 0.08em; }
+.feature h2 { font-size: clamp(1.875rem, 1.2rem + 2vw, 2.75rem); }
+
+.code {
+  border-radius: 14px; background: var(--panel); box-shadow: var(--panel-shadow);
+  overflow: hidden;
+}
+.code .title {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 20px; border-bottom: 1px solid var(--edge);
+  font-size: 0.875rem; color: var(--quiet);
+}
+.code pre {
+  margin: 0; padding: 20px 22px 24px;
+  font: 400 0.875rem/1.7 var(--mono); color: var(--label);
+  overflow-x: auto; tab-size: 2;
+}
+.code .c { color: var(--quiet); }
+.code .s { color: var(--quiet); }
+.code .t { font-weight: 600; }
+.also {
+  margin: var(--section) auto 0; max-width: 46rem; text-align: center;
+  font-size: 1.1875rem; color: var(--quiet);
+}
+.also strong { color: var(--label); font-weight: 600; }
+
+/* Why */
+.why .note { max-width: 38rem; margin: 0 auto; }
+.why .note p { margin-top: 22px; font-size: clamp(1.1875rem, 1rem + 0.6vw, 1.4375rem); line-height: 1.55; }
+.why .sign { margin-top: 26px; color: var(--quiet); font-size: 1rem; }
+.next {
+  margin: clamp(48px, 6vw, 72px) auto 0; max-width: 38rem;
+  padding-top: 24px; border-top: 1px solid var(--edge);
+  color: var(--quiet); font-size: 1rem;
+}
+.next strong { color: var(--label); font-weight: 600; }
+
+/* Install */
+.steps { margin: 40px 0 0; padding: 0; list-style: none; counter-reset: step; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px clamp(24px, 3vw, 44px); }
+.steps li { counter-increment: step; }
+.steps li::before {
+  content: counter(step);
+  display: inline-grid; place-items: center; width: 2rem; height: 2rem; margin-bottom: 16px;
+  font: 600 0.9375rem/1 var(--sans); color: var(--label);
+  background: var(--key); border: 1px solid var(--key-edge); border-radius: 7px; box-shadow: var(--key-shadow);
+}
+.steps h3 { font-size: 1.1875rem; letter-spacing: -0.015em; }
+.steps p { margin-top: 8px; color: var(--quiet); }
+.steps kbd { font-size: 0.78em; }
+.needs { margin-top: 32px; color: var(--quiet); font-size: 0.9375rem; }
+
+/* Close */
+.close { text-align: center; padding-bottom: var(--section); }
+.close .caps { display: inline-flex; gap: clamp(10px, 1.6vw, 16px); margin-bottom: 36px; }
+.close .caps kbd {
+  font-size: clamp(2rem, 1rem + 3.4vw, 3.5rem); font-weight: 500;
+  min-width: 1.75em; height: 1.75em; border-radius: 0.3em;
+}
+.close h2 { margin-bottom: 30px; }
+
+footer { border-top: 1px solid var(--edge); }
+footer .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; padding-block: 28px; font-size: 0.875rem; color: var(--quiet); }
+footer .wordmark { color: var(--label); font-size: 1rem; margin-right: auto; }
+footer a { color: var(--quiet); }
+
+@media (max-width: 900px) {
+  .reasons { grid-template-columns: 1fr 1fr; }
+  .feature, .feature.flip { grid-template-columns: 1fr; }
+  .feature.flip .text { order: 0; }
+  .steps { grid-template-columns: 1fr; max-width: 34rem; }
+}
+@media (max-width: 760px) {
+  .bar nav { display: none; }
+  .bar .wrap { justify-content: space-between; }
+}
+@media (max-width: 520px) {
+  .reasons { grid-template-columns: 1fr; }
+  .try { display: grid; grid-template-columns: 1fr 1fr; width: auto; margin-left: 0; translate: none; }
+  .try button { justify-content: flex-start; }
+  .meaning { font-size: 1.0625rem; }
+}
+@media (max-height: 980px) and (min-width: 761px) {
+  .hero { padding-top: 44px; }
+  .get { margin-top: 26px; }
+}
+</style>
+</head>
+<body>
+<header class="bar" id="top">
+  <div class="wrap">
+    <a class="wordmark" href="#top" aria-label="Pith"><kbd aria-hidden="true">P</kbd>Pith</a>
+    <nav aria-label="Sections">
+      <a href="#keys">Keys</a>
+      <a href="#launcher">Features</a>
+      <a href="#clipboard">Clipboard</a>
+      <a href="#why">Why</a>
+      <a href="#install">Install</a>
+    </nav>
+    <a class="button small" href="Pith.zip" download>
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12"/></svg>
+      Download
+    </a>
+  </div>
+</header>
+
+<main>
+  <section class="hero" aria-labelledby="claim">
+    <div class="wrap">
+      <h1 id="claim">Fast, small, and out of your way.</h1>
+      <p class="lede">Pith is a keyboard launcher for the Mac. Press <kbd>⌘</kbd> <kbd>P</kbd> from any app, type a few letters, press <kbd>⏎</kbd>. Apps, files, folders and everything you copied, in a native app that uses 44&nbsp;MB and no CPU while it waits.</p>
+      <div class="get">
+        <a class="button" id="download" href="Pith.zip" download>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12"/></svg>
+          Download for Mac
+        </a>
+        <p class="note">Free · macOS 26 Tahoe or later · Apple Silicon · <a href="#install">opening it the first time</a></p>
+      </div>
+
+      <div class="stage">
+        <div class="try" role="group" aria-label="Show a state of the panel">
+          <button type="button" data-show="recent" aria-pressed="true"><kbd>⌘</kbd><kbd>P</kbd><span>Launcher</span></button>
+          <button type="button" data-show="search" aria-pressed="false"><kbd>t</kbd><kbd>e</kbd><span>Search</span></button>
+          <button type="button" data-show="actions" aria-pressed="false"><kbd>⌘</kbd><kbd>K</kbd><span>Actions</span></button>
+          <button type="button" data-show="clipboard" aria-pressed="false"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>V</kbd><span>Clipboard</span></button>
+        </div>
+        <div class="shot" id="demo" aria-live="polite">
+          <picture data-state="recent">
+            <source media="(prefers-color-scheme: dark)" srcset="snapshots/recent-dark.png">
+            <img src="snapshots/recent-light.png" width="680" height="423" alt="Pith open on its recent list: Quarterly_Budget_Review.pdf on the large tile with Open and Actions keys, recent apps, files and folders below it.">
+          </picture>
+          <picture data-state="search" hidden>
+            <source media="(prefers-color-scheme: dark)" srcset="snapshots/search-dark.png">
+            <img src="snapshots/search-light.png" width="680" height="423" alt="Pith after typing “te”: TextEdit on the tile, then Image Capture, Stickies and Quit Pith.">
+          </picture>
+          <picture data-state="actions" hidden>
+            <source media="(prefers-color-scheme: dark)" srcset="snapshots/actions-dark.png">
+            <img src="snapshots/actions-light.png" width="680" height="423" alt="⌘K on a PDF: the file stays on the tile and its actions are listed, Open, Reveal in Finder, Copy Path and more, each with its ⌘Q to ⌘U key.">
+          </picture>
+          <picture data-state="clipboard" hidden>
+            <source media="(prefers-color-scheme: dark)" srcset="snapshots/clipboard-text-dark.png">
+            <img src="snapshots/clipboard-text-light.png" width="680" height="423" alt="The clipboard history: copied YAML previewed on the tile with Paste, then a link, an image, a PDF and a pinned note.">
+          </picture>
+        </div>
+        <p class="try-note">Real screens from Pith. Press the keys on your own keyboard, too.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="keys" aria-labelledby="keys-title">
+    <div class="wrap">
+      <div class="head center">
+        <h2 id="keys-title">Everything is a key away.</h2>
+        <p>No Dock icon, no menu bar icon, no window to click. These are all the keys there are.</p>
+      </div>
+
+      <div class="keyboard" role="group" aria-label="Pith's keys on a Mac keyboard">
+        <div class="row fn">
+          <button class="k" type="button" data-group="esc" style="--w:1.5">esc</button>
+          <span class="k" aria-hidden="true" style="--w:1.0833">F1</span><span class="k" aria-hidden="true" style="--w:1.0833">F2</span><span class="k" aria-hidden="true" style="--w:1.0833">F3</span><span class="k" aria-hidden="true" style="--w:1.0833">F4</span><span class="k" aria-hidden="true" style="--w:1.0833">F5</span><span class="k" aria-hidden="true" style="--w:1.0833">F6</span><span class="k" aria-hidden="true" style="--w:1.0833">F7</span><span class="k" aria-hidden="true" style="--w:1.0833">F8</span><span class="k" aria-hidden="true" style="--w:1.0833">F9</span><span class="k" aria-hidden="true" style="--w:1.0833">F10</span><span class="k" aria-hidden="true" style="--w:1.0833">F11</span><span class="k" aria-hidden="true" style="--w:1.0833">F12</span>
+        </div>
+        <div class="row">
+          <span class="k" aria-hidden="true">`</span><span class="k" aria-hidden="true">1</span><span class="k" aria-hidden="true">2</span><span class="k" aria-hidden="true">3</span><span class="k" aria-hidden="true">4</span><span class="k" aria-hidden="true">5</span><span class="k" aria-hidden="true">6</span><span class="k" aria-hidden="true">7</span><span class="k" aria-hidden="true">8</span><span class="k" aria-hidden="true">9</span><span class="k" aria-hidden="true">0</span><span class="k" aria-hidden="true">-</span><span class="k" aria-hidden="true">=</span>
+          <button class="k mod right" type="button" data-group="delete" data-code="Backspace" style="--w:1.5">delete</button>
+        </div>
+        <div class="row">
+          <span class="k mod" aria-hidden="true" style="--w:1.5">tab</span>
+          <button class="k letter" type="button" data-group="actions-n" data-code="KeyQ">Q</button><button class="k letter" type="button" data-group="actions-n" data-code="KeyW">W</button><button class="k letter" type="button" data-group="actions-n" data-code="KeyE">E</button><button class="k letter" type="button" data-group="actions-n" data-code="KeyR">R</button><button class="k letter" type="button" data-group="actions-n" data-code="KeyT">T</button><button class="k letter" type="button" data-group="actions-n" data-code="KeyY">Y</button><button class="k letter" type="button" data-group="actions-n" data-code="KeyU">U</button>
+          <span class="k" aria-hidden="true">I</span><span class="k" aria-hidden="true">O</span>
+          <button class="k letter" type="button" data-group="open" data-code="KeyP">P</button>
+          <span class="k" aria-hidden="true">[</span><span class="k" aria-hidden="true">]</span><span class="k" aria-hidden="true">\</span>
+        </div>
+        <div class="row">
+          <span class="k mod" aria-hidden="true" style="--w:1.75">caps lock</span>
+          <span class="k" aria-hidden="true">A</span><span class="k" aria-hidden="true">S</span><span class="k" aria-hidden="true">D</span><span class="k" aria-hidden="true">F</span><span class="k" aria-hidden="true">G</span><span class="k" aria-hidden="true">H</span>
+          <button class="k letter" type="button" data-group="move" data-code="KeyJ">J</button>
+          <button class="k letter" type="button" data-group="actions" data-code="KeyK">K</button>
+          <span class="k" aria-hidden="true">L</span><span class="k" aria-hidden="true">;</span><span class="k" aria-hidden="true">'</span>
+          <button class="k mod right" type="button" data-group="return" data-code="Enter" style="--w:1.75">return</button>
+        </div>
+        <div class="row">
+          <button class="k mod" type="button" data-group="clipboard" data-code="ShiftLeft" style="--w:2.25">shift</button>
+          <span class="k" aria-hidden="true">Z</span><span class="k" aria-hidden="true">X</span>
+          <button class="k letter" type="button" data-group="c" data-code="KeyC">C</button>
+          <button class="k letter" type="button" data-group="clipboard" data-code="KeyV">V</button>
+          <span class="k" aria-hidden="true">B</span><span class="k" aria-hidden="true">N</span><span class="k" aria-hidden="true">M</span><span class="k" aria-hidden="true">,</span><span class="k" aria-hidden="true">.</span><span class="k" aria-hidden="true">/</span>
+          <button class="k mod right" type="button" data-group="clipboard" data-code="ShiftRight" style="--w:2.25">shift</button>
+        </div>
+        <div class="row">
+          <span class="k mod" aria-hidden="true">fn</span>
+          <button class="k mod" type="button" data-group="move" data-code="ControlLeft">⌃</button>
+          <span class="k mod" aria-hidden="true">⌥</span>
+          <button class="k mod" type="button" data-group="open" data-code="MetaLeft" style="--w:1.25">⌘</button>
+          <button class="k" type="button" data-group="look" data-code="Space" style="--w:5"><span class="visually-hidden">space</span></button>
+          <button class="k mod right" type="button" data-group="open" data-code="MetaRight" style="--w:1.25">⌘</button>
+          <span class="k mod right" aria-hidden="true">⌥</span>
+          <div class="cluster">
+            <span class="k half" aria-hidden="true"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M7 2.2 2.6 5 7 7.8Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span>
+            <span class="updown">
+              <button class="k half" type="button" data-group="move" data-code="ArrowUp" aria-label="up arrow"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2.2 7 5 2.6 7.8 7Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>
+              <button class="k half" type="button" data-group="move" data-code="ArrowDown" aria-label="down arrow"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2.2 3 5 7.4 7.8 3Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>
+            </span>
+            <span class="k half" aria-hidden="true"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 2.2 7.4 5 3 7.8Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="meaning" id="meaning" aria-live="polite"><span class="what">Point at a lit key, or press one.</span></p>
+      <ul class="keylist" aria-label="Pith's keys">
+        <li data-group="open"><span class="combo"><kbd>⌘</kbd><kbd>P</kbd></span><span class="what"><strong>Open or close Pith</strong>, from any app.</span></li>
+        <li data-group="clipboard"><span class="combo"><kbd>⌘</kbd><kbd>⇧</kbd><kbd>V</kbd></span><span class="what"><strong>Your clipboard history</strong>, from any app.</span></li>
+        <li data-group="actions"><span class="combo"><kbd>⌘</kbd><kbd>K</kbd></span><span class="what"><strong>The selected item’s actions</strong>, or back to the search.</span></li>
+        <li data-group="actions-n"><span class="combo"><kbd>⌘</kbd><kbd>Q</kbd>…<kbd>U</kbd></span><span class="what">In ⌘K, <strong>run the first to seventh action</strong>.</span></li>
+        <li data-group="move"><span class="combo"><kbd>↑</kbd><kbd>↓</kbd></span><span class="what"><strong>Move the selection</strong>, or ⌃J and ⌃K.</span></li>
+        <li data-group="return"><span class="combo"><kbd>⏎</kbd></span><span class="what"><strong>Open it</strong>, run the action, or paste the clip where you were.</span></li>
+        <li data-group="esc"><span class="combo"><kbd>esc</kbd></span><span class="what"><strong>Back one level</strong>, or close.</span></li>
+        <li data-group="look"><span class="combo"><kbd>space</kbd></span><span class="what">With an empty search, <strong>Quick Look the selected file</strong>. Or ⌘Y.</span></li>
+        <li data-group="delete"><span class="combo"><kbd>⌫</kbd></span><span class="what">On the clipboard’s empty search, <strong>back to the launcher</strong>.</span></li>
+        <li data-group="c"><span class="combo"><kbd>c</kbd><kbd>space</kbd></span><span class="what">Typed in the launcher, <strong>switches to the clipboard</strong>.</span></li>
+      </ul>
+
+      <div class="reasons">
+        <div>
+          <h3>Fast</h3>
+          <p>Built when your Mac starts and searched in memory: about 2&nbsp;ms of work per keystroke, over 35,000 files.</p>
+        </div>
+        <div>
+          <h3>Small</h3>
+          <p>44&nbsp;MB of memory and 0&nbsp;% CPU while it waits, measured on my Mac today.</p>
+        </div>
+        <div>
+          <h3>Private</h3>
+          <p>No account, no telemetry, no AI. It goes online only to check for updates.</p>
+        </div>
+        <div>
+          <h3>Native</h3>
+          <p>Swift and AppKit, light or dark with your Mac, and set up in one text file.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="launcher" aria-labelledby="launcher-title">
+    <div class="wrap feature">
+      <div class="text">
+        <h2 id="launcher-title">Apps, files and folders in one list.</h2>
+        <p>Type a few letters, in any order: “acme deploy” finds deploy.sh in your Acme folder. The row you want is usually the first, because Pith learns what you pick.</p>
+        <p class="detail">Your folders stay indexed as files come and go, and long names are cut in the middle, so you still see where they end.</p>
+      </div>
+      <div class="shot">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="snapshots/long-names-dark.png">
+          <img src="snapshots/long-names-light.png" width="680" height="423" loading="lazy" alt="Pith's list with long file and folder names, each cut in the middle so the start and the extension stay visible.">
+        </picture>
+      </div>
+    </div>
+  </section>
+
+  <section id="actions" aria-labelledby="actions-title">
+    <div class="wrap feature flip">
+      <div class="text">
+        <h2 id="actions-title">Every action on <kbd>⌘</kbd> <kbd>K</kbd>.</h2>
+        <p>Reveal in Finder, copy the path, open with another app, Quick Look, zip, move to the Trash, quit or force quit.</p>
+        <p class="detail"><kbd>⌘</kbd> <kbd>Q</kbd> to <kbd>⌘</kbd> <kbd>U</kbd> run the first seven straight away, and Force Quit waits for a second <kbd>⏎</kbd>.</p>
+      </div>
+      <div class="shot">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="snapshots/actions-dark.png">
+          <img src="snapshots/actions-light.png" width="680" height="423" loading="lazy" alt="⌘K on a PDF: the file stays on the tile and its actions are listed, Open, Reveal in Finder, Copy Path and more, each with its ⌘Q to ⌘U key.">
+        </picture>
+      </div>
+    </div>
+  </section>
+
+  <section id="clipboard" aria-labelledby="clipboard-title">
+    <div class="wrap feature">
+      <div class="text">
+        <h2 id="clipboard-title">Everything you copied, a <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>V</kbd> away.</h2>
+        <p>Text, links, images and files, with a preview big enough to know it at a glance. <kbd>⏎</kbd> pastes it into the app you were in.</p>
+        <p class="detail">Pin what you reuse. The rest stays on your Mac for 30 days, up to 2&nbsp;GB, and copies from password managers are never recorded.</p>
+      </div>
+      <div class="shot">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="snapshots/clipboard-text-dark.png">
+          <img src="snapshots/clipboard-text-light.png" width="680" height="423" loading="lazy" alt="The clipboard history: copied YAML previewed on the tile with Paste, then a link, an image, a PDF and a pinned note.">
+        </picture>
+      </div>
+    </div>
+  </section>
+
+  <section id="config" aria-labelledby="config-title">
+    <div class="wrap feature flip">
+      <div class="text">
+        <h2 id="config-title">One text file. No settings window.</h2>
+        <p>Hotkeys, folders, your terminal, which app opens what. Save the file and the change is live.</p>
+        <p class="detail">A mistake shows up as a row at the top of the launcher, and <kbd>⏎</kbd> opens the file.</p>
+      </div>
+      <figure class="code" style="margin:0">
+        <figcaption class="title">~/.config/pith/config.toml</figcaption>
+<pre><code><span class="t">[hotkeys]</span>
+launcher  = <span class="s">"cmd+p"</span>
+clipboard = <span class="s">"cmd+shift+v"</span>
+
+<span class="t">[launcher]</span>
+<span class="c"># recent, running or none</span>
+empty_state = <span class="s">"recent"</span>
+folders = [<span class="s">"~"</span>]
+ignore  = [<span class="s">".*"</span>, <span class="s">"node_modules"</span>]
+
+<span class="t">[actions]</span>
+terminal = <span class="s">"Ghostty"</span>
+
+<span class="t">[open_with]</span>
+md  = <span class="s">"Visual Studio Code"</span>
+pdf = <span class="s">"Preview"</span></code></pre>
+      </figure>
+    </div>
+    <p class="also wrap"><strong>Also:</strong> Quick Look with Space · Zip in the background · recent files, running apps or nothing when it opens · starts at login · updates itself, or Check for Updates when you want.</p>
+  </section>
+
+  <section class="why" id="why" aria-labelledby="why-title">
+    <div class="wrap">
+      <div class="note">
+        <h2 id="why-title">Why I made it</h2>
+        <p>I used Raycast, and I think they did a great job. But all I ever needed was the launcher. I don’t need most of the tools, I’m tired of AI being put into everything, and RAM isn’t something I can hand out freely to my programs anymore.</p>
+        <p>So Pith is a launcher for people who need a launcher, and nothing else.</p>
+        <p class="sign">Edoardo Bertoli</p>
+      </div>
+      <p class="next"><strong>Coming next:</strong> a calculator in the same search, for math, units, currencies and programmer expressions, shown as the top result.</p>
+    </div>
+  </section>
+
+  <section id="install" aria-labelledby="install-title">
+    <div class="wrap">
+      <div class="head">
+        <h2 id="install-title">Opening it the first time</h2>
+        <p>Pith isn’t notarized by Apple, so macOS asks you once to trust it.</p>
+      </div>
+      <ol class="steps">
+        <li>
+          <h3>Download and move it</h3>
+          <p>Unzip <a href="Pith.zip" download>Pith.zip</a> and drag Pith into your Applications folder.</p>
+        </li>
+        <li>
+          <h3>Open Anyway</h3>
+          <p>Open Pith. When macOS blocks it, go to System Settings, Privacy &amp; Security, and press Open Anyway.</p>
+        </li>
+        <li>
+          <h3>Press <kbd>⌘</kbd> <kbd>P</kbd></h3>
+          <p>That’s it. To paste from the clipboard history, allow Pith under Accessibility when it asks.</p>
+        </li>
+      </ol>
+      <p class="needs">Needs macOS 26 Tahoe or later and Apple Silicon. Pith takes <kbd>⌘</kbd> <kbd>P</kbd> from every app, Print included; you can change it in the config. Updates arrive on their own.</p>
+    </div>
+  </section>
+
+  <section class="close" aria-labelledby="close-title">
+    <div class="wrap">
+      <div class="caps" aria-hidden="true"><kbd>⌘</kbd><kbd>P</kbd></div>
+      <h2 id="close-title">One keystroke away.</h2>
+      <div class="get">
+        <a class="button" href="Pith.zip" download>
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12"/></svg>
+          Download for Mac
+        </a>
+        <p class="note">Free · macOS 26 Tahoe or later · Apple Silicon<span class="version" hidden></span></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="wordmark" href="#top"><kbd aria-hidden="true">P</kbd>Pith</a>
+    <span>Made by <a href="https://edoardobertoli.xyz">Edoardo Bertoli</a></span>
+    <span class="version" hidden></span>
+    <span>© 2026</span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  // The hero panel: one state at a time, switched in one frame like the app itself.
+  const shots = [...document.querySelectorAll('#demo picture')];
+  const tries = [...document.querySelectorAll('.try button')];
+  const show = (state) => {
+    for (const p of shots) p.hidden = p.dataset.state !== state;
+    for (const b of tries) b.setAttribute('aria-pressed', String(b.dataset.show === state));
+  };
+  for (const b of tries) b.addEventListener('click', () => show(b.dataset.show));
+
+  // The keyboard: what each lit key does, shown below it.
+  const meanings = {};
+  for (const li of document.querySelectorAll('.keylist li')) meanings[li.dataset.group] = li.innerHTML;
+  const groups = { open: ['MetaLeft', 'MetaRight', 'KeyP'], clipboard: ['MetaLeft', 'MetaRight', 'ShiftLeft', 'ShiftRight', 'KeyV'],
+    actions: ['MetaLeft', 'MetaRight', 'KeyK'], 'actions-n': ['MetaLeft', 'MetaRight', 'KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU'],
+    move: ['ArrowUp', 'ArrowDown', 'ControlLeft', 'KeyJ', 'KeyK'], return: ['Enter'], esc: ['Escape'], look: ['Space'],
+    delete: ['Backspace'], c: ['KeyC', 'Space'] };
+  const keys = [...document.querySelectorAll('.keyboard button.k')];
+  const byCode = new Map();
+  for (const k of keys) {
+    const code = k.dataset.code || (k.dataset.group === 'esc' ? 'Escape' : null);
+    if (code) { k.dataset.code = code; byCode.set(code, k); }
+  }
+  const meaning = document.getElementById('meaning');
+  const idle = meaning.innerHTML;
+  let shown = null;
+  const explain = (group) => {
+    if (group === shown) return;
+    shown = group;
+    for (const k of keys) k.classList.toggle('on', !!group && groups[group].includes(k.dataset.code));
+    if (!group) { meaning.innerHTML = idle; return; }
+    meaning.innerHTML = meanings[group];
+  };
+  for (const k of keys) {
+    k.addEventListener('mouseenter', () => explain(k.dataset.group));
+    k.addEventListener('focus', () => explain(k.dataset.group));
+    k.addEventListener('click', () => explain(k.dataset.group));
+  }
+  document.querySelector('.keyboard').addEventListener('mouseleave', () => explain(null));
+
+  // Real keys: the drawn ones go down, and ⌘P, ⌘K, ⌘⇧V or typing switch the panel.
+  const down = new Set();
+  // The search screen is a search for "te", so only typing that shows it.
+  let typed = '';
+  let typedAt = 0;
+  const release = () => { for (const c of down) byCode.get(c)?.classList.remove('down'); down.clear(); };
+  addEventListener('keydown', (e) => {
+    if (e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return;
+    const k = byCode.get(e.code);
+    if (k) { k.classList.add('down'); down.add(e.code); }
+    const key = e.key.toLowerCase();
+    if (e.metaKey && e.shiftKey && key === 'v') { e.preventDefault(); show('clipboard'); explain('clipboard'); }
+    else if (e.metaKey && !e.shiftKey && key === 'p') { e.preventDefault(); show('recent'); explain('open'); }
+    else if (e.metaKey && !e.shiftKey && key === 'k') { e.preventDefault(); show('actions'); explain('actions'); }
+    else if (!e.metaKey && !e.ctrlKey && !e.altKey && /^[a-z]$/.test(key)) {
+      typed = (e.timeStamp - typedAt < 1500 ? typed : '') + key;
+      typedAt = e.timeStamp;
+      if (typed.endsWith('te')) show('search');
+    }
+    else if (e.key === 'Escape') { typed = ''; show('recent'); }
+  });
+  addEventListener('keyup', (e) => {
+    if (e.key === 'Meta') release();
+    else { byCode.get(e.code)?.classList.remove('down'); down.delete(e.code); }
+  });
+  addEventListener('blur', release);
+
+  // The bar gets its edge once the page scrolls.
+  const bar = document.querySelector('.bar');
+  const edge = () => bar.classList.toggle('scrolled', scrollY > 8);
+  addEventListener('scroll', edge, { passive: true }); edge();
+
+  // The version people download, from the update feed beside this page.
+  fetch('appcast.xml').then((r) => r.ok ? r.text() : Promise.reject()).then((xml) => {
+    const v = xml.match(/<sparkle:shortVersionString>([^<]+)</);
+    if (!v) return;
+    for (const el of document.querySelectorAll('.version')) {
+      el.textContent = (el.closest('.note') ? ' · version ' : 'Version ') + v[1];
+      el.hidden = false;
+    }
+  }).catch(() => {});
+})();
+</script>
+</body>
+</html>

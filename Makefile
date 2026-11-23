@@ -18,12 +18,15 @@ FEED     := https://pith.edoardobertoli.xyz
 # The version in Info.plist, 0.<milestone>.<patch> (decision 47): `make package` names the zip and the tag after it.
 VERSION  = $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Support/Info.plist)
 PACKAGE  = .build/$(APP_NAME)-$(VERSION).zip
+# What the Worker serves (Support/wrangler.toml): the landing page and its snapshots, the feed and the builds.
+SITE     := .build/site
+SNAPSHOTS := recent search actions clipboard-text long-names
 
 .DEFAULT_GOAL := help
-.PHONY: help build app package publish update-key certificate run install uninstall stop logs stats test bench snapshots lint format clean
+.PHONY: help build app package publish site page update-key certificate run install uninstall stop logs stats test bench snapshots lint format clean
 
 help: ## List the targets
-	@awk 'BEGIN { FS = ":.*## " } /^[a-z]+:.*## / { printf "  make %-11s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN { FS = ":.*## " } /^[a-z-]+:.*## / { printf "  make %-11s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 build: ## Compile (CONFIG=release by default, CONFIG=debug for a debug build)
 	swift build -c $(CONFIG)
@@ -61,16 +64,28 @@ package: ## Zip the app to send to someone and tag it v<version>: signed with th
 # key leaves the keychain only for generate_appcast, in a temporary folder that's removed after.
 publish: package ## Put the packaged build and its update feed on pith.edoardobertoli.xyz, for every copy to update to
 	@[ -n "$$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' Support/Info.plist)" ] || { echo "Run make update-key first"; exit 1; }
-	rm -rf .build/site .build/feed
-	mkdir -p .build/site .build/feed
+	rm -rf $(SITE) .build/feed
+	mkdir -p $(SITE) .build/feed
 	cp $(PACKAGE) .build/feed/
 	@secret=$$(mktemp -d); trap 'rm -rf "$$secret"' EXIT; \
 	$(TOOLS)/generate_keys --account pith -x "$$secret/key" > /dev/null && \
 	$(TOOLS)/generate_appcast --ed-key-file "$$secret/key" --download-url-prefix $(FEED)/ --maximum-versions 1 .build/feed
-	cp .build/feed/appcast.xml $(PACKAGE) .build/site/
-	cp $(PACKAGE) .build/site/$(APP_NAME).zip
+	cp .build/feed/appcast.xml $(PACKAGE) $(SITE)/
+	cp $(PACKAGE) $(SITE)/$(APP_NAME).zip
+	$(MAKE) page
 	WRANGLER_SEND_METRICS=false npx --yes wrangler@4.166.0 deploy --config Support/wrangler.toml
 	@echo "Published $(VERSION): $(FEED)/$(APP_NAME).zip"
+
+# A deploy replaces everything the Worker serves, so the page goes out with the feed and builds `make publish` left.
+site: page ## Put the landing page (site/) on pith.edoardobertoli.xyz, keeping the published feed and builds
+	@[ -f $(SITE)/appcast.xml ] || { echo "Run make publish first: a deploy without the feed would take updates offline"; exit 1; }
+	WRANGLER_SEND_METRICS=false npx --yes wrangler@4.166.0 deploy --config Support/wrangler.toml
+	@echo "The page is on $(FEED)"
+
+page: ## Assemble the landing page in .build/site, to open locally before make site
+	mkdir -p $(SITE)/snapshots
+	cp site/* $(SITE)/
+	for s in $(SNAPSHOTS); do cp docs/snapshots/$$s-light.png docs/snapshots/$$s-dark.png $(SITE)/snapshots/; done
 
 # Only the key's value changes in Info.plist: PlistBuddy would rewrite the whole file and drop its comments.
 update-key: ## Once: create the key that signs updates (in the login keychain) and put its public half in Info.plist
