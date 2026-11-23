@@ -10,7 +10,7 @@ related_targets: ["Makefile"]
 Scope: the front page of pith.edoardobertoli.xyz. Mode: Persuade.
 
 - **Audience:** Edoardo's friends and people online, arriving from a shared link, mostly on a Mac.
-- **Job and action:** decide to try Pith; Download for Mac (`/Pith.dmg`, decision 56), drag Pith into Applications, then open it once with Open Anyway; or paste `curl -fsSL https://pith.edoardobertoli.xyz/install.sh | sh` in Terminal, with no Open Anyway (decision 57); the setup section shows each step as it will look, and says how settings change and updates arrive.
+- **Job and action:** decide to try Pith; Download for Mac (`/Pith.dmg`, decision 56), drag Pith into Applications, then open it once with Open Anyway; or paste `curl -fsSL https://pith.edoardobertoli.xyz/install.sh | sh` in Terminal, under Download, with no Open Anyway (decisions 57, 58); the setup section shows each step as it will look, and says how settings change and updates arrive.
 - **Proof:** the real panel snapshots from `docs/snapshots/`, light and dark; measured numbers only: 44 MB and 0 % CPU
   idle (`make stats`, 2026-11-23), about 2 ms of work per keystroke over 111 apps and 35,000+ files (milestone 2).
 - **Constraints:** static files served by the Worker in `Support/wrangler.toml`, beside the update feed; no claims
