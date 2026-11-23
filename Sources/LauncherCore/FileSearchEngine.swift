@@ -16,6 +16,8 @@ public final class FileSearchEngine: @unchecked Sendable {
     private var pendingEvents: [DirectoryWatcher.Event]?
     /// The newest search asked for; older ones still queued return nil without searching.
     private let latestSearch = Atomic<Int>(0)
+    /// How many rebuilds were asked for. A rebuild that a newer one overtakes stops, or drops its scan.
+    private let rebuilds = Atomic<Int>(0)
     private let onRemoved: @Sendable ([String]) -> Void
 
     /// `onRemoved` gets the files and folders that disappeared from disk (folders stand for everything in them), on
@@ -25,15 +27,20 @@ public final class FileSearchEngine: @unchecked Sendable {
     }
 
     /// Scans `rules` into a fresh index on a worker, swaps it in, and keeps it current with FSEvents from then on. The
-    /// old index keeps answering searches meanwhile.
+    /// old index keeps answering searches meanwhile. The newest rebuild asked for wins: an older scan that finishes
+    /// after it is dropped, so it can't put back folders the config no longer lists.
     public func rebuild(_ rules: FileRules) async {
-        await run { [self] in
+        let generation = rebuilds.wrappingAdd(1, ordering: .relaxed).newValue
+        let isNewest = await run { [self] () -> Bool in
+            guard rebuilds.load(ordering: .relaxed) == generation else { return false }
             self.rules = rules
             pendingEvents = []
             watcher = DirectoryWatcher(
                 paths: rules.roots, excluding: rules.ignore.paths, fileEvents: true, latency: 0.5, queue: queue
             ) { [weak self] events in self?.receive(events) }
+            return true
         }
+        guard isNewest else { return }
         let fresh = await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .utility).async {
                 var fresh = FileIndex()
@@ -43,6 +50,7 @@ public final class FileSearchEngine: @unchecked Sendable {
             }
         }
         await run { [self] in
+            guard rebuilds.load(ordering: .relaxed) == generation else { return }
             index = fresh
             index.setBoosts(boosts)
             let events = pendingEvents ?? []
@@ -72,6 +80,9 @@ public final class FileSearchEngine: @unchecked Sendable {
     public var count: Int {
         get async { await run { [self] in index.count } }
     }
+
+    /// How many rebuilds were asked for, for tests to order them.
+    var rebuildsAsked: Int { rebuilds.load(ordering: .relaxed) }
 
     /// Runs `work` on the queue, which owns the index.
     func run<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {

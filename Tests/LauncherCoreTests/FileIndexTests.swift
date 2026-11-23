@@ -251,6 +251,25 @@ struct FileSearchEngineTests {
         #expect(hits?.map(\.path) == [root.url.path + "/Notes/todo.md"])
     }
 
+    /// A config change during a long first scan: the newer, smaller scan wins even though the old one finishes last.
+    @Test func theNewestRebuildWins() async throws {
+        let big = try TemporaryDirectory()
+        for folder in 0..<40 {
+            for file in 0..<50 { try big.makeFile("Folder \(folder)/old-file-\(file).txt") }
+        }
+        let small = try TemporaryDirectory()
+        try small.makeFile("new-file.txt")
+        let engine = FileSearchEngine()
+        let first = Task {
+            await engine.rebuild(FileRules(roots: [big.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        }
+        while engine.rebuildsAsked < 1 { await Task.yield() }
+        await engine.rebuild(FileRules(roots: [small.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        await first.value
+        #expect(await engine.count == 1)
+        #expect(await engine.search("old-file", limit: 5, generation: 1) == [])
+    }
+
     @Test func staleSearchesSkip() async {
         let engine = FileSearchEngine()
         async let old = engine.search("a", limit: 5, generation: 1)

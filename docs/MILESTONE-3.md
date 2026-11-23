@@ -358,7 +358,9 @@ Status: **in progress**. The check is done; the fixes are next, one at a time wi
   4. **The first scan of `~`:**
      - There are no file results until every privacy prompt (Desktop, Documents, Downloads) is answered.
      - A folder allowed later in System Settings is never rescanned.
-     - A config change during that scan can be overwritten by it, since a rebuild has no generation.
+     - **Fixed:** the newest rebuild wins, so an older scan that finishes after it is dropped; a test covers it. A
+       config change during the first scan used to be overwritten by it.
+     - The first two are part of the quieter first install, for Edoardo to decide.
   5. **A folder in `folders` under `~/Library`, or starting with a dot, is never indexed, and no problem row says
      so.**
      - This covers Dropbox, Google Drive and OneDrive (`~/Library/CloudStorage`), iCloud Drive and `~/.config`.
