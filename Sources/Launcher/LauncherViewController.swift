@@ -1416,6 +1416,8 @@ extension LauncherViewController: NSTextFieldDelegate {
             return
         }
         let handled = ProcessInfo.processInfo.systemUptime
+        // Typing cancels a second ⏎ that's waiting (decision 28), even when the rows stay the same.
+        cancelConfirmation()
         refresh(keystroke: NSApp.currentEvent.map { ($0.timestamp, handled) })
     }
 

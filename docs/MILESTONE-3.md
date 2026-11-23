@@ -435,8 +435,8 @@ real folder prompts (4) on a first install.
   - **The panel:**
     24. Key repeat isn't ignored: holding ⌫ to clear a clipboard search overshoots into the launcher, and holding
         Space flickers Quick Look.
-    25. Typing that leaves the rows unchanged keeps a confirmation armed (Clear Clipboard History ⏎, a space, ⏎
-        clears), against "typing cancels it".
+    25. **Fixed:** typing cancels a waiting second ⏎ whatever the rows do; a test covers it. What it was: typing that
+        left the rows unchanged kept the confirmation armed (Clear Clipboard History ⏎, a space, ⏎ cleared).
     26. Update Pith is selected when the empty state is empty (a new user with no history), so ⏎ on an empty field
         restarts into the update.
     27. A copied file's facts (size, whether it's still there) are cached until relaunch.

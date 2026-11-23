@@ -348,6 +348,11 @@ struct LauncherPanelTests {
         #expect(!panel.launcher.stage.content.isDanger)
 
         press("return", in: panel)
+        await type("clear clip ", in: panel)
+        #expect(!panel.launcher.confirming, "typing cancels it, even when the rows stay the same")
+        press("return", in: panel)
+        #expect(run.isEmpty)
+
         press("return", in: panel)
         #expect(run == [.clearClipboard])
     }
