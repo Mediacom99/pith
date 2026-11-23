@@ -48,6 +48,8 @@ supersede an earlier one.
 | 39 | 2026-11-23 | ⌘K → Save as File saves at once to `~/Downloads` with a dated name ("Clipboard 2026-11-23 at 14.05.png"), then posts a notification that reveals it on click. | As Zip does: no dialog, keyboard only. | Edoardo |
 | 40 | 2026-11-23 | ⌘K → Edit Image comes after milestone 3, with the text editor (decision 36). | Watching Preview for the save is its own piece of work; milestone 3 ships sooner without it. | Edoardo |
 | 41 | 2026-11-23 | Builds are signed with a self-signed "Pith Local Signing" certificate in the login keychain, created once with `make certificate`; `make app` falls back to ad hoc without it. | macOS ties Accessibility access (which paste needs) to the app's signature, and an ad hoc one changes with every `make install`. The certificate is tied to no Apple account, unlike Edoardo's existing identities, so no team ID goes into the build. | Edoardo |
+| 42 | 2026-11-23 | The launcher has a Clipboard History command, as Raycast does. "c" is its alias: typed alone, it puts the command first, above any app or habit; "clipboard" finds it by name. ⏎ (or a double-click) opens the clipboard in place. ⌘⇧V and the `c ` prefix still open it too. | Edoardo opens the clipboard from the launcher by habit, as in Raycast. An alias rather than a boost keeps "ca" for Calendar, and longer prefixes rank as usual. | Edoardo |
+| 43 | 2026-11-23 | In a ⌘K actions list, ⌘Q, ⌘W, ⌘E, ⌘R, ⌘T, ⌘Y and ⌘U run the 1st to 7th action, as ⏎ would on its row; each row shows its letter at its end. The letter is fixed per action (its place in the full list), so a filter doesn't change it. Force Quit and a pinned clip's Delete still take a second press. The letters work only inside ⌘K. A single click still only selects. | Edoardo wants the actions one chord away, under the left hand. In the results list ⌘Q and ⌘W are reflexes (quit, close) and would fire by accident; inside ⌘K they're deliberate. | Edoardo |
 
 ## Principles
 
@@ -62,7 +64,8 @@ supersede an earlier one.
 ```
 Sources/
   LauncherCore/            pure Swift, no AppKit, unit-tested
-    Item.swift             Item (an app, file, folder or Command) with a stable id; Command (Open/Reload Config, Quit)
+    Item.swift             Item (an app, file, folder or Command) with a stable id; Command (Clipboard History, Open/Reload
+                           Config, Quit) and its aliases
     SearchKey.swift        text → lowercased, diacritic-folded UTF-8 + per-byte bonus + 64-bit byte mask
     KeyStore.swift         many search keys in four flat buffers (for the file index)
     FuzzyMatcher.swift     query × key → score (fzf v2-style dynamic programming)
@@ -192,6 +195,8 @@ At idle, one thing is scheduled: the clipboard's change-count check every 0.5 s,
 - Ranking: match score plus the history boost, then shorter name, then alphabetical. The boost is
   `min(48, 12 · log2(1 + frecency / 100))`: one open today is worth +12, a daily habit tops out at +48 (about three
   well-placed characters), so habits reorder close matches without burying a clearly better one.
+- A command's alias (decision 42: "c" for Clipboard History) puts it first when the query is exactly the alias,
+  above any score or habit; any other query ranks it as usual.
 - The clipboard doesn't match fuzzily: each query word must appear in the clip as written, ignoring case and
   accents, and results stay newest first, with pins first when typing (decision 33). Long texts would let a fuzzy
   query match almost anything. `docs/MILESTONE-3.md` step 3 has the numbers.
@@ -250,7 +255,7 @@ is in `docs/snapshots/` (`make snapshots`).
 | Color for meaning | Force Quit waiting for its second ⏎: red text and symbol (#D70015 light, #FF6961 dark) on a faint red row, and the tile's key in red. A config problem: its symbol in orange (#C93400 light, #FF9F0A dark; the system orange is 2.2:1 on white). No accent color anywhere. | Claude |
 | Running indicator | "running" after the name, in the quiet gray; on the tile, "Application · running". | Claude |
 | Commands, actions, problems | SF Symbols in the quiet gray in place of an icon: gearshape, arrow.clockwise, power for commands; arrow.up.forward.app, folder, link, square.grid.2x2, terminal, doc.on.doc, doc.zipper, trash, xmark.circle, xmark.octagon for actions; exclamationmark.triangle for problems. A problem row reads "Config problem, line N: …"; on the tile, "Config problem, line N" over the problem, capitalized unless it starts with a setting's name. A file that isn't valid TOML adds "so every setting is at its default". Commands say "Pith command" on the tile. | Claude |
-| ⌘K | Sublists replace the list in place; the item stays on the tile. ⎋ steps back one level as it was; ⌘K goes back to the search. | Claude |
+| ⌘K | Sublists replace the list in place; the item stays on the tile. ⎋ steps back one level as it was; ⌘K goes back to the search. Each action row ends in its shortcut ("⌘Q"…"⌘U", decision 43) in the quiet gray, as menus show theirs, before the ↩ on the selected row. | Claude |
 | Motion | None: the panel appears and disappears without animation. | Claude |
 | Clipboard mode | The same panel and height (docs/BRIEF-CLIPBOARD.md). The bar shows `doc.on.clipboard` and "Search clipboard". The tile grows to 188 pt (92 + 3 rows), so five whole rows fit under it. Everything in the tall tile hangs from the top, keys included, so nothing moves from one kind to the next. | Claude |
 | Clipboard preview | A text: its first 8 lines in SF Mono 12 pt, label color, wrapped, the 8th ending in "…" when there's more; under it, at the bottom, "Text · 10 lines · copied today at 14:28 from Terminal". An image: fitted into a box up to 320 × 156 pt, never past its own pixels, 6 pt corners, on a checkerboard of 6 pt squares (selection fill) for transparency, with "Image", its size and when it was copied beside it. A link or files: the launcher's tile, the URL wrapped over up to 3 lines and cut in the middle past them. | Claude |

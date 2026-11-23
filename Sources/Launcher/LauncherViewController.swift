@@ -94,6 +94,10 @@ final class LauncherViewController: NSViewController {
     lazy var reportSaved: (URL) -> Void = { [weak self] in self?.notifier?.saved($0) }
     /// `[open_links]`, resolved: URL scheme → app (decision 16). Other links open in their default app.
     var openLinks: [String: URL] = [:]
+    /// The clipboard's hotkey as menus show it (`⇧⌘V`), for the Clipboard History command's tile.
+    var clipboardHotkey: String?
+    /// ⌘ plus these run a ⌘K list's actions, the first to the seventh: the top row under the left hand (decision 43).
+    static let shortcutLetters = ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"]
     /// Whether a copied file is still there, and its size, read on a worker. Snapshots fix them.
     var fileFacts: @Sendable (String) -> (exists: Bool, bytes: Int?) = { path in
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: path) else { return (false, nil) }
@@ -476,6 +480,7 @@ final class LauncherViewController: NSViewController {
                 cell.title = isDanger ? Action.forceQuitConfirmation(for: item) : action.title(for: item)
             }
             cell.icon.image = icons.symbol(action.symbol, tint: isDanger ? .danger : .quiet)
+            tag = shortcut(for: row) ?? ""
         case .problem(let message):
             cell.title = "Config problem, \(message)"
             cell.icon.image = icons.symbol(Symbols.problem, tint: .warning)
@@ -506,6 +511,7 @@ final class LauncherViewController: NSViewController {
                 cell.title = isDanger ? ClipAction.deleteConfirmation : title(of: action, for: clip)
             }
             cell.icon.image = icons.symbol(action.symbol, tint: isDanger ? .danger : .quiet)
+            tag = shortcut(for: row) ?? ""
         }
         cell.detail = detail
         cell.trailingTag = tag
@@ -670,6 +676,10 @@ final class LauncherViewController: NSViewController {
                 icon: icons.icon(forFile: url, size: .tile), name: item.name, place: Self.folder(of: url),
                 kind: kind(icons.typeName(forFile: url), opened), primary: Action.open.title(for: item),
                 secondary: actions)
+        case .command(.clipboard):
+            return StageView.Content(
+                icon: icons.symbol(Symbols.command(.clipboard), size: .tile), name: item.name, place: "Pith command",
+                kind: clipboardHotkey.map { "Also \($0), from any app" } ?? "", primary: "Open")
         case .command(let command):
             return StageView.Content(
                 icon: icons.symbol(Symbols.command(command), size: .tile), name: item.name, place: "Pith command",
@@ -781,6 +791,44 @@ final class LauncherViewController: NSViewController {
 
     // MARK: ⌘K
 
+    /// The open actions list, in full, unfiltered: each action's place in it is its shortcut.
+    private var allActions: [Row] {
+        switch sublist {
+        case .actions(let item)?:
+            Action.available(for: item, running: running.isRunning(item.id)).map(Row.action)
+        case .clipActions(let clip)?:
+            ClipAction.available(for: clip, canPaste: canPaste).map(Row.clipAction)
+        case .openWith?, nil:
+            []
+        }
+    }
+
+    /// An action row's shortcut, as the row shows it: "⌘Q" for the first action, "⌘W" for the second… Fixed per
+    /// action, so filtering doesn't change it (decision 43).
+    private func shortcut(for row: Row) -> String? {
+        guard let position = allActions.firstIndex(of: row), position < Self.shortcutLetters.count else { return nil }
+        return "⌘" + Self.shortcutLetters[position].uppercased()
+    }
+
+    /// ⌘ and a letter in an actions list: runs that action as ⏎ would on its row, the filter cleared if it hid it. A
+    /// second press confirms Force Quit or a pinned clip's Delete, as a second ⏎ does. False when it's not a shortcut
+    /// here.
+    func runShortcut(_ letter: String) -> Bool {
+        guard let position = Self.shortcutLetters.firstIndex(of: letter) else { return false }
+        let actions = allActions
+        guard position < actions.count else { return false }
+        let action = actions[position]
+        if !rows.contains(action) {
+            setQuery("")
+            refresh()
+        }
+        guard let row = rows.firstIndex(of: action) else { return false }
+        // Selecting another row cancels a confirmation; the same row keeps it, for the second press.
+        if tableView.selectedRow != row { select(row: row) }
+        activate(row: row)
+        return true
+    }
+
     /// Lists the selected item's actions, or goes back to the search.
     func toggleActions() {
         if sublist != nil {
@@ -859,6 +907,11 @@ final class LauncherViewController: NSViewController {
 
     private func open(_ item: Item) {
         history.record(item.id)
+        // Clipboard History opens in place: the panel stays, as the clipboard.
+        if case .command(.clipboard) = item.kind {
+            switchMode(to: .clipboard)
+            return
+        }
         panel?.dismiss()
         switch item.kind {
         case .app(let url): openApp(at: url)

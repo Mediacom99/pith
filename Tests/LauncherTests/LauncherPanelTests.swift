@@ -255,6 +255,22 @@ struct LauncherPanelTests {
         #expect(panel.launcher.rows.first == .item(Item(command: .quit)))
     }
 
+    @Test func cOrClipboardPutsClipboardHistoryFirstAndReturnOpensIt() async {
+        let calendar = Item(name: "Calendar", appAt: URL(filePath: "/nonexistent/Calendar.app"))
+        let panel = makePanel(items: apps + [calendar] + Command.allCases.map(Item.init(command:)))
+        panel.launcher.clipboardHotkey = "⇧⌘V"
+        for query in ["c", "clipboard"] {
+            await type(query, in: panel)
+            #expect(panel.launcher.rows.first == .item(Item(command: .clipboard)), "\(query)")
+        }
+        #expect(panel.launcher.stage.content.primary == "Open")
+        #expect(panel.launcher.stage.content.kind == "Also ⇧⌘V, from any app")
+
+        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        #expect(panel.launcher.mode == .clipboard, "it opens in place")
+        #expect(panel.launcher.searchField.stringValue.isEmpty)
+    }
+
     @Test func commandKListsActionsAndEscapeGoesBack() async {
         let panel = makePanel(items: apps)
         await type("g", in: panel)

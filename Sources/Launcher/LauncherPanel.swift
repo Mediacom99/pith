@@ -192,6 +192,12 @@ final class LauncherPanel: NSPanel {
     /// An agent app has no main menu, which is what normally delivers the editing shortcuts.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        // In an actions list, ⌘Q, ⌘W, ⌘E… run its actions (decision 43); ⌘Q never quits Pith, which has no menu.
+        if modifiers == .command, let letter = event.charactersIgnoringModifiers?.lowercased(),
+            launcher.runShortcut(letter)
+        {
+            return true
+        }
         if modifiers == .command, event.charactersIgnoringModifiers == "k" {
             launcher.toggleActions()
             return true

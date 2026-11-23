@@ -69,4 +69,14 @@ struct SearchIndexTests {
         #expect(index.position(of: "/Applications/Safari.app").map { index.items[$0].name } == "Safari")
         #expect(index.position(of: "/nope") == nil)
     }
+
+    @Test func anAliasPutsItsCommandFirst() {
+        let apps = ["Calendar", "Calculator", "Chess"].map { Item(name: $0, appAt: URL(filePath: "/x/\($0).app")) }
+        let index = SearchIndex(items: apps + Command.allCases.map(Item.init(command:)))
+        func first(_ query: String) -> String? { index.search(query, limit: 5).first.map { index.items[$0].name } }
+        #expect(first("c") == "Clipboard History", "\"c\" is its alias")
+        #expect(first("C ") == "Clipboard History")
+        #expect(first("clipboard") == "Clipboard History")
+        #expect(first("ca") == "Calendar", "only the alias itself jumps the queue")
+    }
 }

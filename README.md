@@ -96,10 +96,11 @@ bar icon.
 | Key | What it does |
 |---|---|
 | ⌘P | Open or close the launcher, from any app |
-| ⌘⇧V, or `c ` in the launcher | Open the clipboard history; ⌫ on its empty field goes back to the launcher |
+| ⌘⇧V, or Clipboard History in the launcher (type `c`) | Open the clipboard history; ⌫ on its empty field goes back to the launcher |
 | ↑ ↓ or ⌃K ⌃J | Move the selection |
 | ⏎ | Open the selected item, run the selected action, or paste the selected clip into the app you were in |
 | ⌘K | Show the selected item's actions, or go back to the search |
+| ⌘Q ⌘W ⌘E ⌘R ⌘T ⌘Y ⌘U | In ⌘K, run the 1st to 7th action (each row shows its letter) |
 | ⎋ | Back one level, or close |
 | ⌘Y, or Space with an empty field | Quick Look the selected file |
 

@@ -66,15 +66,22 @@ public struct Item: Sendable, Hashable {
 
 /// The launcher's own commands, found by searching like apps (FEATURES.md §7).
 public enum Command: String, Sendable, CaseIterable {
+    case clipboard
     case openConfig = "open-config"
     case reloadConfig = "reload-config"
     case quit
 
     public var title: String {
         switch self {
+        case .clipboard: "Clipboard History"
         case .openConfig: "Open Config"
         case .reloadConfig: "Reload Config"
         case .quit: "Quit Pith"
         }
+    }
+
+    /// Queries that put the command first, whatever else matches (decision 42): "c" is the clipboard, as Raycast has it.
+    public var aliases: [String] {
+        self == .clipboard ? ["c"] : []
     }
 }

@@ -42,8 +42,9 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
         self.onAccessChange = onAccessChange
     }
 
-    /// Starts watching from the clipboard as it is now. Without `timer`, only `check()` reads it (for tests).
-    @MainActor func start(timer: Bool = true) {
+    /// Starts watching from the clipboard as it is now, and returns once it has read where that is: a copy made
+    /// after it returns is recorded. Without `timer`, only `check()` reads the clipboard (for tests).
+    @MainActor func start(timer: Bool = true) async {
         let workspace = NSWorkspace.shared
         frontmostApp.withLock { $0 = workspace.frontmostApplication?.bundleIdentifier }
         let center = workspace.notificationCenter
@@ -66,10 +67,13 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
                 [weak self] _ in self?.setAsleep(false)
             },
         ]
-        queue.async { [self] in
-            lastChange = pasteboard.changeCount
-            running = timer
-            updateTimer()
+        await withCheckedContinuation { continuation in
+            queue.async { [self] in
+                lastChange = pasteboard.changeCount
+                running = timer
+                updateTimer()
+                continuation.resume()
+            }
         }
     }
 

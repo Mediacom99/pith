@@ -8,6 +8,10 @@ public struct SearchIndex: Sendable {
     /// An app's file name when it differs from its localized name, so "calcu" finds "Calcolatrice".
     private let fileNames: [SearchKey?]
     private let positions: [String: Int]
+    /// A command's aliases (`Command.aliases`) → its position: a query that is one comes first.
+    private let aliases: [String: Int]
+    /// Above any match and boost, so an alias's item leads the merged list too.
+    static let aliasScore = Int32.max / 4
 
     public static let empty = SearchIndex(items: [])
 
@@ -22,6 +26,12 @@ public struct SearchIndex: Sendable {
             return SearchKey(fileName)
         }
         positions = Dictionary(items.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var aliases: [String: Int] = [:]
+        for (position, item) in items.enumerated() {
+            guard case .command(let command) = item.kind else { continue }
+            for alias in command.aliases { aliases[alias] = position }
+        }
+        self.aliases = aliases
     }
 
     /// Where the item with this `Item.id` sits in `items`.
@@ -56,6 +66,11 @@ public struct SearchIndex: Sendable {
                 total += best
             }
             hits.append((index, boosted ? total + boosts[index] : total))
+        }
+        // A query that is a command's alias puts that command first.
+        if let position = aliases[query.trimmingCharacters(in: .whitespaces).lowercased()] {
+            hits.removeAll { $0.index == position }
+            hits.append((position, Self.aliasScore))
         }
         hits.sort { a, b in
             if a.score != b.score { return a.score > b.score }

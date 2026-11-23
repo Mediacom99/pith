@@ -68,6 +68,7 @@ nonisolated enum Symbols {
 
     static func command(_ command: Command) -> String {
         switch command {
+        case .clipboard: clipboard
         case .openConfig: "gearshape"
         case .reloadConfig: "arrow.clockwise"
         case .quit: "power"

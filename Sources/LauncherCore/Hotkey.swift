@@ -10,6 +10,15 @@ public struct Hotkey: Sendable, Equatable, CustomStringConvertible {
     /// The canonical spelling, like `cmd+shift+p`.
     public let description: String
 
+    /// As macOS menus show it: `⇧⌘V`.
+    public var symbols: String {
+        let glyphs = ["ctrl": "⌃", "alt": "⌥", "shift": "⇧", "cmd": "⌘"]
+        let parts = description.split(separator: "+", omittingEmptySubsequences: false).map(String.init)
+        let key = parts.last ?? ""
+        return parts.dropLast().compactMap { glyphs[$0] }.joined()
+            + (key.count == 1 ? key.uppercased() : key.capitalized)
+    }
+
     /// Nil unless `text` names known modifiers and exactly one known key. A global shortcut needs cmd, ctrl or alt
     /// (or a function key), so it never takes over plain typing.
     public init?(_ text: String) {

@@ -210,6 +210,37 @@ struct ClipboardPanelTests {
         #expect(try await panel.launcher.clipboard?.store.load().map(\.text) == ["newest"])
     }
 
+    @Test func commandLettersRunTheActions() async throws {
+        let folder = try TemporaryDirectory()
+        let copied = CopiedClips()
+        let panel = try await clipboardPanel(
+            folder.url, [(text("keep me"), nil, 2), (text("newest"), nil, 1)], pinned: [0], copied: copied)
+        panel.launcher.canPaste = true
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(!panel.launcher.runShortcut("w"), "only in an actions list")
+
+        // Paste, Copy to Clipboard, Save as File, Pin, Delete: ⌘W is the second.
+        panel.launcher.toggleActions()
+        #expect(panel.launcher.runShortcut("w"))
+        #expect(copied.deliveries.map(\.delivery) == [.copy])
+        #expect(!panel.launcher.runShortcut("p"), "past the last action")
+
+        // ⌘R pins the newest, even with a filter that hides Pin.
+        panel.launcher.reset()
+        panel.launcher.prepareToShow(.clipboard)
+        panel.launcher.toggleActions()
+        await type("del", in: panel)
+        #expect(panel.launcher.runShortcut("r"))
+        #expect(await eventuallyTrue { pinned(panel) == ["newest", "keep me"] })
+
+        // ⌘T deletes; a pinned clip takes a second ⌘T.
+        panel.launcher.toggleActions()
+        #expect(panel.launcher.runShortcut("t"))
+        #expect(panel.launcher.confirming)
+        #expect(panel.launcher.runShortcut("t"))
+        #expect(await eventuallyTrue { titles(panel) == ["keep me"] })
+    }
+
     @Test func saveAsFileWritesADatedFileAndSaysWhere() async throws {
         let folder = try TemporaryDirectory()
         let downloads = try TemporaryDirectory()

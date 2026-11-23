@@ -43,7 +43,8 @@ history can't be seen until step 4 shows it.
   no notification for a new copy.
   - Every 0.5 s it reads the pasteboard's change count, with 0.25 s of leeway so the system can coalesce wakeups.
   - It stops while the screens sleep or another user's session is in front. Step 7 measures what it costs at idle.
-  - What's on the clipboard at launch isn't recorded, so starting Pith never reads the clipboard by itself.
+  - What's on the clipboard at launch isn't recorded, so starting Pith never reads the clipboard by itself. `start()`
+    returns once it has read the change count, so a copy made right after launch can't be taken for the old one.
 - **Clipboard permission:** macOS can ask before an app reads the clipboard (`accessBehavior`, since 15.4).
   - "Ask" (or never asked yet): the copy is read, and macOS may ask Edoardo the first time.
   - "Never": nothing is read, and the log says so once. Step 4 shows it in the panel.
@@ -128,6 +129,8 @@ Status: **in review**. Built from the brief (§3, §5, §7) and checked on the `
   - States: the empty history (the tile alone), "Pith can't read the clipboard" in orange with ⏎ opening Privacy &
     Security (from step 2's permission check), and "Recording is paused" (its command comes in step 6).
   - Quick Look (⌘Y, Space) previews an image or the first file.
+  - The launcher's Clipboard History command (decision 42): "c" alone lists it first through its alias, its tile
+    says "Also ⇧⌘V, from any app", and ⏎ opens the clipboard in place.
 - **Small departures from the brief:**
   - Dates read "Oct 31", as the launcher's "opened Oct 31" does, rather than "31 Oct".
   - Sizes follow the Mac's region format, as Finder's do.
@@ -176,6 +179,8 @@ snapshots: `clipboard-actions`, `clipboard-delete-pinned`, `clipboard-accessibil
   - Reveal says when the files are gone.
   - Failures post a notification (decision 32).
   - Force Quit's second ⏎ is now a general one (`confirming`).
+  - In any ⌘K actions list, ⌘Q…⌘U run the 1st to 7th action, fixed per action, each row showing its letter
+    (decision 43). A filter that hides the action is cleared, and a second press confirms.
 - **Signing:** `make certificate` creates the "Pith Local Signing" certificate once (decision 41), and `make app`
   signs with it when it's there. Edoardo runs it, since macOS asks for his password.
 - Tests cover which actions each kind gets, ⏎ pasting or copying, pin, delete's second ⏎ and Save as File, with

@@ -94,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The clipboard history is loaded before the recorder starts, so no copy can slip in between.
         Task {
             await clipboard.load()
-            recorder.start()
+            await recorder.start()
         }
 
         rebuildIndex()
@@ -114,6 +114,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         register("launcher", config.launcherHotkey) { [weak panel] in panel?.toggle(pressedAt: $0) }
         register("clipboard", config.clipboardHotkey) { [weak panel] in panel?.toggleClipboard(pressedAt: $0) }
+        panel.launcher.clipboardHotkey = hotkeys["clipboard"]?.current?.hotkey.symbols
         panel.launcher.emptyState = config.emptyState
         publishProblems()
         resolveApps()
@@ -203,6 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func run(_ command: Command) {
         switch command {
+        case .clipboard: panel?.launcher.switchMode(to: .clipboard)
         case .openConfig: configStore.open()
         case .reloadConfig: configStore.reload()
         case .quit: NSApp.terminate(nil)

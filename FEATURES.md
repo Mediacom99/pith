@@ -51,6 +51,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 | `↑` / `↓`, `Ctrl+K` / `Ctrl+J` | Move selection up / down |
 | `Enter` | Primary action on selected item |
 | `⌘K` | Open actions panel for selected item |
+| `⌘Q`, `⌘W`, `⌘E`, `⌘R`, `⌘T`, `⌘Y`, `⌘U` | In the actions panel: run its 1st to 7th action (decision 43) |
 | `Esc` | Back / close |
 
 ---
@@ -62,7 +63,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 - **Matching:** fuzzy, word by word: every word must match, in any order. For files, earlier words may also match a folder in the path, so `acme/deploy` or `acme deploy` find `deploy.sh` under `Acme`.
 - **Ranking:** match quality, boosted by frequency + recency of what you pick. Learns over time.
 - **Calculator results** appear inline as the top row when the query parses as an expression (§6).
-- **Prefix `c `** switches to clipboard mode.
+- **Prefix `c `** switches to clipboard mode, and the **Clipboard History** command (first for `c`, decision 42) opens it.
 
 ### 4.1 Applications
 
@@ -169,6 +170,7 @@ Typed directly in the launcher; result shows as the top row. `Enter` **copies th
 
 Since there is no menu bar icon, these are searchable commands:
 
+- **Clipboard History** — opens the clipboard in the panel; `c` alone lists it first (decision 42)
 - **Open config** — opens `config.toml` in the default editor
 - **Reload config** (also automatic on save)
 - **Pause / resume clipboard recording**

@@ -13,7 +13,7 @@ struct ClipboardRecorderTests {
         defer { pasteboard.releaseGlobally() }
         let store = ClipboardStore(folder: folder.url)
         let recorder = ClipboardRecorder(pasteboard: pasteboard, store: store) { _, _ in }
-        recorder.start(timer: false)
+        await recorder.start(timer: false)
         #expect(await recorder.check() == nil, "nothing new yet")
 
         let item = NSPasteboardItem()
@@ -35,7 +35,7 @@ struct ClipboardRecorderTests {
         pasteboard.clearContents()
         pasteboard.setString("copied before Pith started", forType: .string)
         let recorder = ClipboardRecorder(pasteboard: pasteboard, store: ClipboardStore(folder: folder.url)) { _, _ in }
-        recorder.start(timer: false)
+        await recorder.start(timer: false)
         #expect(await recorder.check() == nil)
     }
 
@@ -45,7 +45,7 @@ struct ClipboardRecorderTests {
         defer { pasteboard.releaseGlobally() }
         let store = ClipboardStore(folder: folder.url)
         let recorder = ClipboardRecorder(pasteboard: pasteboard, store: store) { _, _ in }
-        recorder.start(timer: false)
+        await recorder.start(timer: false)
 
         for marker in ClipReading.skipMarkers.sorted() {
             let item = NSPasteboardItem()
@@ -63,7 +63,7 @@ struct ClipboardRecorderTests {
         let pasteboard = privatePasteboard()
         defer { pasteboard.releaseGlobally() }
         let recorder = ClipboardRecorder(pasteboard: pasteboard, store: ClipboardStore(folder: folder.url)) { _, _ in }
-        recorder.start(timer: false)
+        await recorder.start(timer: false)
 
         try folder.makeFile("Acme/Quarterly_Budget_Review.pdf")
         let report = folder.url.appending(path: "Acme/Quarterly_Budget_Review.pdf")
@@ -97,7 +97,7 @@ struct ClipboardRecorderTests {
         let pasteboard = privatePasteboard()
         defer { pasteboard.releaseGlobally() }
         let recorder = ClipboardRecorder(pasteboard: pasteboard, store: ClipboardStore(folder: folder.url)) { _, _ in }
-        recorder.start(timer: false)
+        await recorder.start(timer: false)
 
         let rtf = try NSAttributedString(string: "Quarterly budget").data(
             from: NSRange(location: 0, length: 16),
@@ -114,7 +114,7 @@ struct ClipboardRecorderTests {
         defer { pasteboard.releaseGlobally() }
         let store = ClipboardStore(folder: folder.url)
         let recorder = ClipboardRecorder(pasteboard: pasteboard, store: store) { _, _ in }
-        recorder.start(timer: false)
+        await recorder.start(timer: false)
 
         let item = NSPasteboardItem()
         item.setString("<b>Acme</b>", forType: .html)

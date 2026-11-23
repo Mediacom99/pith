@@ -145,4 +145,10 @@ struct HotkeyTests {
     func rejectsWhatIsntAGlobalShortcut(text: String) {
         #expect(Hotkey(text) == nil)
     }
+
+    @Test func hotkeysReadAsMenusShowThem() throws {
+        #expect(try #require(Hotkey("cmd+shift+v")).symbols == "⇧⌘V")
+        #expect(try #require(Hotkey("cmd+p")).symbols == "⌘P")
+        #expect(try #require(Hotkey("ctrl+alt+space")).symbols == "⌃⌥Space")
+    }
 }
