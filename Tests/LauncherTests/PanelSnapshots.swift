@@ -83,31 +83,31 @@ import Testing
         let confirm = try await panel(emptyState: .recent)
         confirm.launcher.quitApp = { _, _ in }
         confirm.launcher.prepareToShow()
-        press(#selector(NSResponder.moveDown(_:)), in: confirm)
+        press("down", in: confirm)
         confirm.launcher.toggleActions()
         try #require(confirm.launcher.rows.last == .action(.forceQuit), "Finder isn't running")
-        for _ in 1..<confirm.launcher.rows.count { press(#selector(NSResponder.moveDown(_:)), in: confirm) }
-        press(#selector(NSResponder.insertNewline(_:)), in: confirm)
+        for _ in 1..<confirm.launcher.rows.count { press("down", in: confirm) }
+        press("return", in: confirm)
         try await snapshot(confirm, "force-quit-\(suffix)")
 
         // Clear Clipboard History waiting for its second ⏎. Running it is swapped out.
         let clear = try await panel(emptyState: .none)
         clear.launcher.runCommand = { _ in }
         await type("clear clip", in: clear)
-        press(#selector(NSResponder.insertNewline(_:)), in: clear)
+        press("return", in: clear)
         try await snapshot(clear, "clear-clipboard-\(suffix)")
 
         // An update downloaded and selected, above the recent list.
         let update = try await panel(emptyState: .recent)
         update.launcher.readyUpdate = "0.3.1"
         update.launcher.prepareToShow()
-        press(#selector(NSResponder.moveUp(_:)), in: update)
+        press("up", in: update)
         try await snapshot(update, "update-ready-\(suffix)")
 
         // The problem selected, so the tile shows it.
         let problem = try await panel(emptyState: .recent, problems: ["line 3: unknown setting \"theme\""])
         problem.launcher.prepareToShow()
-        press(#selector(NSResponder.moveUp(_:)), in: problem)
+        press("up", in: problem)
         try await snapshot(problem, "problem-\(suffix)")
 
         // The rows' cuts, then the ⌘K placeholder with the long name in it.
@@ -139,7 +139,7 @@ import Testing
         for (name, row) in [("link", 1), ("image", 2), ("files", 3)] {
             let panel = try await clipboardPanel()
             panel.launcher.prepareToShow(.clipboard)
-            for _ in 0..<row { press(#selector(NSResponder.moveDown(_:)), in: panel) }
+            for _ in 0..<row { press("down", in: panel) }
             try await snapshot(panel, "clipboard-\(name)-\(suffix)")
         }
 
@@ -155,13 +155,13 @@ import Testing
         let paused = try await clipboardPanel()
         paused.launcher.clipboardNotices = [.paused]
         paused.launcher.prepareToShow(.clipboard)
-        press(#selector(NSResponder.moveUp(_:)), in: paused)
+        press("up", in: paused)
         try await snapshot(paused, "clipboard-paused-\(suffix)")
 
         let denied = try await clipboardPanel()
         denied.launcher.clipboardNotices = [.cannotRead]
         denied.launcher.prepareToShow(.clipboard)
-        press(#selector(NSResponder.moveUp(_:)), in: denied)
+        press("up", in: denied)
         try await snapshot(denied, "clipboard-cannot-read-\(suffix)")
 
         // No Accessibility access: ⏎ copies, and the notice says why.
@@ -169,18 +169,18 @@ import Testing
         noPaste.launcher.canPaste = false
         noPaste.launcher.clipboardNotices = [.needsAccessibility]
         noPaste.launcher.prepareToShow(.clipboard)
-        press(#selector(NSResponder.moveUp(_:)), in: noPaste)
+        press("up", in: noPaste)
         try await snapshot(noPaste, "clipboard-accessibility-\(suffix)")
 
         // ⌘K on the pinned agenda, then Delete waiting for its second ⏎.
         let actions = try await clipboardPanel()
         actions.launcher.prepareToShow(.clipboard)
-        for _ in 0..<4 { press(#selector(NSResponder.moveDown(_:)), in: actions) }
+        for _ in 0..<4 { press("down", in: actions) }
         actions.launcher.toggleActions()
         try await snapshot(actions, "clipboard-actions-\(suffix)")
-        for _ in 1..<actions.launcher.rows.count { press(#selector(NSResponder.moveDown(_:)), in: actions) }
+        for _ in 1..<actions.launcher.rows.count { press("down", in: actions) }
         try #require(actions.launcher.rows.last == .clipAction(.delete))
-        press(#selector(NSResponder.insertNewline(_:)), in: actions)
+        press("return", in: actions)
         try await snapshot(actions, "clipboard-delete-pinned-\(suffix)")
     }
 

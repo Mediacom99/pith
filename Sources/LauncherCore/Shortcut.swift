@@ -1,26 +1,51 @@
 import Carbon.HIToolbox
 import Foundation
 
-/// A global shortcut written like `cmd+p` or `ctrl+alt+space`: modifiers, then one key.
-public struct Hotkey: Sendable, Equatable, CustomStringConvertible {
+/// A key and its modifiers, written like `cmd+p`, `ctrl+k`, `up` or `space`: a global hotkey (`[hotkeys]`) or a key
+/// in the panel (`[keys]`, decision 55).
+public struct Shortcut: Sendable, Hashable, CustomStringConvertible {
     /// The virtual key code (`kVK_…`): a physical key position on an ANSI keyboard.
     public let keyCode: UInt32
     /// Carbon modifier flags (`cmdKey`, `shiftKey`, `optionKey`, `controlKey`).
     public let modifiers: UInt32
-    /// The canonical spelling, like `cmd+shift+p`.
+    /// The key's own name: `k`, `=`, `up`, `space`, `return`.
+    public let key: String
+    /// The canonical spelling, like `shift+cmd+p`: the modifiers in macOS's order.
     public let description: String
 
-    /// As macOS menus show it: `⇧⌘V`.
-    public var symbols: String {
-        let glyphs = ["ctrl": "⌃", "alt": "⌥", "shift": "⇧", "cmd": "⌘"]
-        let parts = description.split(separator: "+", omittingEmptySubsequences: false).map(String.init)
-        let key = parts.last ?? ""
-        return parts.dropLast().compactMap { glyphs[$0] }.joined()
-            + (key.count == 1 ? key.uppercased() : key.capitalized)
+    /// Whether it can be a global hotkey: it has cmd, ctrl or alt, or is a function key, so it never takes over typing.
+    public var isGlobal: Bool {
+        modifiers & UInt32(cmdKey | controlKey | optionKey) != 0 || (key.first == "f" && key.count > 1)
     }
 
-    /// Nil unless `text` names known modifiers and exactly one known key. A global shortcut needs cmd, ctrl or alt
-    /// (or a function key), so it never takes over plain typing.
+    /// Whether it types in the search field: a character, Space or ⌫ without cmd, alt or ctrl. The panel acts on such
+    /// a key only while the field is empty (decision 55).
+    public var typesText: Bool {
+        modifiers & UInt32(cmdKey | controlKey | optionKey) == 0
+            && (isCharacter || key == "space" || key == "backspace")
+    }
+
+    /// A letter, digit or punctuation mark: in the panel it's matched by the character it types in the current
+    /// layout, as menus do. Other keys are matched by their position.
+    public var isCharacter: Bool { key.count == 1 }
+
+    /// As macOS menus show it: `⇧⌘V`, `⌃K`, `↩`, `⌃⌥Space`.
+    public var symbols: String {
+        modifierGlyphs.joined() + Self.symbol(of: key)
+    }
+
+    /// As the tile's key caps show it, one cap per modifier and one for the key: `⌘` `K`, `esc`, `↩`.
+    public var caps: [String] {
+        let cap =
+            switch key {
+            case "escape": "esc"
+            case "space": "space"
+            default: Self.symbol(of: key)
+            }
+        return modifierGlyphs + [cap]
+    }
+
+    /// Nil unless `text` names known modifiers and exactly one known key.
     public init?(_ text: String) {
         var parts = text.lowercased().split(separator: "+", omittingEmptySubsequences: false).map {
             $0.trimmingCharacters(in: .whitespaces)
@@ -34,27 +59,52 @@ public struct Hotkey: Sendable, Equatable, CustomStringConvertible {
 
         var modifiers: UInt32 = 0
         var names: [String] = []
-        for (flag, name, aliases) in Self.modifierNames {
-            if parts.contains(where: aliases.contains) {
-                modifiers |= flag
-                names.append(name)
-            }
+        for (flag, name, _, aliases) in Self.modifierNames where parts.contains(where: aliases.contains) {
+            modifiers |= flag
+            names.append(name)
         }
         let known = Self.modifierNames.flatMap(\.aliases)
         guard parts.allSatisfy(known.contains) else { return nil }
-        let isFunctionKey = keyName.first == "f" && keyName.count > 1
-        guard modifiers & UInt32(cmdKey | controlKey | optionKey) != 0 || isFunctionKey else { return nil }
 
         keyCode = key.code
         self.modifiers = modifiers
+        self.key = key.name
         description = (names + [key.name]).joined(separator: "+")
     }
 
-    private static let modifierNames: [(flag: UInt32, name: String, aliases: [String])] = [
-        (UInt32(controlKey), "ctrl", ["ctrl", "control", "⌃"]),
-        (UInt32(optionKey), "alt", ["alt", "opt", "option", "⌥"]),
-        (UInt32(shiftKey), "shift", ["shift", "⇧"]),
-        (UInt32(cmdKey), "cmd", ["cmd", "command", "⌘"]),
+    /// Whether a key press is this shortcut. `character` is what the key types without its modifiers (but with ⌘,
+    /// for layouts that switch to QWERTY under it), lowercased; nil when the press has none.
+    public func matches(keyCode: UInt32, modifiers: UInt32, character: String?) -> Bool {
+        guard modifiers == self.modifiers else { return false }
+        if isCharacter, let character { return character == key }
+        return keyCode == self.keyCode
+    }
+
+    private var modifierGlyphs: [String] {
+        Self.modifierNames.compactMap { modifiers & $0.flag != 0 ? $0.glyph : nil }
+    }
+
+    private static func symbol(of key: String) -> String {
+        switch key {
+        case "return": "↩"
+        case "escape": "⎋"
+        case "backspace": "⌫"
+        case "tab": "⇥"
+        case "space": "Space"
+        case "up": "↑"
+        case "down": "↓"
+        case "left": "←"
+        case "right": "→"
+        default: key.uppercased()
+        }
+    }
+
+    /// In macOS's order, which is also the canonical spelling's.
+    private static let modifierNames: [(flag: UInt32, name: String, glyph: String, aliases: [String])] = [
+        (UInt32(controlKey), "ctrl", "⌃", ["ctrl", "control", "⌃"]),
+        (UInt32(optionKey), "alt", "⌥", ["alt", "opt", "option", "⌥"]),
+        (UInt32(shiftKey), "shift", "⇧", ["shift", "⇧"]),
+        (UInt32(cmdKey), "cmd", "⌘", ["cmd", "command", "⌘"]),
     ]
 
     private static let keys: [String: (code: UInt32, name: String)] = {
@@ -75,7 +125,7 @@ public struct Hotkey: Sendable, Equatable, CustomStringConvertible {
         for (name, code) in letters { keys[name] = (UInt32(code), name) }
         let named: [([String], Int)] = [
             (["space"], kVK_Space), (["return", "enter"], kVK_Return), (["tab"], kVK_Tab),
-            (["escape", "esc"], kVK_Escape), (["delete", "backspace"], kVK_Delete),
+            (["escape", "esc"], kVK_Escape), (["backspace", "delete"], kVK_Delete),
             (["left"], kVK_LeftArrow), (["right"], kVK_RightArrow), (["up"], kVK_UpArrow), (["down"], kVK_DownArrow),
             (["f1"], kVK_F1), (["f2"], kVK_F2), (["f3"], kVK_F3), (["f4"], kVK_F4), (["f5"], kVK_F5),
             (["f6"], kVK_F6), (["f7"], kVK_F7), (["f8"], kVK_F8), (["f9"], kVK_F9), (["f10"], kVK_F10),

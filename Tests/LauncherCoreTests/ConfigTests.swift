@@ -14,7 +14,7 @@ struct ConfigTests {
         let (config, problems) = Config.parse("")
         #expect(problems.isEmpty)
         #expect(config.launcherHotkey.description == "cmd+p")
-        #expect(config.clipboardHotkey.description == "shift+cmd+v", "the modifiers in macOS order")
+        #expect(config.clipboardHotkey?.description == "shift+cmd+v", "the modifiers in macOS order")
         #expect(config.emptyState == .recent)
         #expect(config.launchAtLogin)
     }
@@ -168,30 +168,219 @@ struct TOMLReaderTests {
     }
 }
 
-struct HotkeyTests {
+struct ShortcutTests {
     @Test func readsShortcuts() throws {
-        let hotkey = try #require(Hotkey("cmd+p"))
+        let hotkey = try #require(Shortcut("cmd+p"))
         #expect(hotkey.keyCode == UInt32(kVK_ANSI_P))
         #expect(hotkey.modifiers == UInt32(cmdKey))
 
-        let spaced = try #require(Hotkey(" Shift + Option + Command + Space "))
+        let spaced = try #require(Shortcut(" Shift + Option + Command + Space "))
         #expect(spaced.keyCode == UInt32(kVK_Space))
         #expect(spaced.modifiers == UInt32(cmdKey | shiftKey | optionKey))
         #expect(spaced.description == "alt+shift+cmd+space")
 
-        #expect(Hotkey("ctrl+⌥+k")?.description == "ctrl+alt+k")
-        #expect(Hotkey("f5")?.keyCode == UInt32(kVK_F5))
-        #expect(Hotkey("cmd+,")?.keyCode == UInt32(kVK_ANSI_Comma))
+        #expect(Shortcut("ctrl+⌥+k")?.description == "ctrl+alt+k")
+        #expect(Shortcut("f5")?.keyCode == UInt32(kVK_F5))
+        #expect(Shortcut("cmd+,")?.keyCode == UInt32(kVK_ANSI_Comma))
+        #expect(Shortcut("delete") == Shortcut("backspace"))
+        #expect(Shortcut("enter")?.description == "return")
     }
 
-    @Test(arguments: ["", "p", "shift+p", "cmd+", "cmd+p+q", "hyper+p", "cmd+nope", "cmd+shift"])
-    func rejectsWhatIsntAGlobalShortcut(text: String) {
-        #expect(Hotkey(text) == nil)
+    @Test(arguments: ["", "cmd+", "cmd+p+q", "hyper+p", "cmd+nope", "cmd+shift"])
+    func rejectsWhatIsntAKey(text: String) {
+        #expect(Shortcut(text) == nil)
     }
 
-    @Test func hotkeysReadAsMenusShowThem() throws {
-        #expect(try #require(Hotkey("cmd+shift+v")).symbols == "⇧⌘V")
-        #expect(try #require(Hotkey("cmd+p")).symbols == "⌘P")
-        #expect(try #require(Hotkey("ctrl+alt+space")).symbols == "⌃⌥Space")
+    @Test func onlyAModifierOrAFunctionKeyMakesAGlobalHotkey() throws {
+        #expect(try #require(Shortcut("cmd+p")).isGlobal)
+        #expect(try #require(Shortcut("f13")).isGlobal)
+        #expect(try !#require(Shortcut("p")).isGlobal)
+        #expect(try !#require(Shortcut("shift+p")).isGlobal)
+        #expect(try !#require(Shortcut("up")).isGlobal)
+    }
+
+    @Test func keysThatTypeAreCharactersSpaceAndBackspace() throws {
+        for text in ["k", "shift+k", "space", "backspace", "/"] { #expect(try #require(Shortcut(text)).typesText) }
+        for text in ["up", "return", "escape", "ctrl+k", "cmd+y", "alt+k"] {
+            #expect(try !#require(Shortcut(text)).typesText)
+        }
+    }
+
+    @Test func readAsMenusAndKeyCapsShowThem() throws {
+        #expect(try #require(Shortcut("cmd+shift+v")).symbols == "⇧⌘V")
+        #expect(try #require(Shortcut("cmd+p")).symbols == "⌘P")
+        #expect(try #require(Shortcut("ctrl+alt+space")).symbols == "⌃⌥Space")
+        #expect(try #require(Shortcut("cmd+return")).symbols == "⌘↩")
+        #expect(try #require(Shortcut("cmd+k")).caps == ["⌘", "K"])
+        #expect(try #require(Shortcut("escape")).caps == ["esc"])
+        #expect(try #require(Shortcut("return")).caps == ["↩"])
+        #expect(try #require(Shortcut("ctrl+j")).caps == ["⌃", "J"])
+    }
+
+    @Test func charactersMatchByWhatTheyTypeOtherKeysByPosition() throws {
+        let k = try #require(Shortcut("cmd+k"))
+        let cmd = UInt32(cmdKey)
+        #expect(k.matches(keyCode: UInt32(kVK_ANSI_K), modifiers: cmd, character: "k"))
+        #expect(
+            k.matches(keyCode: UInt32(kVK_ANSI_T), modifiers: cmd, character: "k"),
+            "a layout with k elsewhere: the key that types k")
+        #expect(!k.matches(keyCode: UInt32(kVK_ANSI_K), modifiers: cmd, character: "t"))
+        #expect(!k.matches(keyCode: UInt32(kVK_ANSI_K), modifiers: cmd | UInt32(shiftKey), character: "k"))
+        let up = try #require(Shortcut("up"))
+        #expect(up.matches(keyCode: UInt32(kVK_UpArrow), modifiers: 0, character: "\u{F700}"))
+        #expect(!up.matches(keyCode: UInt32(kVK_DownArrow), modifiers: 0, character: nil))
+    }
+}
+
+struct KeysConfigTests {
+    private func keys(_ text: String) -> (keys: KeyBindings, problems: [String]) {
+        let (config, problems) = Config.parse(text)
+        return (config.keys, problems)
+    }
+
+    @Test func defaultsAreTheKeysTheyReplace() {
+        let keys = Config().keys
+        #expect(keys[.up].map(\.description) == ["up", "ctrl+k"])
+        #expect(keys[.down].map(\.description) == ["down", "ctrl+j"])
+        #expect(keys[.open].map(\.description) == ["return"])
+        #expect(keys[.actions].map(\.description) == ["cmd+k"])
+        #expect(keys[.back].map(\.description) == ["escape"])
+        #expect(keys[.preview].map(\.description) == ["cmd+y", "space"], "⌘Y and Space (decision 20)")
+        #expect(keys.runActions.map { $0?.symbols } == ["⌘Q", "⌘W", "⌘E", "⌘R", "⌘T", "⌘Y", "⌘U"], "decision 43")
+        #expect(keys[.toLauncher].map(\.description) == ["backspace"])
+        #expect(Config().clipboardAlias == "c")
+    }
+
+    @Test func readsOneKeyOrAList() {
+        let (keys, problems) = keys(
+            """
+            [keys]
+            up = "ctrl+p"
+            down = ["ctrl+n", "down"]
+            actions = "cmd+."
+            run_actions = ["ctrl+1", "ctrl+2"]
+            """)
+        #expect(problems.isEmpty)
+        #expect(keys[.up].map(\.description) == ["ctrl+p"])
+        #expect(keys[.down].map(\.description) == ["ctrl+n", "down"])
+        #expect(keys[.actions].map(\.description) == ["cmd+."])
+        #expect(keys.runActions.map { $0?.description } == ["ctrl+1", "ctrl+2"])
+        #expect(keys[.open].map(\.description) == ["return"], "the others keep their defaults")
+    }
+
+    @Test func emptyTurnsAKeyOffButNotOpenOrBack() {
+        let (keys, problems) = keys(
+            """
+            [keys]
+            preview = []
+            to_launcher = ""
+            open = []
+            back = ""
+            """)
+        #expect(keys[.preview].isEmpty)
+        #expect(keys[.toLauncher].isEmpty)
+        #expect(keys[.open].map(\.description) == ["return"])
+        #expect(keys[.back].map(\.description) == ["escape"])
+        #expect(
+            problems == [
+                "line 4: keys.open needs a key, so it's \"return\"",
+                "line 5: keys.back needs a key, so it's \"escape\"",
+            ])
+    }
+
+    @Test func aBadValueKeepsTheDefault() {
+        let (keys, problems) = keys(
+            """
+            [keys]
+            up = ["up", "ctrl+"]
+            down = 3
+            back = [1]
+            sideways = "left"
+            """)
+        #expect(keys == Config().keys)
+        #expect(
+            problems == [
+                "line 2: keys.up \"ctrl+\" isn't a key like \"ctrl+k\" or \"up\"",
+                "line 3: keys.down should be a key in quotes, or a list of them like [\"up\", \"ctrl+k\"]",
+                "line 4: keys.back should be a key in quotes, or a list of them like [\"up\", \"ctrl+k\"]",
+                "line 5: unknown setting \"keys.sideways\"",
+            ])
+    }
+
+    @Test func aKeyGivenTwiceStaysWithTheFirst() {
+        let (keys, problems) = keys(
+            """
+            [keys]
+            up = ["up", "ctrl+k"]
+            down = ["down", "ctrl+k"]
+            open = ["return", "cmd+c"]
+            actions = ["cmd+k", "cmd+p"]
+            preview = ["cmd+y", "cmd+y"]
+            """)
+        #expect(keys[.down].map(\.description) == ["down"])
+        #expect(keys[.open].map(\.description) == ["return"])
+        #expect(keys[.actions].map(\.description) == ["cmd+k"])
+        #expect(keys[.preview].map(\.description) == ["cmd+y"])
+        #expect(
+            problems == [
+                "line 3: keys.down \"ctrl+k\" is already keys.up, so it's left out",
+                "line 4: keys.open \"cmd+c\" is Copy in the search field, so it's left out",
+                "line 5: keys.actions \"cmd+p\" is hotkeys.launcher, so it's left out",
+                "line 6: keys.preview \"cmd+y\" is there twice, so it's left out",
+            ])
+    }
+
+    @Test func aWrittenKeyQuietlyTakesItFromADefault() {
+        let (keys, problems) = keys("[keys]\nup = [\"ctrl+j\"]")
+        #expect(problems.isEmpty)
+        #expect(keys[.up].map(\.description) == ["ctrl+j"])
+        #expect(keys[.down].map(\.description) == ["down"])
+    }
+
+    @Test func anActionLeftOutKeepsTheOthersInPlace() {
+        let (keys, problems) = keys("[keys]\nactions = \"cmd+k\"\nrun_actions = [\"cmd+q\", \"cmd+k\", \"cmd+e\"]")
+        #expect(keys.runActions.map { $0?.description } == ["cmd+q", nil, "cmd+e"], "⌘E is still the third")
+        #expect(problems == ["line 3: keys.run_actions \"cmd+k\" is already keys.actions, so it's left out"])
+    }
+
+    @Test func actionsMayShareWithQuickLookAndTheWayBack() {
+        let (keys, problems) = keys(
+            """
+            [keys]
+            run_actions = ["cmd+y", "backspace"]
+            """)
+        #expect(problems.isEmpty, "inside an actions list, run_actions comes first")
+        #expect(keys.runActions.map { $0?.description } == ["cmd+y", "backspace"])
+        #expect(keys[.preview].map(\.description) == ["cmd+y", "space"])
+    }
+
+    @Test func aHotkeyCanBeTurnedOffButNotTheLaunchers() {
+        let (config, problems) = Config.parse(
+            """
+            [hotkeys]
+            launcher = ""
+            clipboard = ""
+            """)
+        #expect(config.clipboardHotkey == nil, "⌘⇧V goes back to the apps")
+        #expect(config.launcherHotkey.description == "cmd+p")
+        #expect(problems == ["line 2: hotkeys.launcher can't be off: it's how Pith opens"])
+    }
+
+    @Test func oneHotkeyCantOpenBoth() {
+        let (config, problems) = Config.parse("[hotkeys]\nlauncher = \"cmd+shift+v\"")
+        #expect(config.launcherHotkey.description == "shift+cmd+v")
+        #expect(config.clipboardHotkey == nil)
+        #expect(
+            problems == [
+                "line 2: hotkeys.launcher and hotkeys.clipboard are both \"shift+cmd+v\", so the clipboard's is off"
+            ])
+    }
+
+    @Test func readsTheClipboardAlias() {
+        #expect(Config.parse("launcher.clipboard_alias = \"V\"").config.clipboardAlias == "v")
+        #expect(Config.parse("launcher.clipboard_alias = \"\"").config.clipboardAlias == "")
+        let (config, problems) = Config.parse("launcher.clipboard_alias = \"c b\"")
+        #expect(config.clipboardAlias == "c")
+        #expect(problems == ["line 1: launcher.clipboard_alias \"c b\" should be one word, like \"c\""])
     }
 }

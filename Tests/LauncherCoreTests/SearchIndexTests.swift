@@ -79,4 +79,15 @@ struct SearchIndexTests {
         #expect(first("clipboard") == "Clipboard History")
         #expect(first("ca") == "Calendar", "only the alias itself jumps the queue")
     }
+
+    @Test func theClipboardsAliasIsConfigurable() {
+        let apps = ["Calendar", "Vim"].map { Item(name: $0, appAt: URL(filePath: "/x/\($0).app")) }
+        var index = SearchIndex(items: apps + Command.allCases.map(Item.init(command:)))
+        func first(_ query: String) -> String? { index.search(query, limit: 5).first.map { index.items[$0].name } }
+        index.setAliases(["v"], for: .clipboard)
+        #expect(first("v") == "Clipboard History")
+        #expect(first("c") != "Clipboard History", "the old alias is gone")
+        index.setAliases([""], for: .clipboard)
+        #expect(first("v") == "Vim", "none")
+    }
 }

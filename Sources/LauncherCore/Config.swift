@@ -12,9 +12,14 @@ public struct Config: Sendable, Equatable {
         case none
     }
 
-    public var launcherHotkey = Hotkey("cmd+p")!
-    /// Opens the panel straight in the clipboard (decision 34).
-    public var clipboardHotkey = Hotkey("cmd+shift+v")!
+    public var launcherHotkey = Shortcut("cmd+p")!
+    /// Opens the panel straight in the clipboard (decision 34). Nil when it's off, which leaves the key to apps.
+    public var clipboardHotkey = Shortcut("cmd+shift+v")
+    /// The keys inside the panel (decision 55).
+    public var keys = KeyBindings.defaults
+    /// Clipboard History's alias in the launcher (decision 42); followed by a space, it opens the clipboard. Empty
+    /// for neither.
+    public var clipboardAlias = "c"
     public var emptyState = EmptyState.recent
     /// Applies to the copy installed in an Applications folder (decision 14).
     public var launchAtLogin = true
@@ -72,6 +77,8 @@ public struct Config: Sendable, Equatable {
         }
 
         var problems: [(line: Int, message: String)] = []
+        var writtenKeys: [(key: PanelKey, line: Int, shortcuts: [Shortcut])] = []
+        var hotkeyLines: [String: Int] = [:]
         for (table, entries) in tables {
             for (key, entry) in entries {
                 let name = table.isEmpty ? key : "\(table).\(key)"
@@ -84,11 +91,47 @@ public struct Config: Sendable, Equatable {
                     }
                 }
                 switch (name, entry.value) {
+                case ("hotkeys.launcher", .string("")):
+                    problem("hotkeys.launcher can't be off: it's how Pith opens")
+                case ("hotkeys.clipboard", .string("")):
+                    hotkeyLines[key] = entry.line
+                    config.clipboardHotkey = nil
                 case ("hotkeys.launcher", .string(let text)), ("hotkeys.clipboard", .string(let text)):
-                    if let hotkey = Hotkey(text) {
+                    if let hotkey = Shortcut(text), hotkey.isGlobal {
+                        hotkeyLines[key] = entry.line
                         if key == "launcher" { config.launcherHotkey = hotkey } else { config.clipboardHotkey = hotkey }
                     } else {
                         problem("\(name) \"\(text)\" isn't a shortcut like \"cmd+p\"")
+                    }
+                case (_, let value) where table == "keys":
+                    guard let panelKey = PanelKey(rawValue: key) else {
+                        problem("unknown setting \"\(name)\"")
+                        break
+                    }
+                    // One key, a list of them, or "" or [] for none.
+                    let values: [TOMLValue] =
+                        switch value {
+                        case .string(""): []
+                        case .array(let values): values
+                        default: [value]
+                        }
+                    let texts = values.compactMap { if case .string(let text) = $0 { text } else { nil } }
+                    guard texts.count == values.count else {
+                        problem("\(name) should be a key in quotes, or a list of them like [\"up\", \"ctrl+k\"]")
+                        break
+                    }
+                    let shortcuts = texts.compactMap(Shortcut.init)
+                    if let bad = texts.first(where: { Shortcut($0) == nil }) {
+                        problem("\(name) \"\(bad)\" isn't a key like \"ctrl+k\" or \"up\"")
+                    } else {
+                        writtenKeys.append((panelKey, entry.line, shortcuts))
+                    }
+                case ("launcher.clipboard_alias", .string(let text)):
+                    let alias = text.lowercased()
+                    if alias.contains(where: \.isWhitespace) {
+                        problem("launcher.clipboard_alias \"\(text)\" should be one word, like \"c\"")
+                    } else {
+                        config.clipboardAlias = alias
                     }
                 case ("launcher.empty_state", .string(let text)):
                     if let emptyState = EmptyState(rawValue: text) {
@@ -145,7 +188,7 @@ public struct Config: Sendable, Equatable {
                 case ("clipboard.max_age_days", _):
                     problem("clipboard.max_age_days should be a whole number of days")
                 case ("hotkeys.launcher", _), ("hotkeys.clipboard", _), ("launcher.empty_state", _),
-                    ("actions.terminal", _):
+                    ("launcher.clipboard_alias", _), ("actions.terminal", _):
                     problem("\(name) should be a string in quotes")
                 case ("launcher.launch_at_login", _):
                     problem("launcher.launch_at_login should be true or false")
@@ -158,6 +201,19 @@ public struct Config: Sendable, Equatable {
                 }
             }
         }
+        // One hotkey can't open both: the launcher keeps it, at the later line's say.
+        if config.clipboardHotkey == config.launcherHotkey, let line = hotkeyLines.values.max() {
+            config.clipboardHotkey = nil
+            problems.append(
+                (
+                    line,
+                    "line \(line): hotkeys.launcher and hotkeys.clipboard are both \"\(config.launcherHotkey)\", so the clipboard's is off"
+                ))
+        }
+        let hotkeys = [("launcher", config.launcherHotkey)] + (config.clipboardHotkey.map { [("clipboard", $0)] } ?? [])
+        let keys = KeyBindings.resolve(written: writtenKeys, hotkeys: hotkeys)
+        config.keys = keys.bindings
+        problems += keys.problems
         return (config, problems.sorted { $0.line < $1.line }.map(\.message))
     }
 
@@ -169,8 +225,28 @@ public struct Config: Sendable, Equatable {
         # Opens the launcher from anywhere: modifiers (cmd, shift, alt, ctrl) + one key.
         launcher = "cmd+p"
         # Opens the clipboard history. It takes the key from every app: cmd+shift+v is Paste and Match Style in many,
-        # and the clipboard's Paste as Plain Text does the same.
+        # and the clipboard's Paste as Plain Text does the same. "" turns it off.
         clipboard = "cmd+shift+v"
+
+        [keys]
+        # The keys inside Pith: one key, or a list of them like ["up", "ctrl+k"]. [] turns one off.
+        # A key is a to z, 0 to 9, punctuation, space, return, tab, escape, backspace, up, down, left, right or f1 to
+        # f20, after any modifiers. One without cmd, alt or ctrl (a letter, space, backspace) works only while the
+        # search field is empty. A key given twice stays with the first setting.
+        up = ["up", "ctrl+k"]
+        down = ["down", "ctrl+j"]
+        # Opens the selected item, runs the selected action, pastes the selected clip.
+        open = "return"
+        # The selected item's actions, or back to the search.
+        actions = "cmd+k"
+        # Back one level, or close.
+        back = "escape"
+        # Quick Look the selected file.
+        preview = ["cmd+y", "space"]
+        # In an actions list: run its 1st, 2nd, 3rd… action.
+        run_actions = ["cmd+q", "cmd+w", "cmd+e", "cmd+r", "cmd+t", "cmd+y", "cmd+u"]
+        # In the clipboard: back to the launcher.
+        to_launcher = "backspace"
 
         [launcher]
         # What the launcher shows before you type:
@@ -178,6 +254,9 @@ public struct Config: Sendable, Equatable {
         #   "running"  open apps, most recently used first
         #   "none"     just the search bar
         empty_state = "recent"
+
+        # Typed alone, lists Clipboard History first; with a space after it, opens the clipboard. "" turns both off.
+        clipboard_alias = "c"
 
         # Start the launcher when you log in (for the copy installed in an Applications folder).
         launch_at_login = true

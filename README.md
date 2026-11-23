@@ -105,6 +105,8 @@ bar icon.
 | ⎋ | Back one level, or close |
 | ⌘Y, or Space with an empty field | Quick Look the selected file |
 
+These are the defaults: every one of them can be changed in the config, under `[hotkeys]` and `[keys]`.
+
 ## Install
 
 Download [Pith.zip](https://pith.edoardobertoli.xyz/Pith.zip) (macOS 26 Tahoe or later, Apple Silicon), unzip it and
@@ -163,10 +165,21 @@ changes apply right away. A mistake shows up as a row at the top of the launcher
 ```toml
 [hotkeys]
 launcher = "cmd+p"
-clipboard = "cmd+shift+v"
+clipboard = "cmd+shift+v"   # "" turns it off
+
+[keys]                      # the keys inside Pith: one, or a list; [] turns one off
+up = ["up", "ctrl+k"]
+down = ["down", "ctrl+j"]
+open = "return"
+actions = "cmd+k"
+back = "escape"
+preview = ["cmd+y", "space"]
+run_actions = ["cmd+q", "cmd+w", "cmd+e", "cmd+r", "cmd+t", "cmd+y", "cmd+u"]
+to_launcher = "backspace"   # from the clipboard back to the launcher
 
 [launcher]
 empty_state = "recent"      # "recent", "running" or "none"
+clipboard_alias = "c"       # "c" lists Clipboard History first; "c " opens the clipboard
 launch_at_login = true
 folders = ["~"]
 ignore = [".*", "~/Library", "node_modules", ".build", "*.photoslibrary"]

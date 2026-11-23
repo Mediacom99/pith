@@ -81,6 +81,15 @@ final class ResultCell: NSTableCellView {
         didSet { if isQuietTitle != oldValue { updateTitleColor() } }
     }
 
+    /// What the selected row ends in: `open`'s key, ↩ by default (decision 55).
+    var openKey = "↩" {
+        didSet {
+            guard openKey != oldValue else { return }
+            mark.stringValue = openKey
+            needsLayout = true
+        }
+    }
+
     /// Set by the row view: the selected row ends in ↩.
     var isSelected = false {
         didSet { if isSelected != oldValue { needsLayout = true } }
@@ -300,6 +309,11 @@ final class StageView: NSView {
         didSet { if content != oldValue { show(content) } }
     }
 
+    /// The primary key's caps: `open`'s key, ↩ by default (decision 55).
+    var openCaps = ["↩"] {
+        didSet { if openCaps != oldValue { show(content) } }
+    }
+
     let icon = IconView()
     private let nameLabel = StageView.label(font: .systemFont(ofSize: 19, weight: .semibold), color: .labelColor)
     private let placeLabel = StageView.label(font: placeFont, color: Palette.quiet)
@@ -354,7 +368,7 @@ final class StageView: NSView {
         kindLabel.stringValue = content.kind
         keys.keys =
             content.primary.isEmpty
-            ? [] : [Key(words: content.primary, caps: ["↩"])] + (content.secondary.map { [$0] } ?? [])
+            ? [] : [Key(words: content.primary, caps: openCaps)] + (content.secondary.map { [$0] } ?? [])
         keys.isDanger = content.isDanger
         switch content.preview {
         case .text(let text, let isBlank)?:

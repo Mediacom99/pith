@@ -99,7 +99,8 @@ Sources/
     DirectoryWatcher.swift FSEvents → folders or per-file events with flags, with source-level exclusions
     Config.swift           config.toml settings, defaults, problems with line numbers, the commented template
     TOMLReader.swift       a small strict TOML reader (the subset the config needs)
-    Hotkey.swift           "cmd+shift+p" → Carbon key code + modifiers
+    Shortcut.swift         "cmd+shift+p", "ctrl+k", "up" → key code + modifiers; global or typing; symbols, key caps
+    KeyBindings.swift      `[keys]`: each panel key's shortcuts, with first-wins conflicts and their problems
   Launcher/                the AppKit app, main actor by default
     main.swift             NSApplication with the accessory policy
     AppDelegate.swift      wiring: panel, config → hotkey/empty state/login item, commands, index (re)builds; Log
@@ -109,8 +110,8 @@ Sources/
     RunningApps.swift      open apps in MRU order: runningApplications re-read on launch/quit and on show
     LoginItem.swift        SMAppService registration, for a copy in an Applications folder only
     HotKeyCenter.swift     global hotkeys via Carbon RegisterEventHotKey, registered and replaced at runtime
-    LauncherPanel.swift    the NSPanel: show/hide, collapse/expand, key routing (⌃K/⌃J, ⌘K), the search field's editor
-    LauncherViewController.swift  rows, merged app + file search, empty state, ⌘K sublists, keyboard, opening
+    LauncherPanel.swift    the NSPanel: show/hide, collapse/expand, key events to the panel's keys, the search field's editor
+    LauncherViewController.swift  rows, merged app + file search, empty state, ⌘K sublists, the keys' lookup, opening
     Actions.swift          ⌘K actions per kind, the SF Symbols rows use, AppResolver (config app names, Open With…)
     IconStore.swift        app, symbol and file-type icons as exact-size bitmaps rendered off the main thread; apps
                            by bundle id (a clip's source), looked up on a worker
@@ -175,9 +176,14 @@ search field has its own field editor with inline predictions, Writing Tools, au
 checking, substitutions and data detection switched off: they all run on every keystroke and none belong in a search
 box. The keystroke latency goes to the `perf` log, split into delivery (key press → our handler), update and draw.
 
-**Keys.** The field editor turns ↑ ↓ ⏎ ⎋ into commands (`moveUp:`, `insertNewline:` …), and the panel reroutes ⌃K and
-⌃J into the same commands. One delegate method handles them all, so an input method that is composing text keeps its
-keys. ⌘X/C/V/A/Z are routed by hand, because an agent app has no main menu to do it.
+**Keys.** Every key press reaches the panel's `sendEvent` (or `performKeyEquivalent`, for chords) before the field
+editor, and one lookup turns it into what `[keys]` says it does (decision 55): `back` and `open` first, then `up`,
+`down`, `actions`, `preview` and `to_launcher`, with `run_actions` ahead of them all in a ⌘K list. Letters and
+punctuation match by the character they type in the current layout (with ⌘ alone applied, as menus do), other keys by
+position. A key that types acts only on an empty field and otherwise goes on to it; an input method that is composing
+text keeps every key. A ⏎ or ⎋ that isn't a panel key does nothing rather than end the field's editing. ⌘X/C/V/A/Z
+and ⇧⌘Z are routed by hand after the lookup, because an agent app has no main menu to do it. The tile's keys, the
+action rows' shortcuts and the selected row's ↩ show the first key of each setting.
 
 **⌘K.** On an app row, ⌘K replaces the list with its actions: Open and Reveal in Finder, plus Quit and Force Quit if
 it's running. The search field filters them, ⏎ runs one, and ⎋ or ⌘K goes back to the search and selection you had.

@@ -51,7 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var fileRules: FileRules?
     private var panel: LauncherPanel?
     /// Each global hotkey as registered (`launcher`, `clipboard`), and the problem if the configured one is taken.
-    private var hotkeys: [String: (current: (hotkey: Hotkey, id: HotKeyCenter.ID)?, problem: String?)] = [:]
+    private var hotkeys: [String: (current: (hotkey: Shortcut, id: HotKeyCenter.ID)?, problem: String?)] = [:]
     private var appsWatcher: DirectoryWatcher?
     private var indexGeneration = 0
     private var hasAppliedConfig = false
@@ -128,6 +128,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         register("launcher", config.launcherHotkey) { [weak panel] in panel?.toggle(pressedAt: $0) }
         register("clipboard", config.clipboardHotkey) { [weak panel] in panel?.toggleClipboard(pressedAt: $0) }
         panel.launcher.clipboardHotkey = hotkeys["clipboard"]?.current?.hotkey.symbols
+        panel.launcher.keys = config.keys
+        panel.launcher.clipboardAlias = config.clipboardAlias
         panel.launcher.emptyState = config.emptyState
         clipboard.retention = config.clipboardRetention
         publishProblems()
@@ -200,9 +202,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Registers the hotkey `name` as configured, if it changed. The new one is registered before the old one is let
-    /// go, so if it's taken, the old one keeps working and the problem says so.
-    private func register(_ name: String, _ hotkey: Hotkey, action: @escaping (TimeInterval) -> Void) {
+    /// go, so if it's taken, the old one keeps working and the problem says so. Nil lets go of it (decision 55).
+    private func register(_ name: String, _ hotkey: Shortcut?, action: @escaping (TimeInterval) -> Void) {
         var slot = hotkeys[name] ?? (nil, nil)
+        guard let hotkey else {
+            if let old = slot.current { hotKeys.unregister(old.id) }
+            hotkeys[name] = (nil, nil)
+            return
+        }
         guard slot.current?.hotkey != hotkey else { return }
         if let id = hotKeys.register(hotkey, action: action) {
             if let old = slot.current { hotKeys.unregister(old.id) }

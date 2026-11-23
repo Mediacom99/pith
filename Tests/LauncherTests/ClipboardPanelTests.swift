@@ -106,7 +106,7 @@ struct ClipboardPanelTests {
         #expect(panel.launcher.searchField.stringValue.isEmpty)
         #expect(titles(panel) == ["Acme"])
 
-        press(#selector(NSResponder.deleteBackward(_:)), in: panel)
+        press("backspace", in: panel)
         #expect(panel.launcher.mode == .launcher)
         #expect(panel.launcher.stage.frame.height == Layout.tileHeight)
         #expect(panel.launcher.searchField.placeholderString == "Search")
@@ -121,8 +121,8 @@ struct ClipboardPanelTests {
         panel.launcher.askForAccessibility = { asked += 1 }
 
         panel.launcher.prepareToShow(.clipboard)
-        press(#selector(NSResponder.moveDown(_:)), in: panel)
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press("down", in: panel)
+        press("return", in: panel)
         #expect(copied.deliveries.map(\.clip.text) == ["older"])
         #expect(copied.deliveries.map(\.delivery) == [.copy])
         #expect(asked == 1, "the first ⏎ without access asks for it")
@@ -131,7 +131,7 @@ struct ClipboardPanelTests {
         panel.launcher.canPaste = true
         panel.launcher.prepareToShow(.clipboard)
         #expect(panel.launcher.stage.content.primary == "Paste")
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press("return", in: panel)
         #expect(copied.deliveries.map(\.delivery) == [.copy, .paste])
         #expect(copied.clips.last?.text == "newest")
     }
@@ -162,7 +162,7 @@ struct ClipboardPanelTests {
         func actions(at row: Int) -> [ClipAction] {
             panel.launcher.reset()
             panel.launcher.prepareToShow(.clipboard)
-            for _ in 0..<row { press(#selector(NSResponder.moveDown(_:)), in: panel) }
+            for _ in 0..<row { press("down", in: panel) }
             panel.launcher.toggleActions()
             return panel.launcher.rows.compactMap { if case .clipAction(let action) = $0 { action } else { nil } }
         }
@@ -183,10 +183,10 @@ struct ClipboardPanelTests {
         let panel = try await clipboardPanel(
             folder.url, [(text("one"), nil, 3), (text("two"), nil, 2), (text("three"), nil, 1)])
         panel.launcher.prepareToShow(.clipboard)
-        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        press("down", in: panel)
         panel.launcher.toggleActions()
         try select(.pin, in: panel)
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press("return", in: panel)
 
         #expect(panel.launcher.sublist == nil, "back to the list")
         #expect(await eventuallyTrue { pinned(panel) == ["two"] })
@@ -198,14 +198,14 @@ struct ClipboardPanelTests {
         let panel = try await clipboardPanel(
             folder.url, [(text("keep me"), nil, 2), (text("newest"), nil, 1)], pinned: [0])
         panel.launcher.prepareToShow(.clipboard)
-        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        press("down", in: panel)
         panel.launcher.toggleActions()
         try select(.delete, in: panel)
 
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press("return", in: panel)
         #expect(panel.launcher.confirming)
         #expect(panel.launcher.stage.content.isDanger && panel.launcher.stage.content.secondary?.words == "Cancel")
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press("return", in: panel)
         #expect(await eventuallyTrue { titles(panel) == ["newest"] })
         #expect(try await panel.launcher.clipboard?.store.load().map(\.text) == ["newest"])
     }
@@ -217,27 +217,27 @@ struct ClipboardPanelTests {
             folder.url, [(text("keep me"), nil, 2), (text("newest"), nil, 1)], pinned: [0], copied: copied)
         panel.launcher.canPaste = true
         panel.launcher.prepareToShow(.clipboard)
-        #expect(!panel.launcher.runShortcut("w"), "only in an actions list")
+        #expect(!press("cmd+w", in: panel), "only in an actions list")
 
         // Paste, Copy to Clipboard, Save as File, Pin, Delete: ⌘W is the second.
         panel.launcher.toggleActions()
-        #expect(panel.launcher.runShortcut("w"))
+        #expect(press("cmd+w", in: panel))
         #expect(copied.deliveries.map(\.delivery) == [.copy])
-        #expect(!panel.launcher.runShortcut("p"), "past the last action")
+        #expect(!press("cmd+u", in: panel), "past the last action")
 
         // ⌘R pins the newest, even with a filter that hides Pin.
         panel.launcher.reset()
         panel.launcher.prepareToShow(.clipboard)
         panel.launcher.toggleActions()
         await type("del", in: panel)
-        #expect(panel.launcher.runShortcut("r"))
+        #expect(press("cmd+r", in: panel))
         #expect(await eventuallyTrue { pinned(panel) == ["newest", "keep me"] })
 
         // ⌘T deletes; a pinned clip takes a second ⌘T.
         panel.launcher.toggleActions()
-        #expect(panel.launcher.runShortcut("t"))
+        #expect(press("cmd+t", in: panel))
         #expect(panel.launcher.confirming)
-        #expect(panel.launcher.runShortcut("t"))
+        #expect(press("cmd+t", in: panel))
         #expect(await eventuallyTrue { titles(panel) == ["keep me"] })
     }
 
@@ -254,7 +254,7 @@ struct ClipboardPanelTests {
         panel.launcher.prepareToShow(.clipboard)
         panel.launcher.toggleActions()
         try select(.save, in: panel)
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press("return", in: panel)
 
         #expect(await eventuallyTrue { !saved.files.isEmpty })
         let file = try #require(saved.files.first)
@@ -285,10 +285,10 @@ struct ClipboardPanelTests {
         panel.launcher.clipboardNotices = [.paused]
         panel.launcher.prepareToShow(.clipboard)
         #expect(titles(panel) == ["Recording is paused", "Acme"])
-        press(#selector(NSResponder.moveUp(_:)), in: panel)
+        press("up", in: panel)
         #expect(panel.launcher.stage.content.primary == "Resume")
 
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press("return", in: panel)
         #expect(resolved == [.paused])
         panel.launcher.clipboardNotices = []
         #expect(titles(panel) == ["Acme"] && panel.launcher.tableView.selectedRow == 0)
@@ -370,7 +370,7 @@ struct ClipboardPanelTests {
 
     private func select(_ action: ClipAction, in panel: LauncherPanel) throws {
         let row = try #require(panel.launcher.rows.firstIndex(of: .clipAction(action)))
-        for _ in 0..<row { press(#selector(NSResponder.moveDown(_:)), in: panel) }
+        for _ in 0..<row { press("down", in: panel) }
     }
 
     private func pinned(_ panel: LauncherPanel) -> [String] {

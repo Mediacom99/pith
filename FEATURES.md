@@ -37,22 +37,29 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 ## 3. Keyboard
 
+Every key below is a default: `[hotkeys]` and `[keys]` in the config change them (§8, decision 55). The text editing
+keys of the search field (`⌘X`, `⌘C`, `⌘V`, `⌘A`, `⌘Z`, `⇧⌘Z`) are fixed.
+
 ### Global hotkeys
 
-| Key | Action |
-|---|---|
-| `⌘P` | Open launcher (always global, no per-app pass-through) |
-| `⌘⇧V` *(default, configurable)* | Open directly in clipboard mode |
+| Key | Setting | Action |
+|---|---|---|
+| `⌘P` | `hotkeys.launcher` | Open launcher (always global, no per-app pass-through) |
+| `⌘⇧V` | `hotkeys.clipboard` | Open directly in clipboard mode; `""` turns it off |
 
 ### Inside the window
 
-| Key | Action |
-|---|---|
-| `↑` / `↓`, `Ctrl+K` / `Ctrl+J` | Move selection up / down |
-| `Enter` | Primary action on selected item |
-| `⌘K` | Open actions panel for selected item |
-| `⌘Q`, `⌘W`, `⌘E`, `⌘R`, `⌘T`, `⌘Y`, `⌘U` | In the actions panel: run its 1st to 7th action (decision 43) |
-| `Esc` | Back / close |
+| Key | Setting | Action |
+|---|---|---|
+| `↑` / `↓`, `Ctrl+K` / `Ctrl+J` | `keys.up`, `keys.down` | Move selection up / down |
+| `Enter` | `keys.open` | Primary action on selected item |
+| `⌘K` | `keys.actions` | Open actions panel for selected item |
+| `⌘Q`, `⌘W`, `⌘E`, `⌘R`, `⌘T`, `⌘Y`, `⌘U` | `keys.run_actions` | In the actions panel: run its 1st to 7th action (decision 43) |
+| `Esc` | `keys.back` | Back / close |
+| `⌘Y`, `Space` | `keys.preview` | Quick Look (§4.2) |
+| `⌫` | `keys.to_launcher` | From the clipboard back to the launcher (§5.3) |
+
+A key without ⌘, ⌥ or ⌃ that types (a letter, Space, ⌫) works only while the search field is empty.
 
 ---
 
@@ -189,10 +196,21 @@ Single file, no settings window: `~/.config/pith/config.toml`. Reloaded automati
 ```toml
 [hotkeys]
 launcher  = "cmd+p"
-clipboard = "cmd+shift+v"
+clipboard = "cmd+shift+v"   # "" turns it off
+
+[keys]                      # one key, or a list of them; [] turns one off (not open or back)
+up          = ["up", "ctrl+k"]
+down        = ["down", "ctrl+j"]
+open        = "return"
+actions     = "cmd+k"
+back        = "escape"
+preview     = ["cmd+y", "space"]
+run_actions = ["cmd+q", "cmd+w", "cmd+e", "cmd+r", "cmd+t", "cmd+y", "cmd+u"]
+to_launcher = "backspace"
 
 [launcher]
 empty_state = "recent"   # recent | running | none
+clipboard_alias = "c"    # "c" lists Clipboard History first; "c " opens the clipboard
 launch_at_login = true
 folders = ["~/Desktop", "~/Documents", "~/Downloads", "~/dev"]
 ignore  = [".git", "node_modules", ".build", "*.photoslibrary"]

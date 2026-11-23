@@ -16,7 +16,7 @@ final class HotKeyCenter {
     /// Calls `action` on the main thread whenever `hotkey` is pressed, with the press time in seconds since boot (the
     /// clock of `NSEvent.timestamp`). Nil if the system refused the shortcut, for instance because another app holds
     /// it.
-    func register(_ hotkey: Hotkey, action: @escaping (_ pressedAt: TimeInterval) -> Void) -> ID? {
+    func register(_ hotkey: Shortcut, action: @escaping (_ pressedAt: TimeInterval) -> Void) -> ID? {
         if eventHandler == nil {
             var pressed = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
             let status = InstallEventHandler(

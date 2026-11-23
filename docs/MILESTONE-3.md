@@ -277,7 +277,9 @@ Status: **todo**.
 
 ## 10. Configurable keys
 
-Status: **in progress** (decision 55).
+Status: **in review** (decision 55). Built and tested: 197 tests pass, among them 23 new on parsing, problems, the
+alias and the panel with keys rebound and turned off. The existing panel tests now press real key events through the
+lookup. With the default keys the snapshots are unchanged. Needs Edoardo's run with a rebound key.
 - **Core:**
   - `Shortcut` (was `Hotkey`) reads any key: `cmd+k`, `ctrl+j`, `up`, `space`. Whether it can be a global hotkey
     (cmd, ctrl or alt, or an F key) and whether it types are properties of it.
