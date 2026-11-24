@@ -864,6 +864,13 @@ final class LauncherViewController: NSViewController {
         preview.updateController()
         preview.orderFront(nil)
         preview.reloadData()
+        // Quick Look's window takes the keyboard as it opens, but Pith never activates itself (a paste goes back to the
+        // app you were in), so the keys would go to that app instead: the launcher takes them back, now and once
+        // Quick Look has settled, and ↑/↓, ⌘Y and ⎋ keep working.
+        window.makeKey()
+        Task { @MainActor [weak self, weak window] in
+            if self?.isPreviewing == true { window?.makeKey() }
+        }
     }
 
     func closePreview() {
