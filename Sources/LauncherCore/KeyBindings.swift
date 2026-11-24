@@ -56,7 +56,8 @@ public struct KeyBindings: Sendable, Equatable {
     /// `run_actions`: the nth runs an actions list's nth action. Nil where a shortcut was left out.
     public var runActions: [Shortcut?] { table[.runActions, default: []] }
 
-    /// The fixed editing keys of the search field, which no setting may take.
+    /// The fixed editing keys of the search field, which no setting may take. Literals `Shortcut` reads, so the
+    /// unwrap can't fail (every test that resolves keys builds them).
     static let editingKeys: [(shortcut: Shortcut, name: String)] = [
         ("cmd+x", "Cut"), ("cmd+c", "Copy"), ("cmd+v", "Paste"), ("cmd+a", "Select All"), ("cmd+z", "Undo"),
         ("shift+cmd+z", "Redo"),

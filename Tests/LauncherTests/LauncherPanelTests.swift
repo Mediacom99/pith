@@ -152,26 +152,26 @@ struct LauncherPanelTests {
     /// The tile shows what ⏎ acts on, and follows the selection; in ⌘K the item stays and the keys change.
     @Test func theTileShowsWhatReturnActsOn() async {
         let panel = makePanel(items: apps)
-        let stage = panel.launcher.stage
+        let tile = panel.launcher.tile
         await type("g", in: panel)
-        #expect(!stage.isHidden)
-        #expect(stage.content.name == names(panel)[0])
-        #expect(stage.content.primary == "Open")
-        #expect(stage.content.secondary == StageView.Key(words: "Actions", caps: ["⌘", "K"]))
+        #expect(!tile.isHidden)
+        #expect(tile.content.name == names(panel)[0])
+        #expect(tile.content.primary == "Open")
+        #expect(tile.content.secondary == TileView.Key(words: "Actions", caps: ["⌘", "K"]))
 
         press("down", in: panel)
         let second = names(panel)[1]
-        #expect(stage.content.name == second)
+        #expect(tile.content.name == second)
 
         panel.launcher.toggleActions()
-        #expect(stage.content.name == second, "⌘K keeps the item on the tile")
-        #expect(stage.content.primary == "Open")
-        #expect(stage.content.secondary == StageView.Key(words: "Back", caps: ["esc"]))
+        #expect(tile.content.name == second, "⌘K keeps the item on the tile")
+        #expect(tile.content.primary == "Open")
+        #expect(tile.content.secondary == TileView.Key(words: "Back", caps: ["esc"]))
         press("down", in: panel)
-        #expect(stage.content.primary == "Reveal in Finder", "the selected action is what ⏎ does")
+        #expect(tile.content.primary == "Reveal in Finder", "the selected action is what ⏎ does")
 
         await type("gqqq", in: panel)
-        #expect(stage.isHidden, "no rows, no tile")
+        #expect(tile.isHidden, "no rows, no tile")
     }
 
     /// The selection's fill is quiet, so the selected row also ends in ↩, and no other row does (decision 29).
@@ -280,7 +280,7 @@ struct LauncherPanelTests {
         panel.launcher.version = "0.3.0"
         await type("quit", in: panel)
         #expect(panel.launcher.rows.first == .item(Item(command: .quit)))
-        #expect(panel.launcher.stage.content.kind == "Pith 0.3.0", "the version, for whoever tries a build")
+        #expect(panel.launcher.tile.content.kind == "Pith 0.3.0", "the version, for whoever tries a build")
     }
 
     @Test func cOrClipboardPutsClipboardHistoryFirstAndReturnOpensIt() async {
@@ -291,8 +291,8 @@ struct LauncherPanelTests {
             await type(query, in: panel)
             #expect(panel.launcher.rows.first == .item(Item(command: .clipboard)), "\(query)")
         }
-        #expect(panel.launcher.stage.content.primary == "Open")
-        #expect(panel.launcher.stage.content.kind == "Also ⇧⌘V, from any app")
+        #expect(panel.launcher.tile.content.primary == "Open")
+        #expect(panel.launcher.tile.content.kind == "Also ⇧⌘V, from any app")
 
         press("return", in: panel)
         #expect(panel.launcher.mode == .clipboard, "it opens in place")
@@ -303,10 +303,10 @@ struct LauncherPanelTests {
     @Test func theTileFollowsAClick() async {
         let panel = makePanel(items: apps)
         await type("g", in: panel)
-        #expect(panel.launcher.stage.content.name == names(panel.launcher.rows)[0])
+        #expect(panel.launcher.tile.content.name == names(panel.launcher.rows)[0])
         let table = panel.launcher.tableView
         table.selectRowIndexes(IndexSet(integer: 1), byExtendingSelection: false)
-        #expect(panel.launcher.stage.content.name == names(panel.launcher.rows)[1])
+        #expect(panel.launcher.tile.content.name == names(panel.launcher.rows)[1])
         let kept = panel.launcher.tableView(table, selectionIndexesForProposedSelection: IndexSet())
         #expect(kept == IndexSet(integer: 1))
         press("up", in: panel, held: true)
@@ -333,7 +333,7 @@ struct LauncherPanelTests {
         panel.launcher.runCommand = { run.append($0) }
         await type("clear clip", in: panel)
         #expect(panel.launcher.rows.first == .item(Item(command: .clearClipboard)))
-        #expect(panel.launcher.stage.content.kind == "Pinned items stay")
+        #expect(panel.launcher.tile.content.kind == "Pinned items stay")
         func title() -> String? {
             (panel.launcher.tableView.view(atColumn: 0, row: 0, makeIfNecessary: false) as? ResultCell)?
                 .textField?.stringValue
@@ -342,12 +342,12 @@ struct LauncherPanelTests {
         press("return", in: panel)
         #expect(run.isEmpty)
         #expect(title() == "Press ⏎ again to clear the clipboard history")
-        #expect(panel.launcher.stage.content.isDanger)
-        #expect(panel.launcher.stage.content.secondary?.words == "Cancel")
+        #expect(panel.launcher.tile.content.isDanger)
+        #expect(panel.launcher.tile.content.secondary?.words == "Cancel")
 
         press("escape", in: panel)
         #expect(!panel.launcher.confirming && title() == "Clear Clipboard History", "⎋ cancels it")
-        #expect(!panel.launcher.stage.content.isDanger)
+        #expect(!panel.launcher.tile.content.isDanger)
 
         press("return", in: panel)
         await type("clear clip ", in: panel)
@@ -387,8 +387,8 @@ struct LauncherPanelTests {
         #expect(names(panel) == ["Update Pith", "Gizmo"], "first, and not again as a recent item")
         #expect(panel.launcher.tableView.selectedRow == 1, "⏎ still opens what it did")
         press("up", in: panel)
-        #expect(panel.launcher.stage.content.place == "Pith 0.3.1 is ready")
-        #expect(panel.launcher.stage.content.primary == "Restart")
+        #expect(panel.launcher.tile.content.place == "Pith 0.3.1 is ready")
+        #expect(panel.launcher.tile.content.primary == "Restart")
         press("return", in: panel)
         #expect(run == [.installUpdate])
     }
@@ -417,8 +417,8 @@ struct LauncherPanelTests {
         panel.launcher.checksForUpdates = true
         await type("check for updates", in: panel)
         #expect(names(panel) == ["Check for Updates"])
-        #expect(panel.launcher.stage.content.kind == "Pith 0.3.2")
-        #expect(panel.launcher.stage.content.primary == "Check")
+        #expect(panel.launcher.tile.content.kind == "Pith 0.3.2")
+        #expect(panel.launcher.tile.content.primary == "Check")
         press("return", in: panel)
         #expect(run == [.checkForUpdates])
 
@@ -534,8 +534,8 @@ struct LauncherPanelTests {
         press("return", in: panel)
         #expect(quits.isEmpty)
         #expect(title() == "Press ⏎ again to force quit Finder")
-        #expect(panel.launcher.stage.content.isDanger)
-        #expect(panel.launcher.stage.content.secondary?.words == "Cancel")
+        #expect(panel.launcher.tile.content.isDanger)
+        #expect(panel.launcher.tile.content.secondary?.words == "Cancel")
 
         press("escape", in: panel)
         #expect(panel.launcher.sublist != nil, "⎋ cancels the confirmation, not the actions")
@@ -704,8 +704,8 @@ struct LauncherPanelTests {
         #expect(await eventually { if case .openWith? = panel.launcher.sublist { true } else { false } })
         #expect(names(panel).contains("TextEdit"), "\(names(panel))")
         #expect(panel.launcher.searchField.placeholderString == "Filter apps")
-        #expect(panel.launcher.stage.content.name == "letter.txt", "the file stays on the tile")
-        #expect(panel.launcher.stage.content.primary.hasPrefix("Open in "))
+        #expect(panel.launcher.tile.content.name == "letter.txt", "the file stays on the tile")
+        #expect(panel.launcher.tile.content.primary.hasPrefix("Open in "))
 
         press("escape", in: panel)
         #expect(names(panel) == ["Open With…"], "back to the actions, still filtered")
@@ -797,10 +797,10 @@ struct PanelKeysTests {
         let panel = makePanel(items: apps)
         panel.launcher.keys = bindings(
             "[keys]\nopen = \"cmd+return\"\nactions = \"cmd+.\"\nback = \"ctrl+g\"\nrun_actions = [\"ctrl+1\"]")
-        let stage = panel.launcher.stage
+        let tile = panel.launcher.tile
         await type("g", in: panel)
-        #expect(stage.openCaps == ["⌘", "↩"])
-        #expect(stage.content.secondary == StageView.Key(words: "Actions", caps: ["⌘", "."]))
+        #expect(tile.openCaps == ["⌘", "↩"])
+        #expect(tile.content.secondary == TileView.Key(words: "Actions", caps: ["⌘", "."]))
         func cells() -> [ResultCell] {
             var cells: [ResultCell] = []
             panel.launcher.tableView.enumerateAvailableRowViews { view, _ in
@@ -811,7 +811,7 @@ struct PanelKeysTests {
         #expect(cells().first?.openKey == "⌘↩", "the selected row ends in open's key")
 
         #expect(press("cmd+.", in: panel))
-        #expect(stage.content.secondary == StageView.Key(words: "Back", caps: ["⌃", "G"]))
+        #expect(tile.content.secondary == TileView.Key(words: "Back", caps: ["⌃", "G"]))
         #expect(cells().map(\.trailingTag) == ["⌃1", ""], "Open and Reveal: only the actions with a key show one")
         #expect(press("ctrl+g", in: panel))
         #expect(panel.launcher.sublist == nil)
@@ -821,7 +821,7 @@ struct PanelKeysTests {
         let panel = makePanel(items: apps)
         panel.launcher.keys = bindings("[keys]\nactions = []")
         await type("g", in: panel)
-        #expect(panel.launcher.stage.content.secondary == nil)
+        #expect(panel.launcher.tile.content.secondary == nil)
         #expect(!press("cmd+k", in: panel))
         #expect(panel.launcher.sublist == nil)
     }

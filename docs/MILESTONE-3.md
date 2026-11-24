@@ -127,7 +127,7 @@ Status: **in review**. Built from the brief (§3, §5, §7) and checked on the `
   - Rows per kind: `ClipText` gives the words, `ClipImages` the thumbnails, decoded on a worker, with the 12 newest
     clips' ready ahead of time. `IconStore` finds a source app by bundle id on a worker, and shows the kind's
     symbol only once the app is known to be missing, so a row never flips from symbol to icon.
-  - The tile in the clipboard (`StageView.Preview`): a text in SF Mono, an image in its box on a checkerboard, a link
+  - The tile in the clipboard (`TileView.Preview`): a text in SF Mono, an image in its box on a checkerboard, a link
     or files as items.
   - A file's existence and size are read on a worker.
   - A long URL wraps over three lines and is cut in the middle past them.
@@ -521,3 +521,16 @@ every app's banners then (`isScreenShared=1` in `donotdisturbd`'s log), and they
     one before. Tests cover the order, skipped clips, the pause, a new copy, the config and the panel. 0.3.9's first
     version started from a paste in the panel, and a friend's first try opened the clipboard: 0.3.10 changes it.
   - the quieter first install's other prompts (FEATURES §11).
+
+## 13. Ready for a critical reader
+
+Status: **in progress**, before Pith is posted on Hacker News: the code, the docs, the memory target and checks
+before each release.
+- **Code:** done. `LauncherViewController` (1,672 lines) is its state, the list and the selection, with one extension
+  per concern beside it (the tile, the rows, ⌘K and opening, the clipboard, keys, Quick Look). `FileFacts`, `LinkApps`,
+  `ClipPaster` and `DateWords` are small types of their own; `StageView` is `TileView`, as the docs call it;
+  `Config.parse` reads through a `Parser`, one method per table; `FileIndex.search` scores each chunk in a function of
+  its own over the pinned buffers; every `@unchecked Sendable` and force unwrap says why it's safe. No behavior change:
+  97 + 144 tests pass (2 new, for `FileFacts` and `LinkApps`), the snapshots are unchanged, and `make bench` is within
+  its run-to-run noise of the build before, measured side by side.
+- **Docs, memory, release checks:** todo.

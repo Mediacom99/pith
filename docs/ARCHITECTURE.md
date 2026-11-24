@@ -113,13 +113,15 @@ Sources/
     PasteRun.swift         paste next's run: the history newest first, ended by a pause or a new copy (decision 64)
     AppScanner.swift       walks the app folders (+ Finder) → [Item] with resolved-path ids
     DirectoryWatcher.swift FSEvents → folders or per-file events with flags, with source-level exclusions
-    Config.swift           config.toml settings, defaults, problems with line numbers, the commented template
+    Config.swift           config.toml settings, their defaults, the commented template
+    ConfigParser.swift     config.toml → settings, with a problem and its line for each wrong or unknown one
     TOMLReader.swift       a small strict TOML reader (the subset the config needs)
     Shortcut.swift         "cmd+shift+p", "ctrl+k", "up" → key code + modifiers; global or typing; symbols, key caps
     KeyBindings.swift      `[keys]`: each panel key's shortcuts, with first-wins conflicts and their problems
   Launcher/                the AppKit app, main actor by default
     main.swift             NSApplication with the accessory policy
-    AppDelegate.swift      wiring: panel, config → hotkey/empty state/login item, commands, index (re)builds; Log
+    AppDelegate.swift      wiring: panel, config → hotkey/empty state/login item, commands, index (re)builds
+    Log.swift              the os log, and the latency lines `make logs` streams
     Background.swift       runInBackground: blocking work on a GCD worker, awaited from the main actor
     ConfigStore.swift      ~/.config/pith/config.toml: create, read and parse on a worker, reload on change, open
     HistoryStore.swift     the History, loaded and saved as JSON on workers
@@ -127,22 +129,37 @@ Sources/
     LoginItem.swift        SMAppService registration, for a copy in an Applications folder only
     HotKeyCenter.swift     global hotkeys via Carbon RegisterEventHotKey; GlobalHotkeys, the configured ones by name
     KeyLayout.swift        the key that types a letter in the keyboard layout in use, for the hotkeys and the paste's ⌘V
+    Layout.swift           the panel's geometry (decision 29)
     LauncherPanel.swift    the NSPanel: show/hide, collapse/expand, key events to the panel's keys, the search field's editor
-    LauncherViewController.swift  rows, merged app + file search, empty state, ⌘K sublists, the keys' lookup, opening
-    Actions.swift          ⌘K actions per kind, the SF Symbols rows use, AppResolver (config app names, Open With…)
+    LauncherViewController.swift  its state, the rows for each state (merged app + file search, empty state, ⌘K
+                           sublists), the selection; one extension per concern beside it:
+      +Tile.swift          what the tile shows for an item, a problem or a command
+      +Table.swift         a row's cell, and the table's data source and delegate
+      +Actions.swift       ⌘K sublists and going back; opening an item and running its actions
+      +Clipboard.swift     the clipboard's rows and tile, a clip's actions, paste next
+      +Keys.swift          the panel's keys (decision 55), and typing in the field
+      +QuickLook.swift     the preview: what it shows, and its keys
+    Row.swift              a row of the list, and the ⌘K sublists
+    PreviewTarget.swift    what Quick Look shows when the selection changes
+    Actions.swift          ⌘K actions for items and clips, Save as File's names, the SF Symbols rows use
+    AppResolver.swift      app names in config.toml → bundles; the app `[open_with]` sets; Open With…'s apps
     IconStore.swift        app, symbol and file-type icons as exact-size bitmaps rendered off the main thread; apps
                            by bundle id (a clip's source), looked up on a worker
-    ResultViews.swift      one-line cell (name, folder, "running", ↩), the tile (StageView) and its keys, bitmap IconView,
-                           row view (the quiet selection)
+    ResultCell.swift       one-line cell (name, folder, "running", ↩), bitmap IconView, row view (the quiet selection),
+                           overlay scrollers
+    TileView.swift         the tile, its keys, and the clipboard's previews on it
+    DateWords.swift        "opened today at 14:05", "copied yesterday", a clip's age
     Palette.swift          the few colors the system doesn't have: quiet gray, fills, edge, red and orange
-    Notifier.swift         notifications for a finished Zip and failed actions, reveal on click
+    Notifier.swift         notifications for a finished Zip, a saved clip, failed actions and updates; reveal on click
     ClipboardRecorder.swift  the pasteboard's change count on a timer (off while paused); each new copy read,
                            classified and stored
     ClipboardHistory.swift the ClipboardIndex, loaded at launch and updated by each recorded copy; prunes to
                            `[clipboard]`'s limits
     ClipboardPresentation.swift  a clip's words in its row and on the tile: titles, ages, sizes, notices
     ClipImages.swift       copied images' thumbnails as bitmaps, read on a worker, the newest ready ahead of time
-    Paste.swift            a clip back on the pasteboard, ⌘V posted, Accessibility, the clip's ⌘K actions, save names
+    FileFacts.swift        whether a clip's files are still there, and their size, read on a worker
+    LinkApps.swift         the app each link scheme opens in (`[open_links]`, else the default)
+    Paste.swift            a clip back on the pasteboard and ⌘V posted (ClipPaster), Accessibility
     Updater.swift          Sparkle, checked after the panel closes at most once a day; a ready update's install,
                            and how it went
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement, Sparkle's feed and key), copied in by `make app`

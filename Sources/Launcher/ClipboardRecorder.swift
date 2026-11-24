@@ -8,6 +8,8 @@ import Synchronization
 /// half second, with leeway so the system can coalesce the wakeups. It stops while the screens sleep or another user's
 /// session is in front, and while recording is paused. Only a change reads the copy; what was on the clipboard at launch
 /// isn't recorded.
+///
+/// `@unchecked Sendable`: its mutable state is touched only on `queue`, and `frontmostApp` is behind a mutex.
 nonisolated final class ClipboardRecorder: @unchecked Sendable {
     /// How often the change count is read, and how late the system may run it to save wakeups.
     static let interval = DispatchTimeInterval.milliseconds(500)
