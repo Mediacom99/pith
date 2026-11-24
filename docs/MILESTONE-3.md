@@ -500,11 +500,20 @@ every app's banners then (`isScreenShared=1` in `donotdisturbd`'s log), and they
         it was: the example was out of date, `[calculator]` an unknown setting today.
   - **Install:**
     39. **Premise confirmed, guarded:** Sparkle's own docs say a downloaded update installs whenever the app
-        terminates, and its installer waits as a process of its own (Tailscale's showed it, on Edoardo's Mac). Whether
+        terminates, and its installer waits as a process of its own (another app's showed it, on Edoardo's Mac). Whether
         it then beats the Terminal line's copy is timing. Before replacing an installed Pith, `install.sh` now removes
         its waiting installer and its download (Sparkle finds the newest again). Checked into a scratch folder, which
         doesn't touch the installed copy's updates. What it was: the Terminal line stopped Pith with a signal, and a
         waiting update could put an older build over the new copy.
+- **After the check (2026-11-24):** with Quick Look open, ↓ didn't move the selection and ⌘Y sometimes showed
+  another file (Edoardo). The cause: Quick Look's window takes the keyboard as it opens and as its file loads, but
+  Pith never activates itself, so the keys went to the app underneath. Now the panel takes the keyboard back each time
+  Quick Look's window becomes key, as long as the preview is up. Also: the preview keeps the file it was opened on
+  (`PreviewTarget`) and follows only the user's moves (a key, a click, typing), so a list refreshed by anything else
+  closes it rather than switch files; if Quick Look still gets a key, ⌘Y, Space and ⎋ close it and give the keyboard
+  back, the panel's other keys work as in the launcher, and typing goes to the search; one press toggles the preview
+  once. A test covers the rule; Edoardo checked the real windows on the installed build. Published in 0.3.11
+  (2026-11-24).
 - **Still open beside it:**
   - **Done:** paste next (decisions 63, 64), Edoardo's pick for repeat-to-paste: each ⌃⌥V (`[hotkeys] paste_next`)
     pastes the next clip down the history from the newest, without the panel; a 10 s pause or a new copy starts over.

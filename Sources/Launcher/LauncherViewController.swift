@@ -343,7 +343,7 @@ final class LauncherViewController: NSViewController {
         }
         searchField.placeholderString = placeholder(for: nil)
         setQuery("")
-        if !rows.isEmpty || isExpanded { show([], selecting: 0) }
+        if !rows.isEmpty || isExpanded { show([], selecting: 0, byUser: false) }
         icons.trimTypes()
     }
 
@@ -385,7 +385,8 @@ final class LauncherViewController: NSViewController {
     private func update(
         _ new: [Row], selecting selection: Int, keystroke: (event: TimeInterval, handled: TimeInterval)?
     ) {
-        if new != rows || isExpanded != shouldExpand(new) { show(new, selecting: selection) }
+        // Rows that typing brought are the user's doing; others (a copy, the apps changing) aren't (`PreviewTarget`).
+        if new != rows || isExpanded != shouldExpand(new) { show(new, selecting: selection, byUser: keystroke != nil) }
         if let keystroke {
             let updated = ProcessInfo.processInfo.systemUptime
             view.window?.displayIfNeeded()
@@ -482,7 +483,7 @@ final class LauncherViewController: NSViewController {
             && (clipboard?.index.count ?? 0) == 0 && clipboardNotices.isEmpty
     }
 
-    private func show(_ new: [Row], selecting selection: Int) {
+    private func show(_ new: [Row], selecting selection: Int, byUser: Bool) {
         rows = new
         if !rows.isEmpty {
             if tableRows.isEmpty {
@@ -502,7 +503,7 @@ final class LauncherViewController: NSViewController {
                     tableView.removeRows(at: IndexSet(rows.count..<old), withAnimation: [])
                 }
             }
-            select(row: max(0, min(selection, rows.count - 1)))
+            select(row: max(0, min(selection, rows.count - 1)), byUser: byUser)
         }
         // Only the search bar while there's nothing to list.
         let expanded = shouldExpand(rows)
@@ -615,7 +616,7 @@ final class LauncherViewController: NSViewController {
 
     private func moveSelection(by offset: Int) {
         guard !rows.isEmpty else { return }
-        select(row: min(max(tableView.selectedRow + offset, 0), rows.count - 1))
+        select(row: min(max(tableView.selectedRow + offset, 0), rows.count - 1), byUser: true)
     }
 
     /// Puts a Force Quit that's waiting for its second ⏎ back to normal.
@@ -625,13 +626,14 @@ final class LauncherViewController: NSViewController {
         refreshVisibleRows()
     }
 
-    private func select(row: Int) {
+    /// `byUser`: a key, a click or typing moved it, which Quick Look follows (`PreviewTarget`).
+    private func select(row: Int, byUser: Bool) {
         cancelConfirmation()
         isSelecting = true
         tableView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         isSelecting = false
         tableView.scrollRowToVisible(row)
-        previewSelectionChanged()
+        previewSelectionChanged(byUser: byUser)
         updateStage()
     }
 
@@ -839,6 +841,15 @@ final class LauncherViewController: NSViewController {
 
     var isPreviewing: Bool { quickLook?.isVisible == true }
 
+    /// The file Quick Look shows: the one it was opened on, until the user moves the selection (`PreviewTarget`).
+    /// Quick Look asks for it whenever it likes, so it's never worked out from the selection then: a list refreshed
+    /// meanwhile would show another file.
+    private(set) var previewing: URL?
+    /// The key press being handled, and the one that last opened or closed the preview: one press toggles it once,
+    /// whatever path it takes to the panel (a key equivalent, then a key).
+    private var pressing: NSEvent?
+    private weak var previewToggle: NSEvent?
+
     /// Shows or hides the preview of the selected file (⌘Y, or Space with an empty field: decision 20). The keyboard
     /// stays with the launcher, so ↑/↓ move through the results and the preview follows.
     func togglePreview() {
@@ -846,7 +857,8 @@ final class LauncherViewController: NSViewController {
             closePreview()
             return
         }
-        guard previewURL != nil, let preview = QLPreviewPanel.shared(), let window = view.window else { return }
+        guard let url = previewURL, let preview = QLPreviewPanel.shared(), let window = view.window else { return }
+        previewing = url
         (window as? LauncherPanel)?.previewWillShow()
         preview.level = NSWindow.Level(rawValue: window.level.rawValue + 1)
         preview.updateController()
@@ -856,11 +868,18 @@ final class LauncherViewController: NSViewController {
 
     func closePreview() {
         quickLook?.orderOut(nil)
+        previewing = nil
     }
 
-    private func previewSelectionChanged() {
-        guard isPreviewing else { return }
-        if previewURL == nil { closePreview() } else { quickLook?.reloadData() }
+    private func previewSelectionChanged(byUser: Bool) {
+        let showing = isPreviewing ? previewing : nil
+        switch PreviewTarget.change(showing: showing, selected: previewURL, byUser: byUser) {
+        case .keep: break
+        case .show(let url):
+            previewing = url
+            quickLook?.reloadData()
+        case .close: closePreview()
+        }
     }
 
     // Quick Look's controller hooks, declared nonisolated on NSObject; AppKit calls them on the main thread.
@@ -917,7 +936,7 @@ final class LauncherViewController: NSViewController {
         }
         guard let row = rows.firstIndex(of: action) else { return false }
         // Selecting another row cancels a confirmation; the same row keeps it, for the second press.
-        if tableView.selectedRow != row { select(row: row) }
+        if tableView.selectedRow != row { select(row: row, byUser: true) }
         activate(row: row)
         return true
     }
@@ -956,7 +975,7 @@ final class LauncherViewController: NSViewController {
         searchGeneration += 1  // a search still in flight would overwrite the restored rows
         searchField.placeholderString = placeholder(for: previous.sublist)
         setQuery(previous.query)
-        show(previous.rows, selecting: previous.selection)
+        show(previous.rows, selecting: previous.selection, byUser: true)
     }
 
     // MARK: Opening
@@ -1516,6 +1535,8 @@ extension LauncherViewController {
     /// otherwise goes on to the field. In an actions list, `run_actions` comes first.
     func handleKey(_ event: NSEvent) -> Bool {
         guard event.type == .keyDown else { return false }
+        pressing = event
+        defer { pressing = nil }
         let press = KeyPress(event)
         let isEmpty = searchField.stringValue.isEmpty
         func usable(_ shortcut: Shortcut?) -> Shortcut? {
@@ -1560,6 +1581,8 @@ extension LauncherViewController {
             }
         case .preview:
             guard isPreviewing || previewURL != nil else { return false }
+            if let pressing, pressing === previewToggle { return true }
+            previewToggle = pressing
             togglePreview()
         case .toLauncher:
             // From the clipboard's empty field back to the launcher.
@@ -1601,7 +1624,7 @@ extension LauncherViewController: NSTableViewDataSource, NSTableViewDelegate {
     func tableViewSelectionDidChange(_ notification: Notification) {
         cancelConfirmation()
         guard !isSelecting else { return }
-        previewSelectionChanged()
+        previewSelectionChanged(byUser: true)
         updateStage()
     }
 
@@ -1622,24 +1645,28 @@ final class OverlayScrollView: NSScrollView {
 
 extension LauncherViewController: QLPreviewPanelDataSource, QLPreviewPanelDelegate {
     func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int {
-        previewURL == nil ? 0 : 1
+        previewing == nil ? 0 : 1
     }
 
     func previewPanel(_ panel: QLPreviewPanel!, previewItemAt index: Int) -> (any QLPreviewItem)! {
-        previewURL.map { $0 as NSURL }
+        previewing.map { $0 as NSURL }
     }
 
-    /// Keys pressed while the preview has the focus (after a click on it): `up` and `down` keep moving through the
-    /// results.
+    /// Keys pressed while the preview has the keyboard (after a click on it). `preview` and `back` close it and give
+    /// the keyboard back to the search; the panel's other keys do what they do there (↑/↓ move and the preview
+    /// follows, ⏎ opens). Typing goes back to the search too. Nothing is left for Quick Look to act on by itself.
     func previewPanel(_ panel: QLPreviewPanel!, handle event: NSEvent!) -> Bool {
-        guard event.type == .keyDown else { return false }
-        if isKey(.down, event) {
-            moveSelection(by: 1)
-        } else if isKey(.up, event) {
-            moveSelection(by: -1)
-        } else {
-            return false
+        guard event.type == .keyDown, let window = view.window else { return false }
+        if isKey(.preview, event) || isKey(.back, event) {
+            if !event.isARepeat { closePreview() }
+            window.makeKey()
+            return true
         }
+        if handleKey(event) { return true }
+        guard event.modifierFlags.intersection([.command, .control]).isEmpty, event.characters?.isEmpty == false
+        else { return false }
+        window.makeKey()
+        window.sendEvent(event)
         return true
     }
 }

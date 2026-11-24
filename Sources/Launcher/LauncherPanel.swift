@@ -1,4 +1,5 @@
 import AppKit
+import Quartz
 
 /// Panel geometry. Visual decisions, recorded in docs/ARCHITECTURE.md (decision 29).
 enum Layout {
@@ -60,6 +61,16 @@ final class LauncherPanel: NSPanel {
         contentViewController = launcher
         setContentSize(NSSize(width: Layout.width, height: Layout.barHeight))
         displayIfNeeded()
+        // Quick Look's window takes the keyboard whenever it likes (as it opens, as its file loads), but Pith never
+        // activates itself, so the keys would go to the app underneath: the launcher takes them straight back.
+        NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) {
+            [weak self] notification in
+            guard notification.object is QLPreviewPanel else { return }
+            MainActor.assumeIsolated {
+                guard let self, self.isVisible, self.launcher.isPreviewing else { return }
+                self.makeKey()
+            }
+        }
         // While Quick Look is up, another app coming to the front (⌘Tab, a click on its icon) closes both.
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
@@ -176,8 +187,9 @@ final class LauncherPanel: NSPanel {
         invalidateShadow()
     }
 
-    /// Clicking elsewhere, or opening an app, closes the launcher. With Quick Look up the preview can take the
-    /// keyboard, so losing it says nothing then: `previewWillShow` watches for a click in another app instead.
+    /// Clicking elsewhere, or opening an app, closes the launcher. With Quick Look up, its window takes the keyboard
+    /// for a moment (and gives it straight back, above), so losing it says nothing then: `previewWillShow` watches for a
+    /// click in another app instead.
     override func resignKey() {
         super.resignKey()
         if launcher.isPreviewing { return }
