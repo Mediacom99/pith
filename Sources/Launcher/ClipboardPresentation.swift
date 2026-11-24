@@ -14,9 +14,10 @@ enum ClipboardNotice: Equatable {
 /// How a clip goes back: with everything it was copied with, or as plain text; pasted into the app in front, or only
 /// put on the clipboard.
 nonisolated enum ClipDelivery: Sendable {
-    case paste, copy, pastePlainText, copyPlainText
+    /// `pasteNext` is paste next's (decision 64): a paste the history doesn't record, in turn with the one before.
+    case paste, copy, pastePlainText, copyPlainText, pasteNext
 
-    var presses: Bool { self == .paste || self == .pastePlainText }
+    var presses: Bool { self == .paste || self == .pastePlainText || self == .pasteNext }
     var isPlainText: Bool { self == .pastePlainText || self == .copyPlainText }
 }
 

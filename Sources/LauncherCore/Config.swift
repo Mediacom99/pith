@@ -15,7 +15,7 @@ public struct Config: Sendable, Equatable {
     public var launcherHotkey = Shortcut("cmd+p")!
     /// Opens the panel straight in the clipboard (decision 34). Nil when it's off, which leaves the key to apps.
     public var clipboardHotkey = Shortcut("cmd+shift+v")
-    /// Pastes the clip copied right after the one pasted last (decision 63). Nil when it's off.
+    /// Pastes the last clip copied, then the one before at each press (decision 64). Nil when it's off.
     public var pasteNextHotkey = Shortcut("ctrl+alt+v")
     /// The keys inside the panel (decision 55).
     public var keys = KeyBindings.defaults
@@ -313,9 +313,8 @@ public struct Config: Sendable, Equatable {
         # Opens the clipboard history. It takes the key from every app: cmd+shift+v is Paste and Match Style in many,
         # and the clipboard's Paste as Plain Text does the same. "" turns it off.
         clipboard = "cmd+shift+v"
-        # After you paste a clip from the clipboard, pastes the one you copied right after it, then the next, up to
-        # the newest: for filling in a form with what you copied in order. A clip pasted as plain text keeps the rest
-        # plain. With nothing left to paste, opens the clipboard. "" turns it off.
+        # Pastes the last clip you copied, then at each press the one before it, down the history. A pause of 10
+        # seconds or a new copy starts again from the last one. "" turns it off.
         paste_next = "ctrl+alt+v"
 
         [keys]

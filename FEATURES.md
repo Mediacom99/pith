@@ -47,7 +47,7 @@ keys of the search field (`⌘X`, `⌘C`, `⌘V`, `⌘A`, `⌘Z`, `⇧⌘Z`) are
 |---|---|---|
 | `⌘P` | `hotkeys.launcher` | Open launcher (always global, no per-app pass-through) |
 | `⌘⇧V` | `hotkeys.clipboard` | Open directly in clipboard mode; `""` turns it off |
-| `⌃⌥V` | `hotkeys.paste_next` | Paste next: after a paste from the clipboard, paste the clip copied right after it (§5.4, decision 63); `""` turns it off |
+| `⌃⌥V` | `hotkeys.paste_next` | Paste next: paste the last clip copied, then the one before at each press (§5.4, decision 64); `""` turns it off |
 
 ### Inside the window
 
@@ -154,7 +154,7 @@ Both limits apply; whichever triggers first wins:
 | Key | Action |
 |---|---|
 | `Enter` | **Paste into previous app** (window closes, item pasted at cursor; needs Accessibility permission) |
-| `⌃⌥V` (paste next, any app) | After a paste from here, pastes the clip copied right after it, then the next, up to the newest, without the panel: for a form filled in the order you copied. Pastes as the first one was (plain text stays plain); a copy made meanwhile doesn't join; Copy to clipboard ends it. With nothing left, opens the clipboard (decision 63) |
+| `⌃⌥V` (paste next, any app) | Pastes the last clip copied, then at each press the one before it, down the history, without opening the panel. A 10 s pause or a new copy starts again from the newest; past the oldest, a press does nothing. Its pastes don't reorder the history (decisions 63, 64) |
 | `⌘K` → Copy to clipboard | Moves item to the top of history and onto the clipboard, so a normal `⌘V` pastes it |
 | `⌘K` → Paste as plain text | Strip formatting |
 | `⌘K` → Pin / Unpin | |
@@ -204,7 +204,7 @@ keeps them all (decision 59).
 [hotkeys]
 launcher   = "cmd+p"
 clipboard  = "cmd+shift+v"  # "" turns it off
-paste_next = "ctrl+alt+v"   # after a paste from the clipboard, the clip copied right after it; "" turns it off
+paste_next = "ctrl+alt+v"   # the last clip copied, then the one before at each press; "" turns it off
 
 [keys]                      # one key, or a list of them; [] turns one off (not open or back)
 up          = ["up", "ctrl+k"]
@@ -272,7 +272,7 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 - [x] Clipboard hotkey: `⌘⇧V` (decision 34)
 - [ ] Clipboard privacy: concealed copies are skipped (decision 35) and recording pauses from the launcher (decision 44); an ignore-app list?
 - [x] Every keybind configurable in `config.toml`: a `[keys]` table, and `[launcher] clipboard_alias` (decision 55)
-- [x] Paste down the history by repeating a key: paste next on ⌃⌥V, in the order you copied (decision 63)
+- [x] Paste down the history by repeating a key: paste next on ⌃⌥V, from the last clip copied (decisions 63, 64)
 - [ ] A first install and updates that follow macOS's conventions, with as few privacy prompts as possible (Edoardo,
   2026-11-23, after the keybinds). Without the paid Apple Developer Program (decision 46) Pith can't be notarized, so
   the first open always needs Open Anyway; everything else is open. The Desktop, Documents and Downloads prompts now

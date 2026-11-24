@@ -88,9 +88,10 @@ final class LauncherViewController: NSViewController {
     var canPaste = false {
         didSet { if canPaste != oldValue, mode == .clipboard { refresh() } }
     }
-    /// What paste next pastes (decision 63): the clips copied after the one pasted last from the clipboard, pasted
-    /// the way it was.
-    private(set) var pasteRun: (clips: PasteRun, delivery: ClipDelivery)?
+    /// Paste next's run (decision 64): the history as it was at its first press, and how far down it is.
+    private var pasteRun: PasteRun?
+    /// The paste next in flight: the next one waits for it, so quick presses paste in order.
+    private var pasting: Task<Void, Never>?
     /// The first ⏎ without Accessibility access asks for it.
     var askForAccessibility: () -> Void = {}
     /// Called as the clipboard is shown, to check access again.
@@ -1301,16 +1302,10 @@ extension LauncherViewController {
         }
         panel?.dismiss()
         switch action {
-        case .paste, .copy, .pastePlainText:
-            let delivery: ClipDelivery =
-                switch action {
-                case .paste: .paste
-                case .pastePlainText: canPaste ? .pastePlainText : .copyPlainText
-                default: .copy
-                }
-            deliverClip(clip, delivery)
-            // A paste starts paste next's run from this clip (decision 63); a copy ends the one before.
-            pasteRun = delivery.presses ? (PasteRun(after: clip.id, in: clipboard?.index.clips ?? []), delivery) : nil
+        case .paste: deliverClip(clip, .paste)
+        case .copy:
+            deliverClip(clip, .copy)
+        case .pastePlainText: deliverClip(clip, canPaste ? .pastePlainText : .copyPlainText)
         case .openLink:
             if let url = URL(string: clip.text) { open(url, with: linkApp(for: clip)?.url) }
         case .reveal: reveal(clip)
@@ -1319,19 +1314,17 @@ extension LauncherViewController {
         }
     }
 
-    /// Paste next (`[hotkeys] paste_next`, decision 63): pastes the clip copied right after the one pasted last, as that
-    /// one was (plain text stays plain), closing the panel first. False when there's nothing to paste: no paste from
-    /// the clipboard yet, the run is over, or Pith can't press ⌘V.
-    func pasteNext() -> Bool {
-        guard canPaste, let clipboard, var run = pasteRun else { return false }
-        guard let clip = run.clips.next(in: clipboard.index) else {
-            pasteRun = nil
-            return false
+    /// Paste next (`[hotkeys] paste_next`, decision 64), pressed at `time` (seconds since boot): pastes the next clip
+    /// down the history, from the last one copied, into the app you're in, closing the panel if it's open. A pause or
+    /// a new copy starts again from the newest; past the oldest, a press does nothing.
+    func pasteNext(pressedAt time: TimeInterval) {
+        guard let clipboard else { return }
+        if pasteRun?.goesOn(copies: clipboard.copies, at: time) != true {
+            pasteRun = PasteRun(clipboard.index.clips, copies: clipboard.copies, at: time)
         }
-        pasteRun = run
+        guard let clip = pasteRun?.next(in: clipboard.index, at: time) else { return }
         panel?.dismiss()
-        deliverClip(clip, run.delivery)
-        return true
+        deliverClip(clip, .pasteNext)
     }
 
     /// Puts the clip back on the clipboard, then presses ⌘V for a paste. Plain text is the clip itself, so it's marked
@@ -1340,6 +1333,7 @@ extension LauncherViewController {
         guard let clipboard else { return }
         let store = clipboard.store
         let v = KeyLayout.keyCode(typing: "v") ?? UInt32(kVK_ANSI_V)
+        if delivery == .pasteNext { return pasteInTurn(clip, from: store, key: v) }
         Task {
             do throws(ClipboardStore.Failure) {
                 if delivery.isPlainText {
@@ -1363,6 +1357,31 @@ extension LauncherViewController {
                 failed(
                     delivery.presses ? "Couldn't paste the clip" : "Couldn't copy the clip", nil,
                     reason: error.description)
+            }
+        }
+    }
+
+    /// Paste next's paste (decision 64), after the one before it: its copy is marked for the history to skip, so the
+    /// history keeps the order the run walks down. Accessibility is checked on the worker, at each press, since it can
+    /// be given at any time; without it, the first press asks for it. The next paste waits a moment, so the app has
+    /// read the clipboard before it changes again.
+    private func pasteInTurn(_ clip: Clip, from store: ClipboardStore, key v: UInt32) {
+        let previous = pasting
+        pasting = Task {
+            await previous?.value
+            do throws(ClipboardStore.Failure) {
+                let items = try await store.items(of: clip.id)
+                let pasted = await runInBackground(qos: .userInitiated) {
+                    guard Accessibility.isAllowed else { return false }
+                    Paster.write(items, source: clip.source, transient: true)
+                    Paster.pressCommandV(key: v)
+                    return true
+                }
+                canPaste = pasted
+                if !pasted { askForAccessibility() }
+                try? await Task.sleep(for: .milliseconds(100))
+            } catch {
+                failed("Couldn't paste the clip", nil, reason: error.description)
             }
         }
     }

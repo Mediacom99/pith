@@ -14,6 +14,8 @@ final class ClipboardHistory {
         didSet { if retention != oldValue { Task { await prune() } } }
     }
     private var isLoaded = false
+    /// How many copies came in, or clips moved to the top: paste next starts again from the newest when it changes.
+    private(set) var copies = 0
     /// Clips removed (cleared, deleted, pruned): a copy whose notice comes in after its removal isn't put back. Ids are
     /// never reused.
     private var removed: Set<Int64> = []
@@ -77,6 +79,7 @@ final class ClipboardHistory {
     func moveToTop(_ id: Int64, at date: Date = .now) async {
         do throws(ClipboardStore.Failure) {
             index.insert(try await store.touch(id, at: date))
+            copies += 1
             onChange?()
         } catch {
             Log.app.error("Couldn't move a clip to the top: \(error.description, privacy: .public)")
@@ -93,6 +96,7 @@ final class ClipboardHistory {
     func recorded(_ clip: Clip) {
         guard !removed.contains(clip.id) else { return }
         index.insert(clip)
+        copies += 1
         onChange?()
         Task { await prune() }
     }

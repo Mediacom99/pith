@@ -154,37 +154,30 @@ struct ClipboardPanelTests {
         #expect(copied.clips.last?.text == "newest")
     }
 
-    /// Paste next (decision 63): after ⏎ pastes a clip, each ⌃⌥V pastes the one copied right after it, up to the
-    /// newest. Copy to Clipboard ends the run.
-    @Test func pasteNextPastesWhatWasCopiedAfterThePastedClip() async throws {
+    /// Paste next (decision 64): each ⌃⌥V pastes the next clip down the history from the newest, without the panel,
+    /// until the history runs out; a pause or a new copy starts again from the newest.
+    @Test func pasteNextWalksDownFromTheNewest() async throws {
         let folder = try TemporaryDirectory()
         let copied = CopiedClips()
         let panel = try await clipboardPanel(
             folder.url,
-            [(text("Jane Appleseed"), nil, 4), (text("jane@acme.example"), nil, 3), (text("1 Infinite Loop"), nil, 2)],
+            [(text("Jane Appleseed"), nil, 4), (text("jane@acme.example"), nil, 3), (text("Acme"), nil, 2)],
             copied: copied)
-        panel.launcher.canPaste = true
-        #expect(!panel.launcher.pasteNext(), "nothing pasted yet: the hotkey opens the clipboard instead")
+        let launcher = panel.launcher
+        for time in [100.0, 101, 102, 103] { launcher.pasteNext(pressedAt: time) }
+        #expect(copied.clips.map(\.text) == ["Acme", "jane@acme.example", "Jane Appleseed"], "then nothing")
+        #expect(copied.deliveries.allSatisfy { $0.delivery == .pasteNext })
+        #expect(!panel.isVisible && launcher.mode == .launcher, "the clipboard never opens")
 
-        panel.launcher.prepareToShow(.clipboard)
-        press("down", in: panel)
-        press("down", in: panel)
-        press("return", in: panel)
-        #expect(panel.launcher.pasteNext() && panel.launcher.pasteNext())
-        #expect(!panel.launcher.pasteNext(), "the newest was the last")
-        #expect(copied.clips.map(\.text) == ["Jane Appleseed", "jane@acme.example", "1 Infinite Loop"])
-        #expect(copied.deliveries.map(\.delivery) == [.paste, .paste, .paste])
+        launcher.pasteNext(pressedAt: 103 + PasteRun.pause)
+        #expect(copied.clips.last?.text == "Acme", "after a pause, the newest again")
+        launcher.pasteNext(pressedAt: 104 + PasteRun.pause)
+        #expect(copied.clips.last?.text == "jane@acme.example")
 
-        panel.launcher.reset()
-        panel.launcher.prepareToShow(.clipboard)
-        press("down", in: panel)
-        press("return", in: panel)
-        panel.launcher.reset()
-        panel.launcher.prepareToShow(.clipboard)
-        panel.launcher.toggleActions()
-        press("cmd+w", in: panel)
-        #expect(copied.deliveries.last?.delivery == .copy)
-        #expect(!panel.launcher.pasteNext(), "a copy ends the run")
+        launcher.clipboard?.recorded(
+            try await launcher.clipboard!.store.add(text("Quarterly_Budget_Review"), from: nil, at: .now))
+        launcher.pasteNext(pressedAt: 105 + PasteRun.pause)
+        #expect(copied.clips.last?.text == "Quarterly_Budget_Review", "a new copy starts again from it")
     }
 
     @Test func commandKOffersWhatEachKindCanDo() async throws {

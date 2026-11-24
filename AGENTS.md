@@ -44,7 +44,7 @@ Read these before doing anything:
   `~/pith-backup-2026-11-23`, and its privacy permissions were reset (`tccutil reset All dev.edoardo.pith`). He
   reinstalled it in `/Applications`, where the installer and the Terminal install put it, and where `make install`
   now puts a branch build to try, until the next update replaces it. On the evening of 2026-11-23 it was removed
-  completely and reinstalled with the Terminal line (0.3.6, fresh config and history), and it's on 0.3.9 since. It's
+  completely and reinstalled with the Terminal line (0.3.6, fresh config and history), and it's on 0.3.10 since. It's
   signed with the local certificate (decision 41) so its Accessibility access survives updates, and it updates itself (decisions
   48–50). A change reaches it, and whoever else has Pith, as a release: raise the version in `Support/Info.plist`,
   commit, `make publish`, then Check for Updates in the launcher. Publish from the branch he uses

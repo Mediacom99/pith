@@ -336,8 +336,9 @@ release with them, for Edoardo to install as a new user would.
 
 Status: **in progress**. The check is done. 1–17 are fixed and published in 0.3.8 (2026-11-23), which also fixes
 0.3.7's ⌘Y (10); Edoardo checked ⌘Y on that build. 18–39 are fixed, confirmed or kept (26), and published in 0.3.9
-(2026-11-24) with paste next (decision 63). `make lint test` passes (94 + 144 tests). Still to check on a run: 14, the
-real folder prompts (4) on a first install, and paste next in real apps.
+(2026-11-24) with paste next (decision 63), which 0.3.10 starts from the newest (decision 64). `make lint test` passes
+(94 + 144 tests). Still to check on a run: 14, the real folder prompts (4) on a first install, and paste next in real
+apps.
 - **How it was checked:**
   - Read every source file, the install script, the Makefile and the landing page.
   - `make lint test` (197 tests), `make bench`, `make snapshots` and `make page` pass. A keystroke takes 2.2 ms to
@@ -493,7 +494,9 @@ real folder prompts (4) on a first install, and paste next in real apps.
         doesn't touch the installed copy's updates. What it was: the Terminal line stopped Pith with a signal, and a
         waiting update could put an older build over the new copy.
 - **Still open beside it:**
-  - **Done:** paste next (decision 63), Edoardo's pick for repeat-to-paste: after ⏎ pastes a clip, ⌃⌥V
-    (`[hotkeys] paste_next`) pastes the one copied right after it, then the next, up to the newest. `PasteRun` holds
-    the order at that paste; tests cover the order, skipped and meanwhile copies, the config and the panel.
+  - **Done:** paste next (decisions 63, 64), Edoardo's pick for repeat-to-paste: each ⌃⌥V (`[hotkeys] paste_next`)
+    pastes the next clip down the history from the newest, without the panel; a 10 s pause or a new copy starts over.
+    `PasteRun` holds the order at the first press; its pastes are marked for the history to skip, and wait for the
+    one before. Tests cover the order, skipped clips, the pause, a new copy, the config and the panel. 0.3.9's first
+    version started from a paste in the panel, and a friend's first try opened the clipboard: 0.3.10 changes it.
   - the quieter first install's other prompts (FEATURES §11).
