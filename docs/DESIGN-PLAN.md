@@ -164,15 +164,16 @@ a list on phones, a truthful "te" demo, drawn arrow keys, a visible hover, a con
 setup, settings and updates for the installer, decision 56), and documented
 in `DESIGN.md`'s Website section. `site/index.html` on `pith.edoardobertoli.xyz` (decision 51): Raycast's structure, pinned by
 Edoardo, in Stage's world carried to the web. The direction contract is in `.impeccable/surfaces/site-index-html.md`.
-- **First viewport:** the claim "Fast, small, and out of your way.", Download for Mac, four key caps (⌘P, te, ⌘K,
+- **First viewport:** the claim "Fast, small, and out of your way.", the Terminal line with its Copy (decision 67; Pith.dmg is a quiet line under it), four key caps (⌘P, te, ⌘K,
   ⌘⇧V) that switch the real panel underneath in one frame, as do the same keys pressed on the page.
 - **Below:** a keyboard of key caps where Pith's keys are lit and explain themselves, four reasons with measured
   numbers (44 MB and 0 % CPU idle on 2026-11-23), rows for the launcher, ⌘K and the clipboard, a configuration
   section (the whole `config.toml` beside every setting, its default and what it does, each lighting the other),
-  Edoardo's why, setting it up in four steps (Download, the installer's window, Open Anyway in System Settings, ⌘P),
-  each with what it looks like, then how a setting changes and how updates arrive, and a closing ⌘P with Download.
+  Edoardo's why, setting it up (the Terminal line, then the installer's four steps: Download, its window, Open Anyway
+  in System Settings, ⌘P), each with what it looks like, then how a setting changes and how updates arrive, and a
+  closing ⌘P with the Terminal line.
   The config file stays pinned beside the settings and scrolls inside itself when it's taller than the window.
 - **Motion** (decision 53), in the keys only: presses, a one-time hero tour, chords, a retyped config value; the
   snapshots change in one frame, and Reduce Motion plays nothing by itself. Checked by impeccable's motion review.
 - **Web-only additions to Stage**, in `DESIGN.md`'s Website section: a page ground (#ECECEC light, #141414 dark),
-  the Download button in the label color, and key caps at web sizes (7 px corners); no accent, no fades.
+  the main action (Copy, Install) in the label color, and key caps at web sizes (7 px corners); no accent, no fades.

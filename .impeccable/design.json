@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-23T15:08:45Z",
+  "generatedAt": "2026-11-24T09:45:00Z",
   "title": "Design System: launcher",
   "extensions": {
     "colorMeta": {
@@ -65,8 +65,8 @@
       "web-title": { "displayName": "Web Title", "purpose": "The four reasons and the install steps." },
       "web-lede": { "displayName": "Web Lede", "purpose": "The sentence under the H1, quiet." },
       "web-body": { "displayName": "Web Body", "purpose": "Page body text." },
-      "web-note": { "displayName": "Web Note", "purpose": "Small quiet notes: the Download note, the demo note, the footer." },
-      "web-button": { "displayName": "Web Button", "purpose": "The Download button's label." },
+      "web-note": { "displayName": "Web Note", "purpose": "Small quiet notes: the install note, the installer line, the demo note, the footer." },
+      "web-button": { "displayName": "Web Button", "purpose": "The action button's label (Install, the main Copy)." },
       "web-key-cap": { "displayName": "Web Key Cap", "purpose": "Glyphs in key caps, relative to the surrounding text." },
       "web-code": { "displayName": "Web Code", "purpose": "The config file's code block; the page's only monospace." }
     },
@@ -74,7 +74,7 @@
       { "name": "panel-system", "value": "the system window shadow (NSWindow.hasShadow)", "purpose": "The panel's only shadow. Nothing inside the panel casts one." },
       { "name": "web-panel-shadow", "value": "light: 0 0 0 0.5px rgba(0,0,0,0.18), 0 24px 60px rgba(0,0,0,0.16), 0 6px 18px rgba(0,0,0,0.08); dark: 0 0 0 0.5px rgba(0,0,0,0.9), 0 28px 70px rgba(0,0,0,0.55), 0 8px 20px rgba(0,0,0,0.35)", "purpose": "Website only: panel-shaped surfaces (snapshots, keyboard tray, code block), a system-like window shadow." },
       { "name": "web-key-shadow", "value": "light: 0 1px 1px rgba(0,0,0,0.10), 0 3px 8px rgba(0,0,0,0.06); dark: 0 1px 0 rgba(0,0,0,0.55), 0 4px 10px rgba(0,0,0,0.35)", "purpose": "Website only: the soft offset shadow under every key cap." },
-      { "name": "web-button-shadow", "value": "0 1px 1px rgba(0,0,0,0.2), 0 6px 16px rgba(0,0,0,0.14); hover 0 1px 1px rgba(0,0,0,0.2), 0 10px 24px rgba(0,0,0,0.2)", "purpose": "Website only: the Download button." }
+      { "name": "web-button-shadow", "value": "0 1px 1px rgba(0,0,0,0.2), 0 6px 16px rgba(0,0,0,0.14); hover 0 1px 1px rgba(0,0,0,0.2), 0 10px 24px rgba(0,0,0,0.2)", "purpose": "Website only: the action button and the main Copy." }
     ],
     "motion": [
       { "name": "none", "value": "none", "purpose": "The panel appears, resizes and disappears in one frame, with no animation (animationBehavior = .none)." },
@@ -146,12 +146,20 @@
       "css": ".ds-row-problem { width: 680px; height: 32px; box-sizing: border-box; padding: 0 18px; display: flex; align-items: center; font-family: -apple-system, system-ui, sans-serif; } .ds-row-problem-icon { color: #C93400; margin: 0 13px 0 3px; } .ds-row-problem-title { font-size: 14px; color: rgba(0,0,0,0.85); } @media (prefers-color-scheme: dark) { .ds-row-problem-icon { color: #FF9F0A; } .ds-row-problem-title { color: rgba(255,255,255,0.85); } }"
     },
     {
-      "name": "Web Download Button",
+      "name": "Web Action Button",
       "kind": "button",
-      "refersTo": "web-download",
-      "description": "Website only: the page's one filled control, filled with the label color itself; 10 px corners, 7 px in the bar.",
-      "html": "<a class=\"ds-web-download\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3.5v9M6 9l4 4 4-4M4 16.5h12\"/></svg>Download for Mac</a>",
-      "css": ":root{--label:rgba(0,0,0,.85);--quiet:#616161;--fill:rgba(0,0,0,.07);--key:#FFFFFF;--key-edge:rgba(0,0,0,.13);--key-shadow:0 1px 1px rgba(0,0,0,.10),0 3px 8px rgba(0,0,0,.06);--action:#1C1C1C;--action-hover:#000;--on-action:#FFF;--ghost-edge:rgba(0,0,0,.09);--faint:rgba(0,0,0,.38)} @media (prefers-color-scheme: dark){:root{--label:rgba(255,255,255,.86);--quiet:#A1A1A1;--fill:rgba(255,255,255,.10);--key:#2A2A2A;--key-edge:rgba(255,255,255,.10);--key-shadow:0 1px 0 rgba(0,0,0,.55),0 4px 10px rgba(0,0,0,.35);--action:#EDEDED;--action-hover:#FFF;--on-action:#141414;--ghost-edge:rgba(255,255,255,.07);--faint:rgba(255,255,255,.36)}} .ds-web-download{display:inline-flex;align-items:center;gap:9px;font:600 17px/1 -apple-system,system-ui,sans-serif;color:var(--on-action);background:var(--action);padding:15px 22px 15px 20px;border-radius:10px;text-decoration:none;box-shadow:0 1px 1px rgba(0,0,0,.2),0 6px 16px rgba(0,0,0,.14)} .ds-web-download:hover{background:var(--action-hover);box-shadow:0 1px 1px rgba(0,0,0,.2),0 10px 24px rgba(0,0,0,.2)} .ds-web-download:active{transform:translateY(1px);box-shadow:0 1px 1px rgba(0,0,0,.2)} .ds-web-download:focus-visible{outline:2px solid var(--label);outline-offset:3px}"
+      "refersTo": "web-action-button",
+      "description": "Website only: the page's main action, filled with the label color itself; 10 px corners, 7 px in the bar's Install and on the Copy beside the Terminal line (decision 67).",
+      "html": "<a class=\"ds-web-action\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4.5 6l4 4-4 4M10.5 15h5\"/></svg>Install</a>",
+      "css": ":root{--label:rgba(0,0,0,.85);--quiet:#616161;--fill:rgba(0,0,0,.07);--key:#FFFFFF;--key-edge:rgba(0,0,0,.13);--key-shadow:0 1px 1px rgba(0,0,0,.10),0 3px 8px rgba(0,0,0,.06);--action:#1C1C1C;--action-hover:#000;--on-action:#FFF;--ghost-edge:rgba(0,0,0,.09);--faint:rgba(0,0,0,.38)} @media (prefers-color-scheme: dark){:root{--label:rgba(255,255,255,.86);--quiet:#A1A1A1;--fill:rgba(255,255,255,.10);--key:#2A2A2A;--key-edge:rgba(255,255,255,.10);--key-shadow:0 1px 0 rgba(0,0,0,.55),0 4px 10px rgba(0,0,0,.35);--action:#EDEDED;--action-hover:#FFF;--on-action:#141414;--ghost-edge:rgba(255,255,255,.07);--faint:rgba(255,255,255,.36)}} .ds-web-action{display:inline-flex;align-items:center;gap:9px;font:600 17px/1 -apple-system,system-ui,sans-serif;color:var(--on-action);background:var(--action);padding:15px 22px 15px 20px;border-radius:10px;text-decoration:none;box-shadow:0 1px 1px rgba(0,0,0,.2),0 6px 16px rgba(0,0,0,.14)} .ds-web-action:hover{background:var(--action-hover);box-shadow:0 1px 1px rgba(0,0,0,.2),0 10px 24px rgba(0,0,0,.2)} .ds-web-action:active{transform:translateY(1px);box-shadow:0 1px 1px rgba(0,0,0,.2)} .ds-web-action:focus-visible{outline:2px solid var(--label);outline-offset:3px}"
+    },
+    {
+      "name": "Web Secondary Button",
+      "kind": "button",
+      "refersTo": "web-secondary-button-small",
+      "description": "Website only: the installer's Pith.dmg in the setup steps, the other way in (decision 67): the panel color with a 1 px edge and the label's text; hover takes the 7 % fill.",
+      "html": "<a class=\"ds-web-secondary\" href=\"#\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3.5v9M6 9l4 4 4-4M4 16.5h12\"/></svg>Pith.dmg</a>",
+      "css": ":root{--label:rgba(0,0,0,.85);--panel:#FFFFFF;--edge:rgba(0,0,0,.10);--fill:rgba(0,0,0,.07)} @media (prefers-color-scheme:dark){:root{--label:rgba(255,255,255,.86);--panel:#1E1E1E;--edge:rgba(255,255,255,.09);--fill:rgba(255,255,255,.10)}} .ds-web-secondary{display:inline-flex;align-items:center;gap:9px;font:600 .9375rem/1 -apple-system,BlinkMacSystemFont,sans-serif;color:var(--label);background:var(--panel);padding:9px 14px 9px 12px;border-radius:7px;text-decoration:none;box-shadow:inset 0 0 0 1px var(--edge),0 1px 1px rgba(0,0,0,.06)} .ds-web-secondary:hover{background:var(--fill)}"
     },
     {
       "name": "Web Key Cap",
@@ -198,7 +206,7 @@
       { "name": "The One-Baseline Rule", "body": "Everything on a row (name, folder, \"running\", ↩) sits on the name's baseline.", "section": "typography" },
       { "name": "The Flat-Inside Rule", "body": "Only the panel casts a shadow, and it is the system's. Nothing inside the panel is lifted.", "section": "elevation" },
       { "name": "The Label-Is-the-Action Rule", "body": "The page's one filled control is filled with the label color itself (#1C1C1C / #EDEDED). No accent, gradient, glow or brand hue anywhere on the page.", "section": "colors" },
-      { "name": "The Keys-Are-the-Interface Rule", "body": "Every control and every mention of a shortcut on the page is a key cap; there is no second button or chip style besides Download.", "section": "components" },
+      { "name": "The Keys-Are-the-Interface Rule", "body": "Every control and every mention of a shortcut on the page is a key cap; there is no other button or chip style besides the action button and its secondary.", "section": "components" },
       { "name": "The Keys-Move Rule", "body": "The panel snapshots change in one frame, as the app does; the motion lives in the keys: 60 ms down, 180 ms eased up, a one-time hero tour with a 3 s fill line, chords on the drawn keyboard and the ⌘K and ⌘⇧V rows, a retyped config value. It pauses off screen and on any input; with Reduce Motion nothing plays by itself and every section shows its end state." }
     ],
     "dos": [
@@ -210,7 +218,7 @@
       "**Do** use SF Symbols in regular weight, in quiet gray, for anything that has no app or file icon.",
       "**Do** check text and meaningful symbols against WCAG AA in light and dark, on the selection, its darkest background.",
       "**Do** show the real panel snapshots, light and dark, at their real size, as the page's proof.",
-      "**Do** write every shortcut as key caps, and fill only Download and lit keys with the action color.",
+      "**Do** write every shortcut as key caps, and fill only the main action (Copy, Install) and lit keys with the action color.",
       "**Do** keep Faint for decoration the page also says in text (the keyboard's unlit legends), never for content."
     ],
     "donts": [
