@@ -337,8 +337,8 @@ release with them, for Edoardo to install as a new user would.
 Status: **in progress**. The check is done. 1–17 are fixed and published in 0.3.8 (2026-11-23), which also fixes
 0.3.7's ⌘Y (10); Edoardo checked ⌘Y on that build. 18–39 are fixed, confirmed or kept (26), and published in 0.3.9
 (2026-11-24) with paste next (decision 63), which 0.3.10 starts from the newest (decision 64). `make lint test` passes
-(94 + 144 tests). Still to check on a run: 14, the real folder prompts (4) on a first install, and paste next in real
-apps.
+(94 + 144 tests). Paste next works on a friend's Mac with 0.3.10. Still to check on a run: 14, and the real folder
+prompts (4) on a first install.
 - **How it was checked:**
   - Read every source file, the install script, the Makefile and the landing page.
   - `make lint test` (197 tests), `make bench`, `make snapshots` and `make page` pass. A keystroke takes 2.2 ms to
