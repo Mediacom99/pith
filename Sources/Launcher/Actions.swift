@@ -1,6 +1,5 @@
 import AppKit
 import LauncherCore
-import UniformTypeIdentifiers
 
 /// What ⌘K offers for an item (FEATURES.md §4.1–4.3).
 nonisolated enum Action: CaseIterable {
@@ -62,6 +61,73 @@ nonisolated enum Action: CaseIterable {
     }
 }
 
+/// What ⌘K offers on a clip (docs/BRIEF-CLIPBOARD.md §6), in the brief's order.
+nonisolated enum ClipAction: CaseIterable, Sendable {
+    case paste, copy, pastePlainText, openLink, reveal, save, pin, unpin, delete
+
+    /// The actions for `clip`. Paste needs Accessibility access; without it the plain-text action copies.
+    static func available(for clip: Clip, canPaste: Bool) -> [ClipAction] {
+        var actions: [ClipAction] = canPaste ? [.paste, .copy] : [.copy]
+        switch clip.kind {
+        case .richText: actions += [.pastePlainText, .save]
+        case .text: actions.append(.save)
+        case .link: actions.append(.openLink)
+        case .image: actions.append(.save)
+        case .files: actions.append(.reveal)
+        }
+        return actions + [clip.pinned ? .unpin : .pin, .delete]
+    }
+
+    /// `linkApp`: the app that opens a link, once known ("Open in Safari").
+    func title(canPaste: Bool, linkApp: String?) -> String {
+        switch self {
+        case .paste: "Paste"
+        case .copy: "Copy to Clipboard"
+        case .pastePlainText: canPaste ? "Paste as Plain Text" : "Copy as Plain Text"
+        case .openLink: linkApp.map { "Open in \($0)" } ?? "Open Link"
+        case .reveal: "Reveal in Finder"
+        case .save: "Save as File"
+        case .pin: "Pin"
+        case .unpin: "Unpin"
+        case .delete: "Delete"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .paste: "arrow.down.doc"
+        case .copy: "doc.on.doc"
+        case .pastePlainText: "textformat"
+        case .openLink: "arrow.up.forward.app"
+        case .reveal: "folder"
+        case .save: "square.and.arrow.down"
+        case .pin: "pin"
+        case .unpin: "pin.slash"
+        case .delete: "trash"
+        }
+    }
+
+    /// Deleting a pinned clip waits for a second ⏎, as Force Quit does (decision 28).
+    static let deleteConfirmation = "Press ⏎ again to delete this pinned clip"
+}
+
+/// Where Save as File puts a clip (decision 39): "Clipboard 2026-11-23 at 14.05.png", then "… 2.png" and up when taken.
+nonisolated enum ClipFiles {
+    static func destination(in folder: URL, at date: Date, extension fileExtension: String) -> URL {
+        let format = DateFormatter()
+        format.locale = Locale(identifier: "en_US_POSIX")
+        format.dateFormat = "yyyy-MM-dd 'at' HH.mm"
+        let name = "Clipboard \(format.string(from: date))"
+        var candidate = folder.appending(path: "\(name).\(fileExtension)")
+        var number = 2
+        while FileManager.default.fileExists(atPath: candidate.path) {
+            candidate = folder.appending(path: "\(name) \(number).\(fileExtension)")
+            number += 1
+        }
+        return candidate
+    }
+}
+
 /// The SF Symbols rows use, rendered once by `IconStore`.
 nonisolated enum Symbols {
     static let problem = "exclamationmark.triangle"
@@ -99,66 +165,4 @@ nonisolated enum Symbols {
         + [(ClipAction.delete.symbol, .danger, .row), (command(.clearClipboard), .danger, .row)]
         + Command.allCases.map { (command($0), .quiet, .tile) }
         + [text, link, clipboard, paused].map { ($0, .quiet, .tile) }
-}
-
-/// Turns the apps named in config.toml into app bundles, and picks the app `[open_with]` sets for a file. Asks
-/// LaunchServices, so call it on a worker.
-nonisolated enum AppResolver {
-    /// An installed app, as the index knows it: its names (as listed, and its file name) and bundle.
-    struct App: Sendable {
-        let names: [String]
-        let url: URL
-    }
-
-    /// An app given by name (as the launcher lists it, any case), bundle id (`com.microsoft.VSCode`) or path.
-    static func resolve(_ spec: String, among apps: [App]) -> URL? {
-        if spec.hasPrefix("/") || spec.hasPrefix("~") {
-            let path = (spec as NSString).expandingTildeInPath
-            return path.hasSuffix(".app") && FileManager.default.fileExists(atPath: path) ? URL(filePath: path) : nil
-        }
-        if let app = apps.first(where: { $0.names.contains { $0.caseInsensitiveCompare(spec) == .orderedSame } }) {
-            return app.url
-        }
-        return spec.contains(".") && !spec.contains(" ")
-            ? NSWorkspace.shared.urlForApplication(withBundleIdentifier: spec) : nil
-    }
-
-    /// `[open_links]`'s apps by URL scheme, and a problem for each one that isn't found. `https` covers `http` too,
-    /// unless `http` has its own.
-    static func links(_ openLinks: [String: String], among apps: [App]) -> (apps: [String: URL], problems: [String]) {
-        var found: [String: URL] = [:]
-        var problems: [String] = []
-        for (scheme, spec) in openLinks.sorted(by: { $0.key < $1.key }) {
-            if let app = resolve(spec, among: apps) {
-                found[scheme] = app
-            } else {
-                problems.append("open_links.\(scheme): can't find the app \"\(spec)\"")
-            }
-        }
-        if openLinks["http"] == nil, let https = found["https"] { found["http"] = https }
-        return (found, problems)
-    }
-
-    /// The app `[open_with]` sets for `file`: by its extension, else by the most specific type it conforms to.
-    static func app(forFile file: URL, openWith: [String: URL]) -> URL? {
-        let ext = file.pathExtension.lowercased()
-        if let app = openWith[ext] { return app }
-        guard let type = UTType(filenameExtension: ext) else { return nil }
-        let matches = openWith.compactMap { key, app -> (type: UTType, app: URL)? in
-            guard key.contains("."), let declared = UTType(key), type.conforms(to: declared) else { return nil }
-            return (declared, app)
-        }
-        // The most specific: one that conforms to all the others (public.png before public.image).
-        let specific = matches.first { candidate in matches.allSatisfy { candidate.type.conforms(to: $0.type) } }
-        return specific?.app ?? matches.first?.app
-    }
-
-    /// The apps that can open `file`, best first, as items to list.
-    static func apps(toOpen file: URL, among apps: [App]) -> [Item] {
-        NSWorkspace.shared.urlsForApplications(toOpen: file).map { url in
-            let known = apps.first { $0.url.standardizedFileURL == url.standardizedFileURL }?.names.first
-            let name = known ?? url.deletingPathExtension().lastPathComponent
-            return Item(name: name, appAt: url)
-        }
-    }
 }

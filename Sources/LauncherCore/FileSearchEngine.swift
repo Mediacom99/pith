@@ -11,6 +11,8 @@ import Synchronization
 /// shows the prompt and waits for the answer. The index leaves out a folder until it's allowed, so the rest is
 /// searchable at once, and is rebuilt with it as soon as it is. A refused folder is read again as the panel opens
 /// (`recheckRefused`): it doesn't ask again, and once allowed in System Settings it joins the index.
+///
+/// `@unchecked Sendable`: its mutable state is touched only on `queue`, and the counters it reads elsewhere are atomic.
 public final class FileSearchEngine: @unchecked Sendable {
     /// What macOS said about a protected folder.
     private enum Access { case asking, allowed, refused }

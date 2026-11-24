@@ -48,10 +48,10 @@ struct ClipboardPanelTests {
         #expect(titles(panel) == ["third", "second", "first"])
         #expect(panel.launcher.tableView.selectedRow == 0)
         #expect(panel.launcher.searchField.placeholderString == "Search clipboard")
-        #expect(panel.launcher.stage.frame.height == Layout.clipboardTileHeight)
+        #expect(panel.launcher.tile.frame.height == Layout.clipboardTileHeight)
         #expect(panel.frame.height == Layout.expandedHeight, "the panel keeps its height")
-        #expect(panel.launcher.stage.content.primary == "Copy", "no Accessibility access in tests")
-        #expect(panel.launcher.stage.content.preview == .text("third", isBlank: false))
+        #expect(panel.launcher.tile.content.primary == "Copy", "no Accessibility access in tests")
+        #expect(panel.launcher.tile.content.preview == .text("third", isBlank: false))
     }
 
     @Test func fiveWholeRowsFitUnderThePreview() async throws {
@@ -92,9 +92,9 @@ struct ClipboardPanelTests {
         panel.launcher.prepareToShow(.clipboard)
         #expect(panel.launcher.rows.isEmpty)
         #expect(panel.frame.height == Layout.expandedHeight)
-        #expect(!panel.launcher.stage.isHidden)
-        #expect(panel.launcher.stage.content.name == "Nothing copied yet")
-        #expect(panel.launcher.stage.content.primary.isEmpty, "no keys: there's nothing to act on")
+        #expect(!panel.launcher.tile.isHidden)
+        #expect(panel.launcher.tile.content.name == "Nothing copied yet")
+        #expect(panel.launcher.tile.content.primary.isEmpty, "no keys: there's nothing to act on")
     }
 
     @Test func cSpaceOpensTheClipboardAndBackspaceComesBack() async throws {
@@ -117,7 +117,7 @@ struct ClipboardPanelTests {
 
         press("backspace", in: panel)
         #expect(panel.launcher.mode == .launcher)
-        #expect(panel.launcher.stage.frame.height == Layout.tileHeight)
+        #expect(panel.launcher.tile.frame.height == Layout.tileHeight)
         #expect(panel.launcher.searchField.placeholderString == "Search")
     }
 
@@ -148,7 +148,7 @@ struct ClipboardPanelTests {
         panel.launcher.reset()
         panel.launcher.canPaste = true
         panel.launcher.prepareToShow(.clipboard)
-        #expect(panel.launcher.stage.content.primary == "Paste")
+        #expect(panel.launcher.tile.content.primary == "Paste")
         press("return", in: panel)
         #expect(copied.deliveries.map(\.delivery) == [.copy, .paste])
         #expect(copied.clips.last?.text == "newest")
@@ -215,7 +215,7 @@ struct ClipboardPanelTests {
         #expect(actions(at: 2) == [.paste, .copy, .openLink, .pin, .delete])
         #expect(actions(at: 3) == [.paste, .copy, .reveal, .unpin, .delete])
         #expect(panel.launcher.searchField.placeholderString == "Filter actions")
-        #expect(panel.launcher.stage.content.name == "notes.md", "the clip stays on the tile")
+        #expect(panel.launcher.tile.content.name == "notes.md", "the clip stays on the tile")
 
         panel.launcher.canPaste = false
         #expect(actions(at: 1) == [.copy, .pastePlainText, .save, .pin, .delete])
@@ -248,7 +248,7 @@ struct ClipboardPanelTests {
 
         press("return", in: panel)
         #expect(panel.launcher.confirming)
-        #expect(panel.launcher.stage.content.isDanger && panel.launcher.stage.content.secondary?.words == "Cancel")
+        #expect(panel.launcher.tile.content.isDanger && panel.launcher.tile.content.secondary?.words == "Cancel")
         press("return", in: panel)
         #expect(await eventuallyTrue { titles(panel) == ["newest"] })
         #expect(try await panel.launcher.clipboard?.store.load().map(\.text) == ["newest"])
@@ -330,7 +330,7 @@ struct ClipboardPanelTests {
         panel.launcher.prepareToShow(.clipboard)
         #expect(titles(panel) == ["Recording is paused", "Acme"])
         press("up", in: panel)
-        #expect(panel.launcher.stage.content.primary == "Resume")
+        #expect(panel.launcher.tile.content.primary == "Resume")
 
         press("return", in: panel)
         #expect(resolved == [.paused])
@@ -373,7 +373,7 @@ struct ClipboardPanelTests {
         panel.launcher.reset()
         #expect(panel.launcher.mode == .launcher)
         #expect(panel.frame.height == Layout.barHeight)
-        #expect(panel.launcher.stage.frame.height == Layout.tileHeight)
+        #expect(panel.launcher.tile.frame.height == Layout.tileHeight)
     }
 
     @Test func eachKindSaysWhatItIs() {
@@ -427,13 +427,13 @@ struct ClipboardPanelTests {
         let panel = try await clipboardPanel(folder.url, [(files, nil, 1)])
         panel.launcher.fileFacts = { _ in (true, 2_143_000) }
         panel.launcher.prepareToShow(.clipboard)
-        #expect(await eventuallyTrue { panel.launcher.stage.content.kind.contains("MB") })
-        #expect(!panel.launcher.stage.content.place.hasPrefix("No longer in"))
+        #expect(await eventuallyTrue { panel.launcher.tile.content.kind.contains("MB") })
+        #expect(!panel.launcher.tile.content.place.hasPrefix("No longer in"))
 
         panel.launcher.reset()
         panel.launcher.fileFacts = { _ in (false, nil) }
         panel.launcher.prepareToShow(.clipboard)
-        #expect(await eventuallyTrue { panel.launcher.stage.content.place.hasPrefix("No longer in") })
+        #expect(await eventuallyTrue { panel.launcher.tile.content.place.hasPrefix("No longer in") })
     }
 
     /// A copy whose notice comes in after Clear removed it isn't put back as a row whose clip is gone.

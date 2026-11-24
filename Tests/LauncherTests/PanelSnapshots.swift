@@ -355,7 +355,7 @@ import Testing
     /// Every row on screen has its icon, and so does the tile (and there are rows, if the list isn't empty).
     private func iconsReady(_ panel: LauncherPanel) -> Bool {
         var cells = 0
-        var ready = panel.launcher.stage.isHidden || panel.launcher.stage.isReady
+        var ready = panel.launcher.tile.isHidden || panel.launcher.tile.isReady
         panel.launcher.tableView.enumerateAvailableRowViews { rowView, _ in
             cells += 1
             if (rowView.view(atColumn: 0) as? ResultCell)?.icon.image == nil { ready = false }

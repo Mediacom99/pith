@@ -97,18 +97,16 @@ enum ClipText {
         if seconds < 60 { return "now" }
         if seconds < 3600 { return "\(Int(seconds / 60)) min" }
         let calendar = Calendar.current
-        if calendar.isDate(date, inSameDayAs: now) { return timeFormat.string(from: date) }
-        let days =
-            calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: now))
-            .day ?? .max
+        if calendar.isDate(date, inSameDayAs: now) { return DateWords.time.string(from: date) }
+        let days = DateWords.days(from: date, to: now, in: calendar)
         if days == 1 { return "yesterday" }
-        if (2..<7).contains(days) { return shortWeekdayFormat.string(from: date) }
-        return dayFormat.string(from: date)
+        if (2..<7).contains(days) { return DateWords.shortWeekday.string(from: date) }
+        return DateWords.monthDay.string(from: date)
     }
 
     /// On the tile: "copied today at 14:05", "copied yesterday", "copied Tuesday", "copied Nov 12".
     static func copied(_ date: Date, now: Date) -> String {
-        LauncherViewController.opened(date, now: now).replacingOccurrences(of: "opened", with: "copied")
+        "copied " + DateWords.day(of: date, now: now)
     }
 
     /// The tile's line about a clip: its kind, then what's known about it, then when and where it was copied:
@@ -155,20 +153,4 @@ enum ClipText {
             width: max(1, (Double(clip.pixelWidth) * fit / 2).rounded()),
             height: max(1, (Double(clip.pixelHeight) * fit / 2).rounded()))
     }
-
-    private static let timeFormat: DateFormatter = {
-        let format = DateFormatter()
-        format.timeStyle = .short
-        format.dateStyle = .none
-        return format
-    }()
-
-    private static func englishFormat(_ template: String) -> DateFormatter {
-        let format = DateFormatter()
-        format.locale = Locale(identifier: "en")
-        format.setLocalizedDateFormatFromTemplate(template)
-        return format
-    }
-    private static let shortWeekdayFormat = englishFormat("EEE")
-    private static let dayFormat = englishFormat("MMMd")
 }
