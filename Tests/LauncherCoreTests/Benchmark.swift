@@ -102,6 +102,8 @@ import Testing
                 pinned: number % 97 == 0,
                 size: text.utf8.count, text: text, lines: Clip.lineCount(of: text))
         }
+        // What a month of history costs in memory: the clips' starts and their search keys, as the app holds them.
+        let before = footprint()
         let typical = (0..<5_000).map { number in
             let length =
                 switch Int.random(in: 0..<100, using: &random) {
@@ -111,6 +113,9 @@ import Testing
                 }
             return clip(number, text(characters: length))
         }
+        let held = ClipboardIndex(clips: typical)
+        let megabytes = String(format: "%.1f", Double(footprint() - before) / 1e6)
+        print("clipboard, typical: memory \(megabytes) MB for \(held.count) clips")
         let worst = (0..<5_000).map { clip($0, text(characters: Clip.textLimit)) }
         let typed = [
             "d", "do", "doc", "dock", "docker", "docker c", "docker co", "docker comp", "zzz", "caf", "qua inv",

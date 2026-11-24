@@ -167,7 +167,7 @@ Edoardo, in Stage's world carried to the web. The direction contract is in `.imp
 - **First viewport:** the claim "Fast, small, and out of your way.", the Terminal line with its Copy (decision 67; Pith.dmg is a quiet line under it), four key caps (⌘P, te, ⌘K,
   ⌘⇧V) that switch the real panel underneath in one frame, as do the same keys pressed on the page.
 - **Below:** a keyboard of key caps where Pith's keys are lit and explain themselves, four reasons with measured
-  numbers (44 MB and 0 % CPU idle on 2026-11-23), rows for the launcher, ⌘K and the clipboard, a configuration
+  numbers (62 MB and 0 % CPU an hour into use, measured on 2026-11-24, with the machine and the method under them), rows for the launcher, ⌘K and the clipboard, a configuration
   section (the whole `config.toml` beside every setting, its default and what it does, each lighting the other),
   Edoardo's why, setting it up (the Terminal line, then the installer's four steps: Download, its window, Open Anyway
   in System Settings, ⌘P), each with what it looks like, then how a setting changes and how updates arrive, and a

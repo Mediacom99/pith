@@ -11,8 +11,11 @@ Scope: the front page of pith.edoardobertoli.xyz. Mode: Persuade.
 
 - **Audience:** Edoardo's friends and people online, arriving from a shared link, mostly on a Mac.
 - **Job and action:** decide to try Pith; copy `curl -fsSL https://pith.edoardobertoli.xyz/install.sh | sh` and paste it in Terminal, with no Open Anyway: the page's main action (decisions 57, 67). The other way is quieter: Pith.dmg (decision 56), dragged into Applications, then opened once with Open Anyway. The setup section shows the line, then the installer's steps as they will look, and says how settings change and updates arrive.
-- **Proof:** the real panel snapshots from `docs/snapshots/`, light and dark; measured numbers only: 44 MB and 0 % CPU
-  idle (`make stats`, 2026-11-23), about 2 ms of work per keystroke over 111 apps and 35,000+ files (milestone 2).
+- **Proof:** the real panel snapshots from `docs/snapshots/`, light and dark; measured numbers only, with the machine
+  and the method in one quiet line under the reasons (step 8, 2026-11-24, an M4 Pro MacBook Pro): 62 MB and 0 % CPU an
+  hour into use, under 3 ms of work per keystroke over 35,800 files, a month of clipboard opening in 1.4 ms and adding
+  about 7 MB. A FAQ before the close answers what a first visit asks (curl | sh, notarization, the alternatives, safety,
+  Claude as a pair programmer).
 - **Constraints:** static files served by the Worker in `Support/wrangler.toml`, beside the update feed; no claims
   beyond `FEATURES.md` and the measurements; no Raycast text, logo or artwork. The repo is public (decision 65): the bar has the GitHub mark beside Download, and the footer says Source on GitHub.
 - **Answers (Edoardo, 2026-11-23):** the headline leads with fast and small; Edoardo's first-person "why" names

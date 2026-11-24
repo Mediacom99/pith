@@ -252,6 +252,10 @@ must allow it (System Settings → Privacy & Security → Files & Folders).
 **Where's the menu bar icon?** There isn't one. Pith's commands are in the launcher: type "quit" for Quit Pith,
 "config" for Open Config.
 
+**Notifications only show up in Notification Center, with no banner.** macOS holds back every app's banners while
+your screen is shared or mirrored, or while a Focus is on. Stop sharing, or turn on "Allow notifications when
+mirroring or sharing the display" in System Settings → Notifications.
+
 **A notification has a blank icon.** That's macOS's icon cache, kept from an older Pith. Run this, then open Pith
 again (it asks for your password):
 
@@ -277,12 +281,28 @@ If Pith is still listed in System Settings → General → Login Items, remove i
 
 The targets are requirements, and every change is measured against them.
 
-| | Target | Measured now |
+| | Target | Measured |
 |---|---|---|
-| ⌘P → panel on screen | one frame | 0.4 ms of the app's own work; 23 ms on screen, mostly the window server (being worked on) |
-| Keystroke → results | under 5 ms | ~2 ms of work over 111 apps and 35,000+ files; 7–12 ms on screen (being worked on) |
-| Idle CPU | ~0% | ~0%: no timers or polling, only events |
-| Memory | under 50 MB | 39 MB |
+| ⌘P → panel | one frame | 0.6–0.8 ms of the app's own work; 23 ms on screen, mostly the window server (being worked on) |
+| Keystroke → results | under 5 ms | 2.3–2.9 ms of work over 110 apps and 35,800 files; 7–12 ms on screen (being worked on) |
+| ⌘⇧V with a month of clipboard | one frame | 1.4 ms of work for 5,000 clips with 312 screenshots; a keystroke in it 0.16 ms |
+| Clipboard search | under 5 ms | 0.01–1.6 ms over 5,000 clips; 2.4 ms at worst, with every clip at 4,096 characters |
+| Loading a month of clipboard at launch | | 5.8 ms |
+| Idle CPU | ~0% | 0%, about 7 wakeups a minute: no polling but the clipboard's change check, which macOS coalesces |
+| Memory | under 50 MB | 62 MB an hour into use (being worked on); a month of clipboard adds 6.9 MB |
+
+**Measured on** 24 November 2026, on a MacBook Pro (Mac16,8) with an Apple M4 Pro (12 cores: 8 performance, 4
+efficiency) and 24 GB of memory, on macOS 27.2.1.
+
+**How:**
+- **Work** (`make bench`): Swift Testing benchmarks in a release build drive the real AppKit panel off screen, never
+  on it, and average 20–50 rounds after a warm-up. The launcher's run over the Mac's installed apps and its real home
+  folder with the default rules. The clipboard's run over a generated month: 5,000 clips, mostly short texts, some
+  long, a few at the 4,096-character cap, and 312 screenshots stored as files with their thumbnails.
+- **On screen** (`make logs`): Pith logs the time from the hotkey or key press to the panel drawn.
+- **Memory, CPU and threads** (`make stats`, `footprint`, `top`): the installed app, an hour after a clean install,
+  with the launcher, the clipboard, Quick Look and notifications used. Of its 62 MB, 34 MB is the heap, 8 MB
+  CoreAnimation and 7 MB the icon bitmaps.
 
 Nothing blocks the main thread: file access, icon rendering and app launches run in the background. Icons are
 rendered once, at their exact pixel size, and rows have fixed frames.
@@ -296,6 +316,8 @@ rendered once, at their exact pixel size, and rows have fixed frames.
 - [ ] Editing a clip's text, and Edit Image
 - [ ] Calculator: math, units, currency and programmer expressions, as the top result
 - [ ] On-screen latency down to the targets
+- [ ] Lua scripting, later: your own commands, ⌘K actions, hotkeys and clipboard hooks in `~/.config/pith/init.lua`,
+  through a small internal API, so the core stays minimal
 
 ## Feedback
 

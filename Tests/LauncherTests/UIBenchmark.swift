@@ -1,5 +1,6 @@
 import AppKit
 import LauncherCore
+import TestSupport
 import Testing
 
 @testable import Launcher
@@ -70,18 +71,38 @@ extension UIBenchmark {
 }
 
 extension UIBenchmark {
-    /// What ⌘⇧V does in-process with 1,000 clips (texts, links and a few images): fill the rows and the preview, lay
-    /// out, draw. Then typing in the clipboard, update and draw.
+    /// What ⌘⇧V does in-process with a month of history (step 8): 5,000 clips, among them 300 screenshots. Loading
+    /// it at launch, then filling the rows and the preview, laying out, drawing. Then typing in the clipboard, update
+    /// and draw.
     @Test func showClipboard() async throws {
         let folder = FileManager.default.temporaryDirectory.appending(path: "PithBench-clipboard-\(UUID())")
         defer { try? FileManager.default.removeItem(at: folder) }
         var clips: [(content: ClipContent, source: String?, minutesAgo: Double)] = []
-        for number in 0..<1_000 {
+        for number in 0..<5_000 {
+            let minutesAgo = Double(5_000 - number) * 8
+            if number % 16 == 7 {
+                // A screenshot: each a different size, so none is a copy of another.
+                let png = try flatPNG(width: 2_880 - number / 16, height: 1_800)
+                clips.append((ClipContent(kind: .image, text: "", items: [], image: png), nil, minutesAgo))
+                continue
+            }
             let body =
                 "docker compose -f deploy/acme-\(number).yml up --build\nservices:\n  web:\n    image: acme/site:\(number)\n"
-            clips.append((text(body), number % 3 == 0 ? "com.apple.Terminal" : nil, Double(1_000 - number)))
+            clips.append((text(body), number % 3 == 0 ? "com.apple.Terminal" : nil, minutesAgo))
         }
         let panel = try await clipboardPanel(folder, clips)
+        let files = FileManager.default
+        let onDisk = try files.subpathsOfDirectory(atPath: folder.path).reduce(0) { total, path in
+            let size = try? files.attributesOfItem(atPath: folder.appending(path: path).path)[.size]
+            return total + (size as? Int ?? 0)
+        }
+        let launch = ContinuousClock()
+        let loadStart = launch.now
+        let reloaded = ClipboardHistory(store: ClipboardStore(folder: folder))
+        await reloaded.load()
+        print(
+            "clipboard at launch (\(reloaded.index.count) clips, \(onDisk / 1_000_000) MB on disk): load \((launch.now - loadStart).ms)"
+        )
         let clock = ContinuousClock()
         var total = Duration.zero
         let rounds = 50
