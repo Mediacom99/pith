@@ -290,7 +290,8 @@ rendered once, at their exact pixel size, and rows have fixed frames.
 ## Feedback
 
 Found a bug, or missing something? [Open an issue](https://github.com/Mediacom99/pith/issues) with what you did and
-the version, which the Quit Pith tile in the launcher shows.
+the version, which the Quit Pith tile in the launcher shows. Pull requests are welcome too: open them against
+`staging`. Edoardo reviews each one before it's merged.
 
 ## Build from source
 
