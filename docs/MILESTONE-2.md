@@ -23,7 +23,7 @@ Status: **done** (core library; the app uses it from step 2).
 
 ## 2. Search across apps and files
 
-Status: **in review**.
+Status: **done**.
 - Each keystroke searches the apps synchronously and the files on the file engine's queue, then shows one list.
   Apps get a +24 head start (decision 19), and the history boosts both.
 - The settings `folders`, `ignore` and `max_depth` (from step 4) set what's indexed; changing them rebuilds the
@@ -38,11 +38,10 @@ Status: **in review**.
 - The table never rebuilds its cells: results reconfigure the cells on screen, and an empty list only hides them.
 
 Covered by UI tests: merged results with folder detail, apps first on equal matches, files in `recent`, file actions.
-Waiting for Edoardo's run.
 
 ## 3. Live updates
 
-Status: **in review**.
+Status: **done**.
 - The engine owns an FSEvents stream with per-file events on its roots, delivered straight onto its queue, with the
   ignore list's paths (`~/Library`) excluded at the source.
 - An event under a folder that isn't indexed (hidden, ignored, too deep) is dropped with a hash lookup and no
@@ -57,7 +56,7 @@ Status: **in review**.
 
 ## 4. Config
 
-Status: **in review**.
+Status: **done**.
 - `folders`, `ignore`, `max_depth`, `[actions] terminal` and `[open_with]` are parsed, documented in the template
   and tested.
 - App names resolve by name (as listed, or the file name, any case), bundle id or path, on a worker, once the index
@@ -67,7 +66,7 @@ Status: **in review**.
 
 ## 5. File and folder actions (features 12, 14)
 
-Status: **in review**.
+Status: **done**.
 - ⏎ opens a file in its `[open_with]` app: by extension, else the most specific matching type (`public.png` before
   `public.image`), else the default app. A folder opens in Finder.
 - ⌘K on a file: Open, Reveal in Finder, Copy Path, Open With…, Copy File, Move to Trash.
@@ -82,7 +81,7 @@ Status: **in review**.
 
 ## 6. Quick Look (feature 13)
 
-Status: **in review**.
+Status: **done**.
 - ⌘Y, or Space with an empty search field (decision 20), toggles a Quick Look preview of the selected file or
   folder; the preview sits one level above the launcher.
 - The keyboard stays with the launcher: ↑/↓ move through the results and the preview follows; a row that isn't a
@@ -97,7 +96,7 @@ Status: **in review**.
 
 ## 7. Zip (feature 15)
 
-Status: **in review**.
+Status: **done**.
 - ⌘K → Zip on a file or folder runs `ditto -c -k --sequesterRsrc --keepParent` on a worker, so the launcher closes
   right away.
 - Names follow Finder: `report.pdf.zip`, `Folder.zip`, then `… 2.zip`.

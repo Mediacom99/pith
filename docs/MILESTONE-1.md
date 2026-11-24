@@ -15,13 +15,13 @@ panel is only the search bar when there's nothing to list. The latency work is s
 
 ## 2. Launcher commands and Finder (features 9, 17)
 
-Status: **in review**. Search finds the commands Open Config, Reload Config and Quit Pith, shown with SF Symbol
+Status: **done**. Search finds the commands Open Config, Reload Config and Quit Pith, shown with SF Symbol
 icons. Finder is indexed from `/System/Library/CoreServices`, and the launcher leaves itself out of the index. Covered
-by tests (commands searchable, Finder found, ids resolved). Waiting for Edoardo's run.
+by tests (commands searchable, Finder found, ids resolved).
 
 ## 3. Config file (feature 16)
 
-Status: **in review**.
+Status: **done**.
 - `~/.config/pith/config.toml` is created with commented defaults on first launch and reloaded on save (FSEvents
   on its folder, parsed on a worker).
 - It covers `[hotkeys] launcher`, `[launcher] empty_state` and `launch_at_login`.
@@ -30,18 +30,16 @@ Status: **in review**.
 - A changed hotkey is swapped in at runtime. If the new one is taken, the old one stays, with a problem row.
 - Config, TOML and hotkey parsing are covered by tests, including every error message.
 
-Waiting for Edoardo's run.
-
 ## 4. Running apps (feature 7)
 
-Status: **in review**. Running apps show "running" after their name. The source of truth is
+Status: **done**. Running apps show "running" after their name. The source of truth is
 `NSWorkspace.runningApplications`: it's re-read on every launch or quit notification and before every show, so a
 missed notification can't leave a stale indicator. Activation notifications set the order. Ids match the index
-(tested against the real running apps). Waiting for Edoardo's run.
+(tested against the real running apps).
 
 ## 5. Learned ranking and the empty state (feature 6, decisions 11–13)
 
-Status: **in review**.
+Status: **done**.
 - Every open is saved to `~/Library/Application Support/pith/history.json`, atomically, on a serial worker.
   Quitting waits for pending saves.
 - The history's frecency boosts the match score by up to +48.
@@ -50,26 +48,26 @@ Status: **in review**.
   alphabetically (decision 17).
 - Filling it costs ~1.7 ms in-process, even with all 114 apps.
 
-Covered by history and panel tests. Waiting for Edoardo's run.
+Covered by history and panel tests.
 
 ## 6. ⌘K actions (feature 8)
 
-Status: **in review**. ⌘K on an app lists Open and Reveal in Finder, plus Quit and Force Quit when it's running.
+Status: **done**. ⌘K on an app lists Open and Reveal in Finder, plus Quit and Force Quit when it's running.
 Typing filters the actions, ⏎ runs one, and ⎋ or ⌘K returns to the search and the selection you had. Reveal runs on a
-worker. Covered by tests. Waiting for Edoardo's run.
+worker. Covered by tests.
 
 ## 7. Icons follow the icon style (feature 10)
 
-Status: **in review**. Icons and symbols render under the app's appearance. All of them re-render on a light/dark
+Status: **done**. Icons and symbols render under the app's appearance. All of them re-render on a light/dark
 switch and on AppKit's private icon-style notification. Under the Default style, light and dark renders are identical
 (measured). Untested on screen: switching to Dark, Clear or Tinted in System Settings › Appearance should update the
 launcher's icons within a moment.
 
 ## 8. Launch at login (feature 18, decision 14)
 
-Status: **in review**. `SMAppService.mainApp` registers or unregisters on a worker when `launch_at_login` changes,
+Status: **done**. `SMAppService.mainApp` registers or unregisters on a worker when `launch_at_login` changes,
 and only for a copy in `/Applications` or `~/Applications`. `make install` copies the app to `/Applications` and
-launches it; `make stop` stops either copy. Waiting for Edoardo's check that the installed copy starts at login.
+launches it; `make stop` stops either copy.
 
 ## 9. Performance pass
 

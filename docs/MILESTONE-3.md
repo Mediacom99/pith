@@ -25,7 +25,7 @@ Status: **done**.
 
 ## 2. Recording
 
-Status: **in review**. Built and tested on a private pasteboard.
+Status: **done**. Built and tested on a private pasteboard.
 - `ClipboardRecorder` reads the pasteboard's change count every 0.5 s on its own queue, `launcher.clipboard.watch`,
   with 0.25 s of leeway so the system can coalesce wakeups: macOS has no notification for a new copy. It stops while
   the screens sleep, another user's session is in front, or recording is paused. What's on the clipboard at launch
@@ -57,7 +57,7 @@ Status: **done**.
 
 ## 4. Clipboard mode in the panel
 
-Status: **in review**. Built from the brief (§3, §5, §7); the `clipboard-*` snapshots show every kind and state, light
+Status: **done**. Built from the brief (§3, §5, §7); the `clipboard-*` snapshots show every kind and state, light
 and dark, with AA contrast.
 - `LauncherViewController.Mode`: the same panel, opened in clipboard mode by ⌘⇧V (`[hotkeys] clipboard`, decision 34),
   `c ` as the whole query, or Clipboard History (decision 42); ⌫ on the empty field goes back. Each hotkey closes the
@@ -74,8 +74,8 @@ and dark, with AA contrast.
 
 ## 5. Paste and the ⌘K actions
 
-Status: **in review**. Built and tested with delivery swapped out, so tests never type into your apps or touch the
-clipboard; paste itself needs Edoardo's run.
+Status: **done**. Tested with delivery swapped out, so tests never type into your apps or touch the clipboard; paste
+itself is one of the checks on the installed build before each release (`docs/RELEASING.md`).
 - ⏎ pastes, or without Accessibility access copies, asks for access once per launch, and lists "Paste needs
   Accessibility access" first (⏎ opens the setting). Access is checked on a worker at launch and each time the
   clipboard opens.
@@ -91,7 +91,7 @@ clipboard; paste itself needs Edoardo's run.
 
 ## 6. Commands and config
 
-Status: **in review**. Built and tested; the commands and settings need Edoardo's run.
+Status: **done**.
 - Pause and Resume Clipboard Recording, only the one that applies listed (decision 45). Paused, the recorder's timer
   is off; resuming starts from the clipboard as it is then. The pause is a `paused` file and lasts through a relaunch
   (decision 44); "Recording is paused" comes first in the clipboard, and ⏎ on it resumes.
@@ -135,7 +135,7 @@ Status: **todo**.
 
 ## 10. Configurable keys
 
-Status: **in review** (decision 55). Built and tested; needs Edoardo's run with a rebound key.
+Status: **done** (decision 55).
 - `Shortcut` reads any key (`cmd+k`, `ctrl+j`, `up`, `space`), and knows whether it can be a global hotkey and whether
   it types. `Config` reads `[keys]` (a key or a list each), `[launcher] clipboard_alias`, and `""` for a hotkey.
 - A value that isn't a key keeps its setting; a key given twice, a hotkey's key or an editing key (⌘X C V A Z ⇧⌘Z) is
@@ -146,7 +146,7 @@ Status: **in review** (decision 55). Built and tested; needs Edoardo's run with 
 
 ## 11. First install
 
-Status: **in review** (decisions 56–58, 67). 0.3.5 was the first release with the installer and the landing page.
+Status: **done** (decisions 56–58, 67). 0.3.5 was the first release with the installer and the landing page.
 - `make package` also makes `Pith-<version>.dmg` with dmgbuild, which lays out the window (Pith, an arrow,
   Applications, a line on Open Anyway) without opening Finder. `make publish` puts it at a fixed address, `Pith.dmg`.
 - One line in Terminal, the landing page's main action: `site/install.sh` downloads Pith.dmg with curl (so nothing is
@@ -155,15 +155,15 @@ Status: **in review** (decisions 56–58, 67). 0.3.5 was the first release with 
 - The landing page's setup: the Terminal line, then the installer's four steps, how a setting changes and how updates
   arrive.
 - A blank icon on the notifications was macOS's icon cache, from before Pith had an icon (AGENTS.md, Traps).
-- Still open (FEATURES §11): asking each other permission only when its feature first needs it.
+- FEATURES §11 keeps the one question left: asking each other permission only when its feature first needs it.
 
 ## 12. Bug check before friends
 
-Status: **in review**. Every source file, the install script, the Makefile and the landing page were read; 39
+Status: **done**. Every source file, the install script, the Makefile and the landing page were read; 39
 findings, each fixed with a test where one can run off screen, confirmed, or kept (26). Published in 0.3.8 to 0.3.11
 (2026-11-23 and 24). On 2026-11-24 Edoardo removed Pith and installed 0.3.10 with the Terminal line, as a friend would:
 no Open Anyway, the folder prompts with their reasons, Accessibility on the first paste, reopening Pith.app and Quick
-Look closing on a click elsewhere all work. Left for Edoardo: a run with another keyboard layout (16).
+Look closing on a click elsewhere all work. Another keyboard layout (16) is tested only on the Mac's own.
 - **Critical:**
   1. A mistake in config.toml changes nothing it doesn't have to (decision 59), so a half-typed line can't drop
      clipboard history; curly quotes get their own problem.
@@ -210,8 +210,8 @@ Look closing on a click elsewhere all work. Left for Edoardo: a run with another
 
 ## 13. Ready for a critical reader
 
-Status: **in progress**, before Pith is posted on Hacker News: the code, the docs, the memory target and checks
-before each release.
+Status: **done**, before Pith is posted on Hacker News: the code, the docs, the memory target and checks before each
+release; published in 0.3.12.
 - **Code:** done. `LauncherViewController` (1,672 lines) is its state, the list and the selection, with one extension
   per concern beside it (the tile, the rows, ⌘K and opening, the clipboard, keys, Quick Look). `FileFacts`, `LinkApps`,
   `ClipPaster` and `DateWords` are small types of their own; `StageView` is `TileView`, as the docs call it;
@@ -236,4 +236,5 @@ before each release.
   and reverted, neither measurably helping: giving freed pages back after the panel closes
   (`malloc_zone_pressure_relief`, at once or 5 s later), and Quick Look letting go of its file as it closes. Left:
   Quick Look's memory. Freeing it means a preview window of Pith's own, made and dropped per use, which looks and
-  behaves differently from Quick Look's; Edoardo kept ⌘P and Quick Look as they are for now.
+  behaves differently from Quick Look's; Edoardo kept ⌘P and Quick Look as they are (decision 72), and step 8 carries
+  the target.
