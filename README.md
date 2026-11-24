@@ -252,6 +252,10 @@ must allow it (System Settings → Privacy & Security → Files & Folders).
 **Where's the menu bar icon?** There isn't one. Pith's commands are in the launcher: type "quit" for Quit Pith,
 "config" for Open Config.
 
+**Notifications only show up in Notification Center, with no banner.** macOS holds back every app's banners while
+your screen is shared or mirrored, or while a Focus is on. Stop sharing, or turn on "Allow notifications when
+mirroring or sharing the display" in System Settings → Notifications.
+
 **A notification has a blank icon.** That's macOS's icon cache, kept from an older Pith. Run this, then open Pith
 again (it asks for your password):
 
