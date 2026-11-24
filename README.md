@@ -290,7 +290,7 @@ The targets are requirements, and every change is measured against them.
 | Clipboard search | under 5 ms | 0.01–1.6 ms over 5,000 clips; 2.4 ms at worst, with every clip at 4,096 characters |
 | Loading a month of clipboard at launch | | 5.8 ms |
 | Idle CPU | ~0% | 0%, about 7 wakeups a minute: no polling but the clipboard's change check, which macOS coalesces |
-| Memory | under 50 MB | 62 MB an hour into use (being worked on); a month of clipboard adds 6.9 MB |
+| Memory | under 50 MB | 43 MB at launch; 53 MB after searching, the clipboard and pasting; 63 MB after a first Quick Look, and up to 90 MB after scrolling a long PDF in it (being worked on). A month of clipboard adds 6.9 MB |
 
 **Measured on** 24 November 2026, on a MacBook Pro (Mac16,8) with an Apple M4 Pro (12 cores: 8 performance, 4
 efficiency) and 24 GB of memory, on macOS 27.2.1.
@@ -301,9 +301,10 @@ efficiency) and 24 GB of memory, on macOS 27.2.1.
   folder with the default rules. The clipboard's run over a generated month: 5,000 clips, mostly short texts, some
   long, a few at the 4,096-character cap, and 312 screenshots stored as files with their thumbnails.
 - **On screen** (`make logs`): Pith logs the time from the hotkey or key press to the panel drawn.
-- **Memory, CPU and threads** (`make stats`, `footprint`, `top`): the installed app, an hour after a clean install,
-  with the launcher, the clipboard, Quick Look and notifications used. Of its 62 MB, 34 MB is the heap, 8 MB
-  CoreAnimation and 7 MB the icon bitmaps.
+- **Memory, CPU and threads** (`footprint` every 2 s, `heap` after each step, `top`): the installed app right after
+  launch, then after each use in turn, 20 s apart. At launch 22.5 MB of the 43 MB is the heap and 5.8 MB the icon
+  bitmaps. Quick Look runs inside Pith: its first preview adds 6 MB of heap that stays, and a long PDF scrolled in it
+  peaks at 121 MB and leaves its freed memory scattered where macOS doesn't take it back.
 
 Nothing blocks the main thread: file access, icon rendering and app launches run in the background. Icons are
 rendered once, at their exact pixel size, and rows have fixed frames.
