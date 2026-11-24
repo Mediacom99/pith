@@ -26,7 +26,7 @@ Read these before doing anything:
   - Check in with Edoardo after each step.
   - Keep each step's status line up to date.
   - Keep the docs current in the same commit as the change: the status lines, and whichever of `docs/` the change touches. Write what's true now; history goes to git, not the docs.
-- **Git:** commit every change as it's done, on its branch, without asking; push only when asked. The remote is the public GitHub repo `Mediacom99/pith`. Work goes on feature branches with a PR into `staging`; `staging` goes to `main` (production) when Edoardo says so.
+- **Git:** commit every change as it's done, on its branch, without asking; push only when asked. The remote is the public GitHub repo `Mediacom99/pith`. Work goes on feature branches with a PR into `staging`; `staging` goes to `main` (production) when Edoardo says so. Only Edoardo merges into `main` and `staging` (decision 68): a ruleset requires a pull request with an approving review, no force pushes and no deletions, and only the repo's admin bypasses it, so his own PRs merge with `gh pr merge --admin`.
 - **Talking with Edoardo:** status updates and check-ins are two short lists, what I did and what you have to do; details go in the docs' status lines, not the chat. Answer in Italian when he writes Italian.
 - **Design:**
   - UI/UX work goes through the impeccable skill (`/impeccable …`, decision 24). It reads `docs/PRODUCT.md` (product context) and `docs/DESIGN.md` (the design system).
