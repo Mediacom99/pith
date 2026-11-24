@@ -9,6 +9,7 @@ Press ⌘P from any app, type a few letters, press ⏎: apps, files and folders 
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-only-000)
 ![Swift 6.4](https://img.shields.io/badge/Swift-6.4-F05138?logo=swift&logoColor=white)
 ![Dependencies: 1](https://img.shields.io/badge/dependencies-1%20%28Sparkle%29-2ea44f)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
 <p align="center">
   <picture>
@@ -28,7 +29,7 @@ For macOS 26 Tahoe or later on Apple Silicon. Or download [Pith.dmg](https://pit
 
 [Why](#why) · [Features](#features) · [Install](#install) · [Keys](#keys) · [Configuration](#configuration) ·
 [Privacy and permissions](#privacy-and-permissions) · [FAQ](#faq) · [Uninstall](#uninstall) ·
-[Build from source](#build-from-source)
+[Feedback](#feedback) · [Build from source](#build-from-source) · [License](#license)
 
 ## Why
 
@@ -129,7 +130,8 @@ Settings → Privacy & Security, scroll down, press Open Anyway and confirm.
 Then press **⌘P**. Pith starts at login and updates itself. It asks for a permission only when a feature first needs
 it: see [Privacy and permissions](#privacy-and-permissions).
 
-Pith comes only from `pith.edoardobertoli.xyz`.
+Pith's downloads are on `pith.edoardobertoli.xyz` and in this repository's
+[releases](https://github.com/Mediacom99/pith/releases).
 
 ## Keys
 
@@ -285,6 +287,11 @@ rendered once, at their exact pixel size, and rows have fixed frames.
 - [ ] Calculator: math, units, currency and programmer expressions, as the top result
 - [ ] On-screen latency down to the targets
 
+## Feedback
+
+Found a bug, or missing something? [Open an issue](https://github.com/Mediacom99/pith/issues) with what you did and
+the version, which the Quit Pith tile in the launcher shows.
+
 ## Build from source
 
 You need a Mac with Apple Silicon, macOS 26, and Xcode with Swift 6.4. The code is a Swift package; there's no Xcode
@@ -321,3 +328,10 @@ More in the docs:
   [`docs/.impeccable/design-full.md`](docs/.impeccable/design-full.md).
 - [`docs/PRODUCT.md`](docs/PRODUCT.md): who it's for.
 - [`docs/BRIEF-CLIPBOARD.md`](docs/BRIEF-CLIPBOARD.md): the clipboard's design brief.
+
+## License
+
+Copyright © 2026 Edoardo Bertoli. Pith is free software: you can redistribute it and modify it under the terms of the
+[GNU General Public License, version 3](LICENSE). Any version you distribute has to stay under the same license, with
+its source. [Sparkle](https://github.com/sparkle-project/Sparkle), which Pith uses for updates, has its own MIT
+license.

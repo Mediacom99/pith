@@ -26,7 +26,7 @@ Read these before doing anything:
   - Check in with Edoardo after each step.
   - Keep each step's status line up to date.
   - Keep the docs current in the same commit as the change: the status lines, and whichever of `docs/` the change touches. Write what's true now; history goes to git, not the docs.
-- **Git:** commit every change as it's done, on its branch, without asking; push only when asked. The remote is the private GitHub repo `Mediacom99/pith`. Work goes on feature branches with a PR into `staging`; `staging` goes to `main` (production) when Edoardo says so.
+- **Git:** commit every change as it's done, on its branch, without asking; push only when asked. The remote is the public GitHub repo `Mediacom99/pith`. Work goes on feature branches with a PR into `staging`; `staging` goes to `main` (production) when Edoardo says so.
 - **Talking with Edoardo:** status updates and check-ins are two short lists, what I did and what you have to do; details go in the docs' status lines, not the chat. Answer in Italian when he writes Italian.
 - **Design:**
   - UI/UX work goes through the impeccable skill (`/impeccable …`, decision 24). It reads `docs/PRODUCT.md` (product context) and `docs/DESIGN.md` (the design system).
@@ -39,17 +39,14 @@ Read these before doing anything:
   - Impeccable can't run the app: `make snapshots` draws the panel's states, light and dark, into `docs/snapshots/` without putting anything on screen. Regenerate and commit them with every visual change.
   - Never use claude.ai Artifacts: anything visual is a local HTML file, opened in the browser.
 - **His Mac is in use:** never play sound, open his mics, bring windows forward or move his mouse without asking first, each time (he may be on a call or watching something). Headless checks (builds, tests) are fine anytime. `make run` and `make install` are not headless: they launch the app, which takes ⌘P from every app, so ask first.
-- **Edoardo's daily copy:** he uses Pith in place of Raycast. On 2026-11-23 it was removed so he could install 0.3.5
-  from `Pith.dmg` as a new user would (decision 56): his config, clipboard history and Sparkle state are in
-  `~/pith-backup-2026-11-23`, and its privacy permissions were reset (`tccutil reset All dev.edoardo.pith`). He
-  reinstalled it in `/Applications`, where the installer and the Terminal install put it, and where `make install`
-  now puts a branch build to try, until the next update replaces it. On the evening of 2026-11-23 it was removed
-  completely and reinstalled with the Terminal line (0.3.6, fresh config and history), and it's on 0.3.10 since. It's
-  signed with the local certificate (decision 41) so its Accessibility access survives updates, and it updates itself (decisions
-  48–50). A change reaches it, and whoever else has Pith, as a release: raise the version in `Support/Info.plist`,
-  commit, `make publish`, then Check for Updates in the launcher. Publish from the branch he uses
-  (`clipboard/milestone-3`, ahead of `staging`). When he stops using it (back to another launcher), remind him and
-  remove it.
+- **Edoardo's daily copy:** he uses Pith in place of Raycast: the copy in `/Applications`, installed with the
+  Terminal line, signed with the local certificate (decision 41) so its Accessibility access survives updates, and
+  updating itself (decisions 48–50). `make install` puts a branch build there to try, until the next update replaces
+  it. A change reaches it, and whoever else has Pith, as a release (`docs/RELEASING.md`): raise the version in
+  `Support/Info.plist`, commit, `make publish`, then Check for Updates in the launcher. Publish from the branch he uses
+  (`clipboard/milestone-3`). When he stops using it (back to another launcher), remind him and remove it.
+- **The repo is public** (decision 65) and GPL-3.0 (decision 66): everything committed, history included, is
+  public. Nothing personal goes in it, as with his work below.
 - **Secrets** never go in a repo.
 - **Edoardo's work stays out:** never mention his employer, clients or work projects anywhere: code, tests, docs, commit messages, or chat examples. Don't copy real file or folder names from his Mac into the repo either; tests and docs use made-up examples (`Acme`, `Quarterly_Budget_Review.pdf`).
 - **Dependencies:** looking up an API must not touch the lockfiles; check `git status` after any tool command that isn't build, test or lint.
