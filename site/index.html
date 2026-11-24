@@ -113,6 +113,8 @@ kbd.down {
 .bar .wrap { display: flex; align-items: center; gap: 28px; height: 60px; }
 .wordmark { font: 700 1.1875rem/1 var(--display); letter-spacing: -0.02em; text-decoration: none; display: inline-flex; align-items: center; gap: 9px; }
 .wordmark img { width: 32px; height: 32px; margin: -2px -3px; }
+/* Beta (decision 69): quiet words beside the name, not a badge. */
+.wordmark .beta { font: 500 0.8125rem/1 var(--sans); letter-spacing: 0; color: var(--quiet); margin-left: -2px; position: relative; top: 1px; }
 .bar nav { display: flex; gap: 24px; margin-right: auto; }
 .bar nav a { color: var(--quiet); text-decoration: none; font-size: 0.9375rem; }
 .bar nav a:hover { color: var(--label); }
@@ -434,6 +436,7 @@ button.k.down { background: var(--action); color: var(--on-action); border-color
 .after p { margin-top: 8px; color: var(--quiet); max-width: 34rem; }
 .after kbd, .head kbd { font-size: 0.78em; }
 .needs { margin-top: 32px; color: var(--quiet); font-size: 0.9375rem; }
+.needs + .needs { margin-top: 8px; }
 
 /* Close */
 .close { text-align: center; padding-bottom: var(--section); }
@@ -493,7 +496,7 @@ footer .source-link:hover { color: var(--label); }
 <body>
 <header class="bar" id="top">
   <div class="wrap">
-    <a class="wordmark" href="#top" aria-label="Pith"><img src="icon.svg" alt="">Pith</a>
+    <a class="wordmark" href="#top" aria-label="Pith, in beta"><img src="icon.svg" alt="">Pith<span class="beta">Beta</span></a>
     <nav aria-label="Sections">
       <a href="#keys">Keys</a>
       <a href="#launcher">Features</a>
@@ -522,7 +525,7 @@ footer .source-link:hover { color: var(--label); }
             <button type="button" class="copy primary" data-copy="command" aria-label="Copy the command"><kbd>⌘</kbd><kbd>C</kbd><span>Copy</span></button>
           </div>
         </div>
-        <p class="note">Free · macOS 26 Tahoe or later · Apple Silicon · <a href="#install">setting it up</a></p>
+        <p class="note">Free · Beta · macOS 26 Tahoe or later · Apple Silicon · <a href="#install">setting it up</a></p>
         <p class="alt">Or <a href="Pith.dmg" download><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12"/></svg>download Pith.dmg</a>, which macOS asks you to trust once.</p>
       </div>
 
@@ -818,6 +821,7 @@ footer .source-link:hover { color: var(--label); }
           <p>Pith checks once a day and downloads a new version in the background. Update Pith then shows up at the top of the launcher: <kbd>⏎</kbd> restarts into it, or it installs the next time Pith quits. Check for Updates looks right away, and a notification says when Pith has updated.</p>
         </div>
       </div>
+      <p class="needs">Pith is in beta: usable every day, with rough edges. Fixes arrive on their own with each update, and you can say what you find in an <a href="https://github.com/Mediacom99/pith/issues">issue on GitHub</a>.</p>
       <p class="needs">Needs macOS 26 Tahoe or later and Apple Silicon. Pith takes <kbd>⌘</kbd> <kbd>P</kbd> from every app, Print included; you can change that, and every other key, in the config.</p>
     </div>
   </section>
@@ -833,7 +837,7 @@ footer .source-link:hover { color: var(--label); }
             <button type="button" class="copy primary" data-copy="command-close" aria-label="Copy the command"><kbd>⌘</kbd><kbd>C</kbd><span>Copy</span></button>
           </div>
         </div>
-        <p class="note">Free · macOS 26 Tahoe or later · Apple Silicon<span class="version" hidden></span></p>
+        <p class="note">Free · Beta · macOS 26 Tahoe or later · Apple Silicon<span class="version" hidden></span></p>
         <p class="alt">Or <a href="Pith.dmg" download><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12"/></svg>download Pith.dmg</a></p>
       </div>
     </div>

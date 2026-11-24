@@ -12,6 +12,7 @@
   <img src="https://img.shields.io/badge/Swift-6.4-F05138?logo=swift&logoColor=white" alt="Swift 6.4">
   <img src="https://img.shields.io/badge/dependencies-1%20%28Sparkle%29-2ea44f" alt="Dependencies: 1">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="License: GPL-3.0"></a>
+  <img src="https://img.shields.io/badge/status-beta-orange" alt="Status: beta">
 </p>
 
 Press ⌘P from any app, type a few letters, press ⏎: apps, files and folders in one ranked list, with their actions on
@@ -31,7 +32,10 @@ curl -fsSL https://pith.edoardobertoli.xyz/install.sh | sh
 For macOS 26 Tahoe or later on Apple Silicon. Or download [Pith.dmg](https://pith.edoardobertoli.xyz/Pith.dmg); see
 [Install](#install).
 
-> Pith: the essential part, and nothing else. It's in active development, and I use it every day.
+> Pith: the essential part, and nothing else.
+>
+> **Pith is in beta.** I use it every day, but expect rough edges. Fixes arrive on their own with each update; please
+> [report what you find](https://github.com/Mediacom99/pith/issues).
 
 [Why](#why) · [Features](#features) · [Install](#install) · [Keys](#keys) · [Configuration](#configuration) ·
 [Privacy and permissions](#privacy-and-permissions) · [FAQ](#faq) · [Uninstall](#uninstall) ·
