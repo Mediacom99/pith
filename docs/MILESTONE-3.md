@@ -505,6 +505,13 @@ every app's banners then (`isScreenShared=1` in `donotdisturbd`'s log), and they
         its waiting installer and its download (Sparkle finds the newest again). Checked into a scratch folder, which
         doesn't touch the installed copy's updates. What it was: the Terminal line stopped Pith with a signal, and a
         waiting update could put an older build over the new copy.
+- **After the check (2026-11-24):** ⌘Y to close Quick Look showed another file's preview (Edoardo). Fixed without a
+  confirmed sequence, against every path that could do it: the preview keeps the file it was opened on
+  (`PreviewTarget`) and follows only the user's moves (a key, a click, typing), so a list refreshed by anything else
+  closes it rather than switch files; with Quick Look holding the keyboard, ⌘Y, Space and ⎋ close it and give the
+  keyboard back to the search, the panel's other keys work as in the launcher and typing goes to the search; one
+  press toggles the preview once, whichever path it takes. A test covers the rule; the real windows need Edoardo's
+  run.
 - **Still open beside it:**
   - **Done:** paste next (decisions 63, 64), Edoardo's pick for repeat-to-paste: each ⌃⌥V (`[hotkeys] paste_next`)
     pastes the next clip down the history from the newest, without the panel; a 10 s pause or a new copy starts over.
