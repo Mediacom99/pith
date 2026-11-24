@@ -14,7 +14,7 @@ Scope: the front page of pith.edoardobertoli.xyz. Mode: Persuade.
 - **Proof:** the real panel snapshots from `docs/snapshots/`, light and dark; measured numbers only: 44 MB and 0 % CPU
   idle (`make stats`, 2026-11-23), about 2 ms of work per keystroke over 111 apps and 35,000+ files (milestone 2).
 - **Constraints:** static files served by the Worker in `Support/wrangler.toml`, beside the update feed; no claims
-  beyond `FEATURES.md` and the measurements; no Raycast text, logo or artwork. The repo is public (decision 65), so a source link could join the page; it hasn't yet.
+  beyond `FEATURES.md` and the measurements; no Raycast text, logo or artwork. The repo is public (decision 65): the bar has the GitHub mark beside Download, and the footer says Source on GitHub.
 - **Answers (Edoardo, 2026-11-23):** the headline leads with fast and small; Edoardo's first-person "why" names
   Raycast once; features are what ships (launcher, ⌘K, clipboard, updates), and the calculator is one line under
   "coming next".
@@ -29,7 +29,7 @@ OWN-WORLD: Stage carried to the web. macOS window neutrals only: ground #141414 
 
 STORY: A friend's link opens. In one viewport they read that Pith is a fast, small launcher, see the real panel, and press a key to watch it work. Scrolling, they learn the keys and four reasons (fast, small, private, native), then the launcher, ⌘K, the clipboard and the config file, read Edoardo's why, and download knowing about Open Anyway.
 
-FIRST VIEWPORT: A sticky bar: the Pith wordmark left; Keys, Features, Clipboard, Why, Install; a Download key right. Centered below: the one-line H1 "Fast, small, and out of your way." at about 4.5rem, one sentence under it, the Download for Mac button with "Free · macOS 26 or later · Apple Silicon" beneath (free: decision 52); then four key-cap buttons (⌘P Launcher, te Search, ⌘K Actions, ⌘⇧V Clipboard) above the 680 px panel snapshot at its real size. Adaptation (finish review): the keys sit above the panel so they are in the first viewport on a laptop, and the panel's bottom may cross the fold. The primary action sits above both.
+FIRST VIEWPORT: A sticky bar: the Pith wordmark left; Keys, Features, Clipboard, Config, Why, Install; the GitHub mark (quiet, the label on hover) and a Download key right. Centered below: the one-line H1 "Fast, small, and out of your way." at about 4.5rem, one sentence under it, the Download for Mac button with "Free · macOS 26 or later · Apple Silicon" beneath (free: decision 52); then four key-cap buttons (⌘P Launcher, te Search, ⌘K Actions, ⌘⇧V Clipboard) above the 680 px panel snapshot at its real size. Adaptation (finish review): the keys sit above the panel so they are in the first viewport on a laptop, and the panel's bottom may cross the fold. The primary action sits above both.
 
 FORM: Raycast's landing structure, pinned by Edoardo: a hero with a short claim and Download, a keyboard of key caps with four callouts, alternating feature rows, a personal note, a closing call to action and a footer, minus the store, AI, extensions, testimonials, community and developer sections. Translation: Raycast's red glow and artwork become Pith's monochrome Stage, and its keyboard becomes the map of Pith's own keys. seed: none (pinned) "look at raycast landing page and basically copy it for pith, removing what we dont have/need"
 
