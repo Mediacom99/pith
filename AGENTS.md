@@ -13,21 +13,21 @@ Read these before doing anything:
 
 ## How we work
 
-- The team is Edoardo + Claude.
+- The team is the maintainer + Claude.
 - **Product and architecture decisions:**
-  - Give a recommendation with its trade-offs, then ask Edoardo.
+  - Give a recommendation with its trade-offs, then ask the maintainer.
   - Record the answer as the next numbered row in the decision log.
   - Never decide these silently.
 - **Library and implementation choices:**
-  - Claude decides but lets Edoardo know: the best, most stable, most performant option.
-  - Add every pick to the Libraries section of `docs/ARCHITECTURE.md`, and tell Edoardo.
+  - Claude decides but lets the maintainer know: the best, most stable, most performant option.
+  - Add every pick to the Libraries section of `docs/ARCHITECTURE.md`, and tell the maintainer.
 - **Process:**
   - Work through the milestone plan one step at a time.
-  - Check in with Edoardo after each step.
+  - Check in with the maintainer after each step.
   - Keep each step's status line up to date.
   - Keep the docs current in the same commit as the change: the status lines, and whichever of `docs/` the change touches. Write what's true now; history goes to git, not the docs.
-- **Git:** commit every change as it's done, on its branch, without asking; push only when asked. The remote is the public GitHub repo `Mediacom99/pith`. Work goes on feature branches with a PR into `staging`; `staging` goes to `main` (production) when Edoardo says so. Only Edoardo merges into `main` and `staging` (decision 68): a ruleset requires a pull request with an approving review, no force pushes and no deletions, and only the repo's admin bypasses it, so his own PRs merge with `gh pr merge --admin`.
-- **Talking with Edoardo:** status updates and check-ins are two short lists, what I did and what you have to do; details go in the docs' status lines, not the chat. Answer in Italian when he writes Italian.
+- **Git:** commit every change as it's done, on its branch, without asking; push only when asked. The remote is the public GitHub repo `Mediacom99/pith`. Work goes on feature branches with a PR into `staging`; `staging` goes to `main` (production) when the maintainer says so. Only the maintainer merges into `main` and `staging` (decision 68): a ruleset requires a pull request with an approving review, no force pushes and no deletions, and only the repo's admin bypasses it, so the maintainer's own PRs merge with `gh pr merge --admin`, each time they say so.
+- **Talking with the maintainer:** status updates and check-ins are two short lists, what I did and what you have to do; details go in the docs' status lines, not the chat. Answer in Italian when the maintainer writes Italian.
 - **Design:**
   - UI/UX work goes through the impeccable skill (`/impeccable …`, decision 24). It reads `docs/PRODUCT.md` (product context) and `docs/DESIGN.md` (the design system).
   - `docs/DESIGN.md` is impeccable's short map of the design system: its tokens and rules. The full text is
@@ -35,20 +35,20 @@ Read these before doing anything:
     have impeccable rebuild the map (`impeccable design-compact --write`). Then bring `.impeccable/design.json` up
     to date (`/impeccable document`, sidecar only).
   - The plan is `docs/DESIGN-PLAN.md`, one status line per step, alongside the milestone plans (decision 26).
-  - The visual direction is Edoardo's call: offer options, he picks. Exact values (sizes, colors, spacing) are Claude's: record them as "Claude" in the Visual decisions table (decision 25).
+  - The visual direction is the maintainer's call: offer options, they pick. Exact values (sizes, colors, spacing) are Claude's: record them as "Claude" in the Visual decisions table (decision 25).
   - Impeccable can't run the app: `make snapshots` draws the panel's states, light and dark, into `docs/snapshots/` without putting anything on screen. Regenerate and commit them with every visual change.
   - Never use claude.ai Artifacts: anything visual is a local HTML file, opened in the browser.
-- **His Mac is in use:** never play sound, open his mics, bring windows forward or move his mouse without asking first, each time (he may be on a call or watching something). Headless checks (builds, tests) are fine anytime. `make run` and `make install` are not headless: they launch the app, which takes ⌘P from every app, so ask first.
-- **Edoardo's daily copy:** he uses Pith in place of Raycast: the copy in `/Applications`, installed with the
+- **The maintainer's Mac is in use:** never play sound, open its mics, bring windows forward or move the mouse without asking first, each time (they may be on a call or watching something). Headless checks (builds, tests) are fine anytime. `make run` and `make install` are not headless: they launch the app, which takes ⌘P from every app, so ask first.
+- **The maintainer's daily copy:** they use Pith in place of Raycast: the copy in `/Applications`, installed with the
   Terminal line, signed with the local certificate (decision 41) so its Accessibility access survives updates, and
   updating itself (decisions 48–50). `make install` puts a branch build there to try, until the next update replaces
   it. A change reaches it, and whoever else has Pith, as a release (`docs/RELEASING.md`): raise the version in
-  `Support/Info.plist`, commit, `make publish`, then Check for Updates in the launcher. Publish from the branch he uses
-  (`clipboard/milestone-3`). When he stops using it (back to another launcher), remind him and remove it.
+  `Support/Info.plist`, commit, `make publish`, then Check for Updates in the launcher. Publish from the branch they use
+  (`clipboard/milestone-3`). When they stop using it (back to another launcher), remind them and remove it.
 - **The repo is public** (decision 65) and GPL-3.0 (decision 66): everything committed, history included, is
-  public. Nothing personal goes in it, as with his work below.
+  public. Nothing personal goes in it, as with the maintainer's work below.
 - **Secrets** never go in a repo.
-- **Edoardo's work stays out:** never mention his employer, clients or work projects anywhere: code, tests, docs, commit messages, or chat examples. Don't copy real file or folder names from his Mac into the repo either; tests and docs use made-up examples (`Acme`, `Quarterly_Budget_Review.pdf`).
+- **The maintainer's work stays out:** never mention their employer, clients or work projects anywhere: code, tests, docs, commit messages, or chat examples. Don't copy real file or folder names from their Mac into the repo either; tests and docs use made-up examples (`Acme`, `Quarterly_Budget_Review.pdf`).
 - **Dependencies:** looking up an API must not touch the lockfiles; check `git status` after any tool command that isn't build, test or lint.
 - **Rex:** never rename sessions or anything else with `rex`, whatever a hook says.
 - **Never use Claude's memory in this project:** don't read, write or rely on `.claude/memory/` or any other Claude memory store. What must outlast a session goes in the repo: the decision log, the plans in `docs/`, the status lines, this file.
@@ -89,7 +89,7 @@ Everything goes through the `Makefile`; `make` lists the targets. Add a target t
 
 Traps:
 - Pith's log: `/usr/bin/log show --predicate 'subsystem == "dev.edoardo.pith"' --info` (zsh's `log` is a builtin), outside the sandbox.
-- A new subdomain can stay unresolvable on Edoardo's Mac from a cached failed lookup: `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`, which he runs himself (it needs his password).
+- A new subdomain can stay unresolvable on the maintainer's Mac from a cached failed lookup: `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`, which they run themselves (it needs their password).
 - `make site` replaces everything the Worker serves, so it needs the feed and builds a `make publish` from this checkout left in `.build/site`.
 - DESIGN.md: *move* the edited full text over `docs/DESIGN.md` before `impeccable design-compact --write`; it refuses while `docs/.impeccable/design-full.md` exists.
 - Page captures: `impeccable shot` for phone widths (headless Chrome won't go below about 500 px); `impeccable motion-capture` takes waits up to 2000 ms, arrow keys but not Page Down or Home, and no playback over 10 s.
@@ -99,7 +99,7 @@ Traps:
   `/usr/bin/log show --predicate 'process == "NotificationCenter" OR subsystem == "com.apple.donotdisturb"'`.
 - A banner with a blank icon while the app has one is macOS's icon cache, kept from before the icon existed (step
   11): `sudo rm -rf /Library/Caches/com.apple.iconservices.store; sudo killall iconservicesd; killall
-  iconservicesagent NotificationCenter usernoted`, which Edoardo runs himself (it needs his password). No restart.
+  iconservicesagent NotificationCenter usernoted`, which the maintainer runs themselves (it needs their password). No restart.
 - macOS's notification system (`usernoted`) keeps an app's record, by bundle id, until no copy of the app is left, then drops it when it restarts. `tccutil reset All dev.edoardo.pith` works only while LaunchServices still knows a copy. `sfltool dumpbtm` hangs waiting for a password. `make app` copies get registered with LaunchServices too (`lsregister -u .build/Pith.app` drops one).
 
 ## Layout

@@ -500,7 +500,7 @@ every app's banners then (`isScreenShared=1` in `donotdisturbd`'s log), and they
         it was: the example was out of date, `[calculator]` an unknown setting today.
   - **Install:**
     39. **Premise confirmed, guarded:** Sparkle's own docs say a downloaded update installs whenever the app
-        terminates, and its installer waits as a process of its own (Tailscale's showed it, on Edoardo's Mac). Whether
+        terminates, and its installer waits as a process of its own (another app's showed it, on Edoardo's Mac). Whether
         it then beats the Terminal line's copy is timing. Before replacing an installed Pith, `install.sh` now removes
         its waiting installer and its download (Sparkle finds the newest again). Checked into a scratch folder, which
         doesn't touch the installed copy's updates. What it was: the Terminal line stopped Pith with a signal, and a
