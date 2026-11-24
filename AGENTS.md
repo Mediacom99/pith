@@ -2,7 +2,7 @@
 
 ## Project
 
-Pith is a minimal, keyboard-only macOS launcher with a clipboard manager and calculator, for people who drive their Mac from the keyboard. It's always resident and opens in one frame. No AI, extensions, account or telemetry.
+Pith is a minimal, keyboard-only macOS launcher with a clipboard manager and calculator, for people who drive their Mac from the keyboard. It's always resident and opens in one frame. No AI, extension store, account or telemetry; Lua scripting of the user's own is planned for later (decision 70).
 
 Stack: Swift 6.4, AppKit, a Swift Package (no Xcode project), macOS 26+ on Apple Silicon. One third-party dependency: Sparkle, for updates (decision 48).
 

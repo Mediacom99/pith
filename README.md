@@ -300,6 +300,8 @@ rendered once, at their exact pixel size, and rows have fixed frames.
 - [ ] Editing a clip's text, and Edit Image
 - [ ] Calculator: math, units, currency and programmer expressions, as the top result
 - [ ] On-screen latency down to the targets
+- [ ] Lua scripting, later: your own commands, ⌘K actions, hotkeys and clipboard hooks in `~/.config/pith/init.lua`,
+  through a small internal API, so the core stays minimal
 
 ## Feedback
 
