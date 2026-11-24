@@ -205,18 +205,23 @@ components:
   key-secondary:
     textColor: "{colors.quiet-light}"
     typography: "{typography.key-secondary}"
-  web-download:
+  web-action-button:
     backgroundColor: "{colors.web-action-light}"
     textColor: "{colors.web-on-action-light}"
     typography: "{typography.web-button}"
     rounded: "{rounded.web-button}"
     padding: "15px 22px 15px 20px"
-  web-download-hover:
+  web-action-button-hover:
     backgroundColor: "{colors.web-action-hover-light}"
     textColor: "{colors.web-on-action-light}"
-  web-download-small:
+  web-action-button-small:
     backgroundColor: "{colors.web-action-light}"
     textColor: "{colors.web-on-action-light}"
+    rounded: "{rounded.web-key-cap}"
+    padding: "9px 14px 9px 12px"
+  web-secondary-button-small:
+    backgroundColor: "{colors.web-key-light}"
+    textColor: "{colors.label-light}"
     rounded: "{rounded.web-key-cap}"
     padding: "9px 14px 9px 12px"
   web-key-cap:
@@ -419,7 +424,7 @@ Everything above is the app panel and stays its system. This section covers only
 - **Faint** (`web-faint-light` black 38 %, `web-faint-dark` white 36 %): only the legends of the drawn keyboard's unlit, `aria-hidden` keys and the scrollbar thumb. Deliberately below text contrast: inactive decoration, never something to read.
 - **Edge** (`web-edge-*`, 10 % / 9 %): the bar's bottom border once scrolled, the code block's title rule, list and footer rules.
 - **Fill** (`web-fill-*`, 7 % / 10 %): the hero demo buttons' hover and pressed state.
-- **Action** (`web-action-light` #1C1C1C, `web-action-dark` #EDEDED; hover pure black / pure white; on-action #FFFFFF / #141414): the Download button and the drawn keyboard's lit keys. It is the label color made solid, not a hue.
+- **Action** (`web-action-light` #1C1C1C, `web-action-dark` #EDEDED; hover pure black / pure white; on-action #FFFFFF / #141414): the page's main action (the Copy beside the hero's and the close's Terminal line, the bar's Install) and the drawn keyboard's lit keys. It is the label color made solid, not a hue.
 - **Text selection** (`web-text-selection-*`, 14 % / 22 %): `::selection`.
 
 **The Label-Is-the-Action Rule.** The page's one filled control is filled with the label color itself (#1C1C1C / #EDEDED). No accent, gradient, glow or brand hue anywhere on the page.
@@ -435,30 +440,31 @@ SF Pro through the system stack, as in the app; SF Mono (`ui-monospace`) only fo
 - **Code** (SF Mono 400, 0.875rem, 1.7): keys in 600, comments and strings quiet.
 
 ### Layout
-A 1120 px column with a `clamp(16px, 4vw, 32px)` gutter, sections `clamp(88px, 11vw, 152px)` apart. A 60 px sticky bar on the ground: the app icon and wordmark left, nav, small Download right; the nav hides below 760 px. The hero is centered: H1, lede, Download with "Free · macOS 26 or later · Apple Silicon" under it, then the four demo buttons above the snapshot at its real 680 px width. Feature rows alternate 5:7 and 7:5 columns and stack below 900 px; reasons are four columns, two below 900 px, one below 520 px. Under the hero's Download, the one-line Terminal install (decisions 57, 58): a quiet "or paste this in Terminal, with no Open Anyway" over the command on a panel surface, 42 rem at most, mono at 0.875rem, with a key-cap ⌘ C Copy that says Copied for 1.6 s. Setup points to it, then "With the installer", four steps on a subgrid, so their numbers, titles, words and figures line up across the row; two columns below 900 px, one below 600 px; under them, Changing a setting and Updates side by side, above a line of requirements. Below 600 px the drawn keyboard becomes a list of the same keys and meanings.
+A 1120 px column with a `clamp(16px, 4vw, 32px)` gutter, sections `clamp(88px, 11vw, 152px)` apart. A 60 px sticky bar on the ground: the app icon and wordmark left, nav, then the GitHub mark (quiet, label on hover) and a small Install right, which goes to the setup; the nav hides below 760 px. The hero is centered: H1, lede, the Terminal line with "Free · macOS 26 or later · Apple Silicon" under it and a quiet "Or download Pith.dmg" line under that, then the four demo buttons above the snapshot at its real 680 px width. Feature rows alternate 5:7 and 7:5 columns and stack below 900 px; reasons are four columns, two below 900 px, one below 520 px. The Terminal line is the way in (decisions 57, 67): "Install it with one line in Terminal" in the label at 500 over the command on a panel surface, 44 rem at most, mono at 0.9375rem (0.8125rem below 600 px, where Copy wraps under it), with Copy as the action-colored key holding ⌘ C key caps, which says Copied for 1.6 s. The closing call repeats it. Setup gives it again under its words, with a quiet Copy, then "Or with the installer" with a line on why it takes two more steps, and four steps on a subgrid, so their numbers, titles, words and figures line up across the row; two columns below 900 px, one below 600 px; under them, Changing a setting and Updates side by side, above a line of requirements. Below 600 px the drawn keyboard becomes a list of the same keys and meanings.
 
 ### Elevation & Depth
-Panel-shaped surfaces (snapshots, the code block, the keyboard tray) carry a system-like window shadow: light `0 0 0 0.5px rgba(0,0,0,.18), 0 24px 60px rgba(0,0,0,.16), 0 6px 18px rgba(0,0,0,.08)`, dark `0 0 0 0.5px rgba(0,0,0,.9), 0 28px 70px rgba(0,0,0,.55), 0 8px 20px rgba(0,0,0,.35)`. Key caps carry a soft offset shadow (light `0 1px 1px rgba(0,0,0,.10), 0 3px 8px rgba(0,0,0,.06)`, dark `0 1px 0 rgba(0,0,0,.55), 0 4px 10px rgba(0,0,0,.35)`); the Download button a soft drop that deepens on hover. Nothing is translucent or blurred.
+Panel-shaped surfaces (snapshots, the code block, the keyboard tray) carry a system-like window shadow: light `0 0 0 0.5px rgba(0,0,0,.18), 0 24px 60px rgba(0,0,0,.16), 0 6px 18px rgba(0,0,0,.08)`, dark `0 0 0 0.5px rgba(0,0,0,.9), 0 28px 70px rgba(0,0,0,.55), 0 8px 20px rgba(0,0,0,.35)`. Key caps carry a soft offset shadow (light `0 1px 1px rgba(0,0,0,.10), 0 3px 8px rgba(0,0,0,.06)`, dark `0 1px 0 rgba(0,0,0,.55), 0 4px 10px rgba(0,0,0,.35)`); the action button and the main Copy a soft drop that deepens on hover. Nothing is translucent or blurred.
 
 ### Shapes
-Panel-shaped surfaces use the panel's 14 px radius (the keyboard tray scales its corners with the keyboard, 10–18 px). Key caps 7 px with a 1 px edge; the Download button 10 px, 7 px in the bar; drawn keys scale theirs with the key unit (0.14 u).
+Panel-shaped surfaces use the panel's 14 px radius (the keyboard tray scales its corners with the keyboard, 10–18 px). Key caps 7 px with a 1 px edge; the action button 10 px, 7 px in the bar and on Copy; drawn keys scale theirs with the key unit (0.14 u).
 
 ### Components
 - **Key cap** (signature; `web-key-cap`): #FFFFFF / #2A2A2A fill, 1 px key edge, 7 px corners, soft offset shadow, label glyph at 500. The page's one component language: inline in text and headings, in the wordmark, the hero demo buttons, the install step numbers and the closing ⌘ P.
 - **Settings reference** (the configuration section): the whole `config.toml` in the code surface, beside every setting as its mono name, its default in quiet mono and one line of what it does, grouped under the TOML table names. Pointing at a setting lights its lines in the file with the quiet fill, and pointing at a line lights its setting (160 ms). On desktop the file stays pinned while the list scrolls and, when it's taller than the window, scrolls inside itself as an editor does; lighting a setting brings its first line into the file's view, never moving the page. Below 900 px the file comes first, whole.
-- **Download** (`web-download`): label-colored fill, on-action text, 10 px corners, an arrow-into-tray SVG; hover goes to pure black / white; `:active` drops 1 px. The bar version is smaller with 7 px corners.
+- **Action button** (`web-action-button`): label-colored fill, on-action text, 10 px corners, a drawn SVG glyph; hover goes to pure black / white; `:active` drops 1 px. The bar's Install is the small one (7 px corners, a prompt glyph). The main Copy beside the Terminal line takes the same fill, with its ⌘ C key caps kept as key caps (a pressed one turns the key color, not the action's).
+- **Secondary button** (`web-secondary-button-small`): the installer's Pith.dmg (decision 67): the panel color with a 1 px edge and the label's text; hover takes the 7 % fill. The installer is otherwise a quiet underlined line with a small arrow-into-tray glyph.
 - **Demo buttons** (`web-demo-button`): a key cap plus a quiet word (Launcher, Search, Actions, Clipboard) on no background; hover and pressed (`aria-pressed`) take the 7 % fill and the word turns label. They and the real keys swap the hero snapshot in one frame.
 - **Drawn keyboard**: a panel-colored tray of keys sized from one unit. Unlit keys are ghost outlines (ghost edge, faint legend, `aria-hidden`); Pith's keys are real buttons drawn as key caps. Pressing one lights its group (⌘ P, ⌘ K, ⌘ ⇧ V, arrows, ⏎, esc) in the action color, and the line under the keyboard names what it does.
 - **Code block**: a panel-colored surface, 14 px corners, a quiet title bar with an edge rule, the config file in SF Mono.
-- **Setup figures** (the install steps, decision 56): what each step looks like when you get there, under its words. Download is the small Download (`Pith.dmg`). The installer's window is drawn small, 15 rem at most: a panel-colored title bar with three faint dots, then the installer's own gray (#767676, as in `Support/DMGBackground.svg`, whatever the appearance) with the app icon, an arrow and a folder outline in white, their names at 12 px (4.5:1). System Settings' row is a panel surface with 10 px corners: "“Pith” was blocked to protect your Mac." over Open Anyway drawn as a key cap. They show, they aren't controls.
+- **Setup figures** (the install steps, decision 56): what each step looks like when you get there, under its words. Download is the small secondary button (`Pith.dmg`). The installer's window is drawn small, 15 rem at most: a panel-colored title bar with three faint dots, then the installer's own gray (#767676, as in `Support/DMGBackground.svg`, whatever the appearance) with the app icon, an arrow and a folder outline in white, their names at 12 px (4.5:1). System Settings' row is a panel surface with 10 px corners: "“Pith” was blocked to protect your Mac." over Open Anyway drawn as a key cap. They show, they aren't controls.
 
-**The Keys-Are-the-Interface Rule.** Every control and every mention of a shortcut on the page is a key cap; there is no second button or chip style besides Download.
+**The Keys-Are-the-Interface Rule.** Every control and every mention of a shortcut on the page is a key cap; there is no other button or chip style besides the action button and its secondary.
 
 **The Keys-Move Rule.** The panel snapshots still change in one frame, as the app does; the motion lives in the keys. A key goes down in 60 ms (2 px, filled with the label color) and comes up in 180 ms on cubic-bezier(0.16, 1, 0.3, 1). The hero plays a tour once (t e, ⌘K, ⌘⇧V, ⌘P), with a 2 px line under the shown state that fills over 3 s until the next press; it pauses off screen, in a hidden tab and on any key or click, and a text button pauses or replays it. The ⌘K and ⌘⇧V rows press their heading's keys once as they come into view and switch their snapshot; the config block retypes `terminal` with a caret that holds solid while typing; the drawn keyboard plays each combination as a chord when a lit key is pointed at. Small feedback: the Download arrow drops 2 px on hover, fills step in 160 ms, the meaning line rises 5 px in 220 ms. With Reduce Motion, nothing plays by itself, keys change color without moving, and every section shows its end state (the actions and clipboard snapshots, "Ghostty", "Saved, and Pith has it").
 
 ### Do's and Don'ts
 - **Do** show the real panel snapshots, light and dark, at their real size, as the page's proof.
-- **Do** write every shortcut as key caps, and fill only Download and lit keys with the action color.
+- **Do** write every shortcut as key caps, and fill only the main action (Copy, Install) and lit keys with the action color.
 - **Do** keep Faint for decoration the page also says in text (the keyboard's unlit legends), never for content.
 - **Don't** add an accent, gradient hero, glow or product video.
 - **Don't** fade, slide or cross-fade a panel snapshot; it changes in one frame. Motion is the keys' and ends where it started, and nothing loops.
