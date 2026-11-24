@@ -26,8 +26,10 @@ public struct History: Sendable, Codable, Equatable {
         entry.opens.append(date.timeIntervalSince1970)
         if entry.opens.count > Self.samples { entry.opens.removeFirst(entry.opens.count - Self.samples) }
         entries[id] = entry
+        // The least used goes, but never what was just opened: it would never get to be used.
         if entries.count > Self.capacity,
-            let leastUsed = entries.keys.min(by: { frecency(of: $0, now: date) < frecency(of: $1, now: date) })
+            let leastUsed = entries.keys.filter({ $0 != id })
+                .min(by: { frecency(of: $0, now: date) < frecency(of: $1, now: date) })
         {
             entries[leastUsed] = nil
         }
@@ -40,12 +42,21 @@ public struct History: Sendable, Codable, Equatable {
         entries[id] = nil
     }
 
-    /// Forgets files and folders that were deleted: each path, and for folders everything under it.
-    public mutating func forget(paths: [String]) {
+    /// Forgets files and folders that were deleted: each path, and for folders everything under it. Each remembered
+    /// path and the folders above it are looked up in `paths`, so tens of thousands deleted at once cost no more than
+    /// a few.
+    public mutating func forget(paths: Set<String>) {
         guard !paths.isEmpty else { return }
         for id in Array(entries.keys) {
-            guard let path = Item(fileID: id)?.url?.path else { continue }
-            if paths.contains(where: { path == $0 || path.hasPrefix($0 + "/") }) { entries[id] = nil }
+            guard var path = Item(fileID: id)?.url?.path[...] else { continue }
+            while !path.isEmpty {
+                if paths.contains(String(path)) {
+                    entries[id] = nil
+                    break
+                }
+                guard let slash = path.lastIndex(of: "/") else { break }
+                path = path[..<slash]
+            }
         }
     }
 

@@ -17,7 +17,7 @@ Chosen direction: Stage (decision 29). The memorable moment: whatever ⏎ will a
 the words for ⏎ and ⌘K beside it.
 
 Unresolved:
-- The clipboard's in-panel text editor (design plan step 6).
+- The clipboard's in-panel text editor, after milestone 3 (decision 36).
 
 ## Direction contract
 
@@ -36,7 +36,7 @@ you press ⌘K: the item stays on the tile while the list becomes its actions, a
 FIRST VIEWPORT: 680 pt wide. Search bar 52 pt: magnifier, 20 pt query. Tile 92 pt, inset 8 pt: 48 pt icon, name 19 pt
 semibold, folder and kind with last opened at 12 pt, keys on the right ("Open ↩" in bold, "Actions ⌘K"). Then 8 rows
 of 32 pt: 20 pt icon, name 14 pt and folder 12 pt on one line; the selected row has the quiet fill and a ↩ at its end.
-In the clipboard the tile grows to 168 pt and becomes the preview.
+In the clipboard the tile grows to 188 pt and becomes the preview (`docs/BRIEF-CLIPBOARD.md`).
 
 FORM: Stage, Claude's own direction, after Edoardo turned down the roll's assignment (Tokyo rail signage) and asked for
 "a completely original new one"; seed: 47a00053a3e03fc9 (assignment declined). Chosen: "ok lets go with stage visual

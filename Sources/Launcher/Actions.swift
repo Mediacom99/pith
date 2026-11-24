@@ -68,20 +68,37 @@ nonisolated enum Symbols {
 
     static func command(_ command: Command) -> String {
         switch command {
+        case .clipboard: clipboard
+        case .pauseClipboard: paused
+        case .resumeClipboard: "play.circle"
+        case .clearClipboard: "trash"
+        case .installUpdate: "arrow.down.circle"
+        case .checkForUpdates: "arrow.triangle.2.circlepath"
         case .openConfig: "gearshape"
         case .reloadConfig: "arrow.clockwise"
         case .quit: "power"
         }
     }
 
-    static let all = Command.allCases.map(command) + Action.allCases.map(\.symbol) + [problem]
+    /// The clipboard's: a text or link with no known source, a link and the empty history on the tile, and recording
+    /// paused.
+    static let text = "text.alignleft"
+    static let link = "link"
+    static let clipboard = "doc.on.clipboard"
+    static let paused = "pause.circle"
+
+    static let all =
+        Command.allCases.map(command) + Action.allCases.map(\.symbol) + ClipAction.allCases.map(\.symbol)
+        + [problem, text, link, clipboard, paused]
 
     /// Every symbol in the colors and sizes the panel shows it: all in the rows, quiet; a problem's in orange and Force
     /// Quit's in red too; on the tile, the commands' and a problem's.
     static let rendered: [(name: String, tint: SymbolTint, size: IconSize)] =
         all.map { ($0, .quiet, .row) }
         + [(problem, .warning, .row), (Action.forceQuit.symbol, .danger, .row), (problem, .warning, .tile)]
+        + [(ClipAction.delete.symbol, .danger, .row), (command(.clearClipboard), .danger, .row)]
         + Command.allCases.map { (command($0), .quiet, .tile) }
+        + [text, link, clipboard, paused].map { ($0, .quiet, .tile) }
 }
 
 /// Turns the apps named in config.toml into app bundles, and picks the app `[open_with]` sets for a file. Asks
@@ -104,6 +121,22 @@ nonisolated enum AppResolver {
         }
         return spec.contains(".") && !spec.contains(" ")
             ? NSWorkspace.shared.urlForApplication(withBundleIdentifier: spec) : nil
+    }
+
+    /// `[open_links]`'s apps by URL scheme, and a problem for each one that isn't found. `https` covers `http` too,
+    /// unless `http` has its own.
+    static func links(_ openLinks: [String: String], among apps: [App]) -> (apps: [String: URL], problems: [String]) {
+        var found: [String: URL] = [:]
+        var problems: [String] = []
+        for (scheme, spec) in openLinks.sorted(by: { $0.key < $1.key }) {
+            if let app = resolve(spec, among: apps) {
+                found[scheme] = app
+            } else {
+                problems.append("open_links.\(scheme): can't find the app \"\(spec)\"")
+            }
+        }
+        if openLinks["http"] == nil, let https = found["https"] { found["http"] = https }
+        return (found, problems)
     }
 
     /// The app `[open_with]` sets for `file`: by its extension, else by the most specific type it conforms to.

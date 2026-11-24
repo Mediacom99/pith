@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-20T00:00:00Z",
+  "generatedAt": "2026-11-23T15:08:45Z",
   "title": "Design System: launcher",
   "extensions": {
     "colorMeta": {
@@ -10,6 +10,8 @@
       "label-dark": { "role": "neutral", "displayName": "Label (dark)", "canonical": "NSColor.labelColor" },
       "quiet-light": { "role": "neutral", "displayName": "Quiet Gray (light)", "canonical": "Palette.quiet", "tonalRamp": ["#262626", "#3D3D3D", "#525252", "#666666", "#808080", "#A1A1A1", "#C4C4C4", "#E6E6E6"] },
       "quiet-dark": { "role": "neutral", "displayName": "Quiet Gray (dark)", "canonical": "Palette.quiet", "tonalRamp": ["#262626", "#3D3D3D", "#525252", "#666666", "#808080", "#A1A1A1", "#C4C4C4", "#E6E6E6"] },
+      "key-light": { "role": "neutral", "displayName": "Key (light)", "canonical": "Palette.key", "tonalRamp": ["#262626", "#3C3C3C", "#525252", "#6B6B6B", "#858585", "#A1A1A1", "#BDBDBD", "#D6D6D6"] },
+      "key-dark": { "role": "neutral", "displayName": "Key (dark)", "canonical": "Palette.key", "tonalRamp": ["#262626", "#3C3C3C", "#525252", "#6B6B6B", "#858585", "#A1A1A1", "#BDBDBD", "#D6D6D6"] },
       "tile-fill-light": { "role": "neutral", "displayName": "Tile Fill (light)", "canonical": "Palette.tile; renders #F6F6F6 on the window" },
       "tile-fill-dark": { "role": "neutral", "displayName": "Tile Fill (dark)", "canonical": "Palette.tile; renders #282828 on the window" },
       "selection-fill-light": { "role": "neutral", "displayName": "Selection Fill (light)", "canonical": "Palette.selection; renders #EDEDED on the window" },
@@ -21,7 +23,31 @@
       "danger-fill-light": { "role": "meaning", "displayName": "Danger Fill (light)", "canonical": "Palette.dangerFill" },
       "danger-fill-dark": { "role": "meaning", "displayName": "Danger Fill (dark)", "canonical": "Palette.dangerFill" },
       "warning-light": { "role": "meaning", "displayName": "Warning Orange (light)", "canonical": "Palette.warning", "tonalRamp": ["#3A1000", "#651C00", "#972700", "#C93400", "#F06A10", "#FF9F0A", "#FFC766", "#FFEBC7"] },
-      "warning-dark": { "role": "meaning", "displayName": "Warning Orange (dark)", "canonical": "Palette.warning", "tonalRamp": ["#3A1000", "#651C00", "#972700", "#C93400", "#F06A10", "#FF9F0A", "#FFC766", "#FFEBC7"] }
+      "warning-dark": { "role": "meaning", "displayName": "Warning Orange (dark)", "canonical": "Palette.warning", "tonalRamp": ["#3A1000", "#651C00", "#972700", "#C93400", "#F06A10", "#FF9F0A", "#FFC766", "#FFEBC7"] },
+      "web-ground-light": { "role": "neutral", "displayName": "Web Ground (light)", "canonical": "site --ground", "tonalRamp": ["#141414", "#2A2A2A", "#3F3F3F", "#616161", "#8A8A8A", "#A1A1A1", "#C9C9C9", "#ECECEC"] },
+      "web-ground-dark": { "role": "neutral", "displayName": "Web Ground (dark)", "canonical": "site --ground", "tonalRamp": ["#141414", "#2A2A2A", "#3F3F3F", "#616161", "#8A8A8A", "#A1A1A1", "#C9C9C9", "#ECECEC"] },
+      "web-label-dark": { "role": "neutral", "displayName": "Web Label (dark)", "canonical": "site --label; white 86 %" },
+      "web-quiet-light": { "role": "neutral", "displayName": "Web Quiet (light)", "canonical": "site --quiet; 5.2:1 on #ECECEC", "tonalRamp": ["#141414", "#2A2A2A", "#3F3F3F", "#616161", "#8A8A8A", "#A1A1A1", "#C9C9C9", "#ECECEC"] },
+      "web-faint-light": { "role": "neutral", "displayName": "Web Faint (light)", "canonical": "site --faint; decoration only, below text contrast" },
+      "web-faint-dark": { "role": "neutral", "displayName": "Web Faint (dark)", "canonical": "site --faint; decoration only, below text contrast" },
+      "web-edge-light": { "role": "neutral", "displayName": "Web Edge (light)", "canonical": "site --edge" },
+      "web-edge-dark": { "role": "neutral", "displayName": "Web Edge (dark)", "canonical": "site --edge" },
+      "web-fill-light": { "role": "neutral", "displayName": "Web Fill (light)", "canonical": "site --fill" },
+      "web-fill-dark": { "role": "neutral", "displayName": "Web Fill (dark)", "canonical": "site --fill" },
+      "web-key-light": { "role": "neutral", "displayName": "Web Key Cap (light)", "canonical": "site --key" },
+      "web-key-dark": { "role": "neutral", "displayName": "Web Key Cap (dark)", "canonical": "site --key", "tonalRamp": ["#141414", "#2A2A2A", "#3F3F3F", "#616161", "#8A8A8A", "#A1A1A1", "#C9C9C9", "#ECECEC"] },
+      "web-key-edge-light": { "role": "neutral", "displayName": "Web Key Edge (light)", "canonical": "site --key-edge" },
+      "web-key-edge-dark": { "role": "neutral", "displayName": "Web Key Edge (dark)", "canonical": "site --key-edge" },
+      "web-ghost-edge-light": { "role": "neutral", "displayName": "Web Ghost Edge (light)", "canonical": "site --ghost-edge" },
+      "web-ghost-edge-dark": { "role": "neutral", "displayName": "Web Ghost Edge (dark)", "canonical": "site --ghost-edge" },
+      "web-action-light": { "role": "primary", "displayName": "Action (light): the label color made solid", "canonical": "site --action", "tonalRamp": ["#141414", "#2A2A2A", "#3F3F3F", "#616161", "#8A8A8A", "#A1A1A1", "#C9C9C9", "#ECECEC"] },
+      "web-action-dark": { "role": "primary", "displayName": "Action (dark): the label color made solid", "canonical": "site --action", "tonalRamp": ["#141414", "#2A2A2A", "#3F3F3F", "#616161", "#8A8A8A", "#A1A1A1", "#C9C9C9", "#ECECEC"] },
+      "web-action-hover-light": { "role": "primary", "displayName": "Action Hover (light)", "canonical": "site --action-hover" },
+      "web-action-hover-dark": { "role": "primary", "displayName": "Action Hover (dark)", "canonical": "site --action-hover" },
+      "web-on-action-light": { "role": "primary", "displayName": "On Action (light)", "canonical": "site --on-action" },
+      "web-on-action-dark": { "role": "primary", "displayName": "On Action (dark)", "canonical": "site --on-action" },
+      "web-text-selection-light": { "role": "neutral", "displayName": "Web Text Selection (light)", "canonical": "site --select" },
+      "web-text-selection-dark": { "role": "neutral", "displayName": "Web Text Selection (dark)", "canonical": "site --select" }
     },
     "typographyMeta": {
       "search": { "displayName": "Search", "purpose": "The query and its placeholder in the 52 pt search bar." },
@@ -29,18 +55,38 @@
       "row-title": { "displayName": "Row Title", "purpose": "Each row's name; actions and apps in ⌘K." },
       "key-primary": { "displayName": "Key Primary", "purpose": "What ⏎ does, on the tile, in label color (red in Force Quit's confirmation)." },
       "key-secondary": { "displayName": "Key Secondary", "purpose": "Actions, Back, Cancel, in quiet gray." },
-      "return-mark": { "displayName": "Return Mark", "purpose": "The ↩ at the end of the selected row, in secondary label color." },
+      "return-mark": { "displayName": "Return Mark", "purpose": "The ↩ at the end of the selected row, in the Key color." },
       "detail": { "displayName": "Detail", "purpose": "Folders after row names; the tile's folder and kind lines." },
       "tag": { "displayName": "Tag", "purpose": "\"running\" at the end of a running app's row." },
-      "key-cap": { "displayName": "Key Cap", "purpose": "The glyph inside a key cap." }
+      "key-cap": { "displayName": "Key Cap", "purpose": "The glyph inside a key cap (↩, ⌘, K, esc), in the Key color." },
+      "web-display": { "displayName": "Web Display", "purpose": "The landing page's hero H1 only." },
+      "web-headline": { "displayName": "Web Headline", "purpose": "Section H2s on the landing page." },
+      "web-feature-headline": { "displayName": "Web Feature Headline", "purpose": "H2s in the alternating feature rows." },
+      "web-title": { "displayName": "Web Title", "purpose": "The four reasons and the install steps." },
+      "web-lede": { "displayName": "Web Lede", "purpose": "The sentence under the H1, quiet." },
+      "web-body": { "displayName": "Web Body", "purpose": "Page body text." },
+      "web-note": { "displayName": "Web Note", "purpose": "Small quiet notes: the Download note, the demo note, the footer." },
+      "web-button": { "displayName": "Web Button", "purpose": "The Download button's label." },
+      "web-key-cap": { "displayName": "Web Key Cap", "purpose": "Glyphs in key caps, relative to the surrounding text." },
+      "web-code": { "displayName": "Web Code", "purpose": "The config file's code block; the page's only monospace." }
     },
     "shadows": [
-      { "name": "panel-system", "value": "the system window shadow (NSWindow.hasShadow)", "purpose": "The panel's only shadow. Nothing inside the panel casts one." }
+      { "name": "panel-system", "value": "the system window shadow (NSWindow.hasShadow)", "purpose": "The panel's only shadow. Nothing inside the panel casts one." },
+      { "name": "web-panel-shadow", "value": "light: 0 0 0 0.5px rgba(0,0,0,0.18), 0 24px 60px rgba(0,0,0,0.16), 0 6px 18px rgba(0,0,0,0.08); dark: 0 0 0 0.5px rgba(0,0,0,0.9), 0 28px 70px rgba(0,0,0,0.55), 0 8px 20px rgba(0,0,0,0.35)", "purpose": "Website only: panel-shaped surfaces (snapshots, keyboard tray, code block), a system-like window shadow." },
+      { "name": "web-key-shadow", "value": "light: 0 1px 1px rgba(0,0,0,0.10), 0 3px 8px rgba(0,0,0,0.06); dark: 0 1px 0 rgba(0,0,0,0.55), 0 4px 10px rgba(0,0,0,0.35)", "purpose": "Website only: the soft offset shadow under every key cap." },
+      { "name": "web-button-shadow", "value": "0 1px 1px rgba(0,0,0,0.2), 0 6px 16px rgba(0,0,0,0.14); hover 0 1px 1px rgba(0,0,0,0.2), 0 10px 24px rgba(0,0,0,0.2)", "purpose": "Website only: the Download button." }
     ],
     "motion": [
-      { "name": "none", "value": "none", "purpose": "The panel appears, resizes and disappears in one frame, with no animation (animationBehavior = .none)." }
+      { "name": "none", "value": "none", "purpose": "The panel appears, resizes and disappears in one frame, with no animation (animationBehavior = .none)." },
+      { "name": "web-keys", "value": "60ms down, 180ms cubic-bezier(0.16, 1, 0.3, 1) up", "purpose": "Website only: the keys move (presses, chords, a one-time hero tour, typing in the config block); panel snapshots still change in one frame; Reduce Motion plays nothing by itself." }
     ],
-    "breakpoints": []
+    "breakpoints": [
+      { "name": "web-wide-short", "value": "max-height: 980px and min-width: 761px (tighter hero)" },
+      { "name": "web-md", "value": "900px (feature rows and steps stack, reasons 2 columns)" },
+      { "name": "web-sm", "value": "760px (bar nav hides)" },
+      { "name": "web-keylist", "value": "600px (drawn keyboard becomes a list)" },
+      { "name": "web-xs", "value": "520px (reasons 1 column, demo buttons 2x2)" }
+    ]
   },
   "components": [
     {
@@ -49,7 +95,7 @@
       "refersTo": "panel",
       "description": "The launcher's one surface: window background, 14 pt continuous corners, a 1 pt edge, the system shadow.",
       "html": "<div class=\"ds-panel\"><div class=\"ds-bar\"><svg class=\"ds-mag\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"><circle cx=\"6.5\" cy=\"6.5\" r=\"5\"/><path d=\"M10.2 10.2 15 15\"/></svg><span class=\"ds-placeholder\">Search</span></div></div>",
-      "css": ".ds-panel { width: 680px; background: #FFFFFF; border: 1px solid rgba(0,0,0,0.12); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); overflow: hidden; font-family: -apple-system, system-ui, sans-serif; } .ds-bar { height: 52px; display: flex; align-items: center; } .ds-mag { color: #666666; margin-left: 20px; margin-right: 12px; } .ds-placeholder { font-size: 20px; color: rgba(0,0,0,0.25); } @media (prefers-color-scheme: dark) { .ds-panel { background: #282828; border-color: rgba(255,255,255,0.14); } .ds-mag { color: #A1A1A1; } .ds-placeholder { color: rgba(255,255,255,0.25); } }"
+      "css": ".ds-panel { width: 680px; background: #FFFFFF; border: 1px solid rgba(0,0,0,0.12); border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); overflow: hidden; font-family: -apple-system, system-ui, sans-serif; } .ds-bar { height: 52px; display: flex; align-items: center; } .ds-mag { color: #666666; margin-left: 20px; margin-right: 12px; } .ds-placeholder { font-size: 20px; color: rgba(0,0,0,0.25); } @media (prefers-color-scheme: dark) { .ds-panel { background: #1E1E1E; border-color: rgba(255,255,255,0.14); } .ds-mag { color: #A1A1A1; } .ds-placeholder { color: rgba(255,255,255,0.25); } }"
     },
     {
       "name": "Search Field",
@@ -65,7 +111,7 @@
       "refersTo": "tile",
       "description": "What ⏎ acts on: 48 pt icon, name, folder, kind, and the keys for ⏎ and ⌘K on the right.",
       "html": "<div class=\"ds-tile\"><div class=\"ds-tile-icon\"></div><div class=\"ds-tile-text\"><div class=\"ds-tile-name\">Quarterly_Budget_Review.pdf</div><div class=\"ds-tile-detail\">~/Documents/Acme</div><div class=\"ds-tile-detail\">PDF document · opened today at 14:05</div></div><div class=\"ds-keys\"><div class=\"ds-key\"><span class=\"ds-key-primary\">Open</span><span class=\"ds-cap\">↩</span></div><div class=\"ds-key\"><span class=\"ds-key-secondary\">Actions</span><span class=\"ds-cap\">⌘</span><span class=\"ds-cap\">K</span></div></div></div>",
-      "css": ".ds-tile { width: 664px; height: 92px; box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; background: rgba(0,0,0,0.035); border-radius: 10px; font-family: -apple-system, system-ui, sans-serif; } .ds-tile-icon { width: 48px; height: 48px; border-radius: 10px; background: #E6E6E6; flex: none; } .ds-tile-text { flex: 1; min-width: 0; margin: 0 16px 0 14px; display: flex; flex-direction: column; gap: 1px; } .ds-tile-name { font-size: 19px; font-weight: 600; color: rgba(0,0,0,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-tile-detail { font-size: 12px; color: #666666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-keys { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; } .ds-key { display: flex; align-items: center; gap: 4px; } .ds-key-primary { font-size: 13px; font-weight: 600; color: rgba(0,0,0,0.85); margin-right: 4px; } .ds-key-secondary { font-size: 13px; color: #666666; margin-right: 4px; } .ds-cap { min-width: 20px; height: 20px; box-sizing: border-box; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; background: rgba(0,0,0,0.07); font-size: 11px; font-weight: 500; color: #666666; } @media (prefers-color-scheme: dark) { .ds-tile { background: rgba(255,255,255,0.045); } .ds-tile-icon { background: #454545; } .ds-tile-name, .ds-key-primary { color: rgba(255,255,255,0.85); } .ds-tile-detail, .ds-key-secondary, .ds-cap { color: #A1A1A1; } .ds-cap { background: rgba(255,255,255,0.10); } }"
+      "css": ".ds-tile { width: 664px; height: 92px; box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; background: rgba(0,0,0,0.035); border-radius: 10px; font-family: -apple-system, system-ui, sans-serif; } .ds-tile-icon { width: 48px; height: 48px; border-radius: 10px; background: #E6E6E6; flex: none; } .ds-tile-text { flex: 1; min-width: 0; margin: 0 16px 0 14px; display: flex; flex-direction: column; gap: 1px; } .ds-tile-name { font-size: 19px; font-weight: 600; color: rgba(0,0,0,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-tile-detail { font-size: 12px; color: #666666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-keys { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; } .ds-key { display: flex; align-items: center; gap: 4px; } .ds-key-primary { font-size: 13px; font-weight: 600; color: rgba(0,0,0,0.85); margin-right: 4px; } .ds-key-secondary { font-size: 13px; color: #666666; margin-right: 4px; } .ds-cap { min-width: 20px; height: 20px; box-sizing: border-box; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; background: rgba(0,0,0,0.07); font-size: 11px; font-weight: 500; color: #3C3C3C; } @media (prefers-color-scheme: dark) { .ds-tile { background: rgba(255,255,255,0.045); } .ds-tile-icon { background: #454545; } .ds-tile-name, .ds-key-primary { color: rgba(255,255,255,0.85); } .ds-tile-detail, .ds-key-secondary { color: #A1A1A1; } .ds-cap { color: #D6D6D6; background: rgba(255,255,255,0.10); } }"
     },
     {
       "name": "Row",
@@ -81,7 +127,7 @@
       "refersTo": "row-selected",
       "description": "The selection: a quiet 7 pt rounded fill inset 8 pt, ending in ↩. Never an accent color.",
       "html": "<div class=\"ds-row-sel\"><span class=\"ds-row-sel-icon\"></span><span class=\"ds-row-sel-title\">Quarterly_Budget_Review.pdf</span><span class=\"ds-row-sel-detail\">~/Documents/Acme</span><span class=\"ds-row-sel-mark\">↩</span></div>",
-      "css": ".ds-row-sel { width: 664px; margin: 0 8px; height: 32px; box-sizing: border-box; padding: 0 10px; display: flex; align-items: baseline; background: rgba(0,0,0,0.07); border-radius: 7px; font-family: -apple-system, system-ui, sans-serif; } .ds-row-sel-icon { width: 20px; height: 20px; align-self: center; border-radius: 5px; background: #E6E6E6; margin-right: 10px; flex: none; } .ds-row-sel-title { font-size: 14px; color: rgba(0,0,0,0.85); } .ds-row-sel-detail { font-size: 12px; color: #666666; margin-left: 6px; flex: 1; } .ds-row-sel-mark { font-size: 13px; font-weight: 600; color: rgba(0,0,0,0.5); } @media (prefers-color-scheme: dark) { .ds-row-sel { background: rgba(255,255,255,0.10); } .ds-row-sel-icon { background: #5C5C5C; } .ds-row-sel-title { color: rgba(255,255,255,0.85); } .ds-row-sel-detail { color: #A1A1A1; } .ds-row-sel-mark { color: rgba(255,255,255,0.55); } }"
+      "css": ".ds-row-sel { width: 664px; margin: 0 8px; height: 32px; box-sizing: border-box; padding: 0 10px; display: flex; align-items: baseline; background: rgba(0,0,0,0.07); border-radius: 7px; font-family: -apple-system, system-ui, sans-serif; } .ds-row-sel-icon { width: 20px; height: 20px; align-self: center; border-radius: 5px; background: #E6E6E6; margin-right: 10px; flex: none; } .ds-row-sel-title { font-size: 14px; color: rgba(0,0,0,0.85); } .ds-row-sel-detail { font-size: 12px; color: #666666; margin-left: 6px; flex: 1; } .ds-row-sel-mark { font-size: 13px; font-weight: 600; color: #3C3C3C; } @media (prefers-color-scheme: dark) { .ds-row-sel { background: rgba(255,255,255,0.10); } .ds-row-sel-icon { background: #5C5C5C; } .ds-row-sel-title { color: rgba(255,255,255,0.85); } .ds-row-sel-detail { color: #A1A1A1; } .ds-row-sel-mark { color: #D6D6D6; } }"
     },
     {
       "name": "Force Quit Confirmation",
@@ -98,11 +144,43 @@
       "description": "A config problem at the top of the empty state, with the orange triangle as its icon; ⏎ opens the config file.",
       "html": "<div class=\"ds-row-problem\"><svg class=\"ds-row-problem-icon\" width=\"14\" height=\"13\" viewBox=\"0 0 14 13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\"><path d=\"M7 1 13 12H1z\"/><path d=\"M7 5v3.2M7 10v.2\"/></svg><span class=\"ds-row-problem-title\">Config problem, line 3: unknown setting \"theme\"</span></div>",
       "css": ".ds-row-problem { width: 680px; height: 32px; box-sizing: border-box; padding: 0 18px; display: flex; align-items: center; font-family: -apple-system, system-ui, sans-serif; } .ds-row-problem-icon { color: #C93400; margin: 0 13px 0 3px; } .ds-row-problem-title { font-size: 14px; color: rgba(0,0,0,0.85); } @media (prefers-color-scheme: dark) { .ds-row-problem-icon { color: #FF9F0A; } .ds-row-problem-title { color: rgba(255,255,255,0.85); } }"
+    },
+    {
+      "name": "Web Download Button",
+      "kind": "button",
+      "refersTo": "web-download",
+      "description": "Website only: the page's one filled control, filled with the label color itself; 10 px corners, 7 px in the bar.",
+      "html": "<a class=\"ds-web-download\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M10 3.5v9M6 9l4 4 4-4M4 16.5h12\"/></svg>Download for Mac</a>",
+      "css": ":root{--label:rgba(0,0,0,.85);--quiet:#616161;--fill:rgba(0,0,0,.07);--key:#FFFFFF;--key-edge:rgba(0,0,0,.13);--key-shadow:0 1px 1px rgba(0,0,0,.10),0 3px 8px rgba(0,0,0,.06);--action:#1C1C1C;--action-hover:#000;--on-action:#FFF;--ghost-edge:rgba(0,0,0,.09);--faint:rgba(0,0,0,.38)} @media (prefers-color-scheme: dark){:root{--label:rgba(255,255,255,.86);--quiet:#A1A1A1;--fill:rgba(255,255,255,.10);--key:#2A2A2A;--key-edge:rgba(255,255,255,.10);--key-shadow:0 1px 0 rgba(0,0,0,.55),0 4px 10px rgba(0,0,0,.35);--action:#EDEDED;--action-hover:#FFF;--on-action:#141414;--ghost-edge:rgba(255,255,255,.07);--faint:rgba(255,255,255,.36)}} .ds-web-download{display:inline-flex;align-items:center;gap:9px;font:600 17px/1 -apple-system,system-ui,sans-serif;color:var(--on-action);background:var(--action);padding:15px 22px 15px 20px;border-radius:10px;text-decoration:none;box-shadow:0 1px 1px rgba(0,0,0,.2),0 6px 16px rgba(0,0,0,.14)} .ds-web-download:hover{background:var(--action-hover);box-shadow:0 1px 1px rgba(0,0,0,.2),0 10px 24px rgba(0,0,0,.2)} .ds-web-download:active{transform:translateY(1px);box-shadow:0 1px 1px rgba(0,0,0,.2)} .ds-web-download:focus-visible{outline:2px solid var(--label);outline-offset:3px}"
+    },
+    {
+      "name": "Web Key Cap",
+      "kind": "custom",
+      "refersTo": "web-key-cap",
+      "description": "Website only: the page's one component language, inline in text, headings, demo buttons, install steps and the closing ⌘ P.",
+      "html": "<span style=\"font-size:17px\">Press <kbd class=\"ds-cap\">⌘</kbd> <kbd class=\"ds-cap\">P</kbd> from any app.</span>",
+      "css": ":root{--label:rgba(0,0,0,.85);--quiet:#616161;--fill:rgba(0,0,0,.07);--key:#FFFFFF;--key-edge:rgba(0,0,0,.13);--key-shadow:0 1px 1px rgba(0,0,0,.10),0 3px 8px rgba(0,0,0,.06);--action:#1C1C1C;--action-hover:#000;--on-action:#FFF;--ghost-edge:rgba(0,0,0,.09);--faint:rgba(0,0,0,.38)} @media (prefers-color-scheme: dark){:root{--label:rgba(255,255,255,.86);--quiet:#A1A1A1;--fill:rgba(255,255,255,.10);--key:#2A2A2A;--key-edge:rgba(255,255,255,.10);--key-shadow:0 1px 0 rgba(0,0,0,.55),0 4px 10px rgba(0,0,0,.35);--action:#EDEDED;--action-hover:#FFF;--on-action:#141414;--ghost-edge:rgba(255,255,255,.07);--faint:rgba(255,255,255,.36)}} .ds-cap{display:inline-grid;place-items:center;min-width:1.9em;height:1.9em;padding:0 .45em;font:500 .8em/1 -apple-system,system-ui,sans-serif;color:var(--label);background:var(--key);border:1px solid var(--key-edge);border-radius:7px;box-shadow:var(--key-shadow)} "
+    },
+    {
+      "name": "Web Demo Button",
+      "kind": "chip",
+      "refersTo": "web-demo-button",
+      "description": "Website only: a key cap and a quiet word; hover and pressed take the 7 % fill and the word turns label. Swaps the hero snapshot in one frame.",
+      "html": "<button class=\"ds-web-try\" aria-pressed=\"true\"><kbd class=\"ds-cap\">⌘</kbd><kbd class=\"ds-cap\">K</kbd><span>Actions</span></button> <button class=\"ds-web-try\" aria-pressed=\"false\"><kbd class=\"ds-cap\">⌘</kbd><kbd class=\"ds-cap\">P</kbd><span>Launcher</span></button>",
+      "css": ":root{--label:rgba(0,0,0,.85);--quiet:#616161;--fill:rgba(0,0,0,.07);--key:#FFFFFF;--key-edge:rgba(0,0,0,.13);--key-shadow:0 1px 1px rgba(0,0,0,.10),0 3px 8px rgba(0,0,0,.06);--action:#1C1C1C;--action-hover:#000;--on-action:#FFF;--ghost-edge:rgba(0,0,0,.09);--faint:rgba(0,0,0,.38)} @media (prefers-color-scheme: dark){:root{--label:rgba(255,255,255,.86);--quiet:#A1A1A1;--fill:rgba(255,255,255,.10);--key:#2A2A2A;--key-edge:rgba(255,255,255,.10);--key-shadow:0 1px 0 rgba(0,0,0,.55),0 4px 10px rgba(0,0,0,.35);--action:#EDEDED;--action-hover:#FFF;--on-action:#141414;--ghost-edge:rgba(255,255,255,.07);--faint:rgba(255,255,255,.36)}} .ds-cap{display:inline-grid;place-items:center;min-width:1.9em;height:1.9em;padding:0 .45em;font:500 .8em/1 -apple-system,system-ui,sans-serif;color:var(--label);background:var(--key);border:1px solid var(--key-edge);border-radius:7px;box-shadow:var(--key-shadow)} .ds-web-try{display:inline-flex;align-items:center;gap:6px;font:500 15px/1 -apple-system,system-ui,sans-serif;color:var(--label);background:none;border:0;border-radius:7px;padding:7px 12px 7px 8px;cursor:pointer} .ds-web-try .ds-cap{font-size:13px;min-width:1.85rem;height:1.85rem} .ds-web-try span{margin-left:4px;color:var(--quiet)} .ds-web-try:hover,.ds-web-try[aria-pressed=true]{background:var(--fill)} .ds-web-try[aria-pressed=true] span{color:var(--label)} .ds-web-try:focus-visible{outline:2px solid var(--label);outline-offset:3px}"
+    },
+    {
+      "name": "Web Drawn Keys",
+      "kind": "custom",
+      "refersTo": "web-key-ghost",
+      "description": "Website only: the drawn keyboard's keys: unlit ones are ghost outlines with faint aria-hidden legends; Pith's keys are key caps, and a pressed group lights in the action color.",
+      "html": "<div class=\"ds-web-keys\"><span class=\"ds-k\" aria-hidden=\"true\">tab</span><button class=\"ds-k ds-k-cap ds-k-on\">⌘</button><button class=\"ds-k ds-k-cap\">K</button><button class=\"ds-k ds-k-cap ds-k-on\">P</button><span class=\"ds-k\" aria-hidden=\"true\">L</span></div>",
+      "css": ":root{--label:rgba(0,0,0,.85);--quiet:#616161;--fill:rgba(0,0,0,.07);--key:#FFFFFF;--key-edge:rgba(0,0,0,.13);--key-shadow:0 1px 1px rgba(0,0,0,.10),0 3px 8px rgba(0,0,0,.06);--action:#1C1C1C;--action-hover:#000;--on-action:#FFF;--ghost-edge:rgba(0,0,0,.09);--faint:rgba(0,0,0,.38)} @media (prefers-color-scheme: dark){:root{--label:rgba(255,255,255,.86);--quiet:#A1A1A1;--fill:rgba(255,255,255,.10);--key:#2A2A2A;--key-edge:rgba(255,255,255,.10);--key-shadow:0 1px 0 rgba(0,0,0,.55),0 4px 10px rgba(0,0,0,.35);--action:#EDEDED;--action-hover:#FFF;--on-action:#141414;--ghost-edge:rgba(255,255,255,.07);--faint:rgba(255,255,255,.36)}} .ds-web-keys{display:flex;gap:6px;font-family:-apple-system,system-ui,sans-serif} .ds-k{width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--faint);border:1px solid var(--ghost-edge);border-radius:8px;background:none} .ds-k-cap{cursor:pointer;color:var(--label);font-weight:500;font-size:17px;background:var(--key);border-color:var(--key-edge);box-shadow:var(--key-shadow)} .ds-k-on{background:var(--action);color:var(--on-action);border-color:transparent}"
     }
   ],
   "narrative": {
     "northStar": "Stage",
-    "overview": "The panel answers one question before you press ⏎: what will it act on? A tile under the search bar shows the selected item large, with its icon, name, folder and kind, and the keys for ⏎ and ⌘K on its right. The list under it is compact. In ⌘K and Open With… the item stays on the tile while the list becomes its actions or apps, and the tile's first key names the selected one.\n\nEverything else is quiet. The panel is the system window color, the tile and the selection are low-opacity fills of the label color, and nothing is filled with the accent color. Color appears only where it means something: red for Force Quit waiting for its second ⏎, orange for a config problem. Type is SF at fixed point sizes, icons are the system's own app and file icons and SF Symbols. The panel never animates, blurs or goes translucent; it appears in one frame and stays still.\n\nLight and dark follow the system. Each custom color is a light/dark pair in `Sources/Launcher/Palette.swift`; every other color is an AppKit semantic color (`windowBackgroundColor`, `labelColor`, `secondaryLabelColor`, `placeholderTextColor`, the separator).",
+    "overview": "The panel answers one question before you press ⏎: what will it act on? A tile under the search bar shows the selected item large, with its icon, name, folder and kind, and the keys for ⏎ and ⌘K on its right. The list under it is compact. In ⌘K and Open With… the item stays on the tile while the list becomes its actions or apps, and the tile's first key names the selected one.\n\nEverything else is quiet. The panel is the system window color, the tile and the selection are low-opacity fills of the label color, and nothing is filled with the accent color. Color appears only where it means something: red for Force Quit waiting for its second ⏎, orange for a config problem. Type is SF at fixed point sizes, icons are the system's own app and file icons and SF Symbols. The panel never animates, blurs or goes translucent; it appears in one frame and stays still.\n\nLight and dark follow the system. Each custom color is a light/dark pair in `Sources/Launcher/Palette.swift`; every other color is an AppKit semantic color (`windowBackgroundColor`, `labelColor`, `placeholderTextColor`, the separator).",
     "keyCharacteristics": [
       "A 92 pt tile that always shows what ⏎ acts on, with its keys spelled out.",
       "Compact 32 pt rows on one line: icon, name, folder.",
@@ -118,7 +196,10 @@
       { "name": "The 11 pt Floor Rule", "body": "No text is smaller than 11 pt.", "section": "typography" },
       { "name": "The Cut-in-the-Middle Rule", "body": "Names and folders that don't fit truncate in the middle, so both the start and the extension stay visible (`Quarterly_Bud…Review.pdf`).", "section": "typography" },
       { "name": "The One-Baseline Rule", "body": "Everything on a row (name, folder, \"running\", ↩) sits on the name's baseline.", "section": "typography" },
-      { "name": "The Flat-Inside Rule", "body": "Only the panel casts a shadow, and it is the system's. Nothing inside the panel is lifted.", "section": "elevation" }
+      { "name": "The Flat-Inside Rule", "body": "Only the panel casts a shadow, and it is the system's. Nothing inside the panel is lifted.", "section": "elevation" },
+      { "name": "The Label-Is-the-Action Rule", "body": "The page's one filled control is filled with the label color itself (#1C1C1C / #EDEDED). No accent, gradient, glow or brand hue anywhere on the page.", "section": "colors" },
+      { "name": "The Keys-Are-the-Interface Rule", "body": "Every control and every mention of a shortcut on the page is a key cap; there is no second button or chip style besides Download.", "section": "components" },
+      { "name": "The Keys-Move Rule", "body": "The panel snapshots change in one frame, as the app does; the motion lives in the keys: 60 ms down, 180 ms eased up, a one-time hero tour with a 3 s fill line, chords on the drawn keyboard and the ⌘K and ⌘⇧V rows, a retyped config value. It pauses off screen and on any input; with Reduce Motion nothing plays by itself and every section shows its end state." }
     ],
     "dos": [
       "**Do** show what ⏎ acts on in the tile, with the ⏎ key's words in semibold label color.",
@@ -127,7 +208,10 @@
       "**Do** keep every element on the shared grid: icons at 18 pt, text at 48 pt, 18 pt from the right.",
       "**Do** keep the panel's height fixed at 423 pt with results, however many rows there are.",
       "**Do** use SF Symbols in regular weight, in quiet gray, for anything that has no app or file icon.",
-      "**Do** check text and meaningful symbols against WCAG AA in light and dark, on the selection, its darkest background."
+      "**Do** check text and meaningful symbols against WCAG AA in light and dark, on the selection, its darkest background.",
+      "**Do** show the real panel snapshots, light and dark, at their real size, as the page's proof.",
+      "**Do** write every shortcut as key caps, and fill only Download and lit keys with the action color.",
+      "**Do** keep Faint for decoration the page also says in text (the keyboard's unlit legends), never for content."
     ],
     "donts": [
       "**Don't** fill the selection, a key or anything else with the accent color or a solid color bar.",
@@ -136,7 +220,10 @@
       "**Don't** use materials, vibrancy, translucency or Liquid Glass; the panel is opaque.",
       "**Don't** add shadows inside the panel.",
       "**Don't** set text below 11 pt, or use uppercase labels or letter-spacing for hierarchy.",
-      "**Don't** hide what ⏎ does in a footer or leave it unsaid."
+      "**Don't** hide what ⏎ does in a footer or leave it unsaid.",
+      "**Don't** add an accent, gradient hero, glow or product video.",
+      "**Don't** fade, slide or cross-fade a panel snapshot; motion is the keys' and nothing loops.",
+      "**Don't** carry the web tokens (ground, tracking, key-cap shadows) into the app panel."
     ]
   }
 }

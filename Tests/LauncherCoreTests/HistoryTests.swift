@@ -66,6 +66,17 @@ struct HistoryTests {
         #expect(history.frecency(of: "busy", now: now) > 0, "the most used item survives")
     }
 
+    /// A full history of habits still takes in what you just opened.
+    @Test func whatWasJustOpenedIsNeverTheOneForgotten() {
+        var history = History()
+        for item in 0..<History.capacity {
+            for open in 0..<12 { history.record("habit \(item)", at: daysAgo(200 + Double(open))) }
+        }
+        history.record("new", at: now)
+        #expect(history.recent(limit: 1) == ["new"])
+        #expect(history.recent(limit: 1000).count == History.capacity)
+    }
+
     @Test func forgetsDeletedFilesAndWhatWasInDeletedFolders() {
         var history = History()
         for id in [
@@ -75,6 +86,17 @@ struct HistoryTests {
         }
         history.forget(paths: ["/u/a.txt", "/u/Docs"])
         #expect(Set(history.recent(limit: 10)) == ["file:/u/Docs2/c.txt", "/Applications/X.app"])
+    }
+
+    /// A deleted build folder reports every file in it: the history checks its own paths, not each deleted one.
+    @Test func forgettingTensOfThousandsOfPathsIsQuick() {
+        var history = History()
+        for item in 0..<History.capacity { history.record("file:/u/dev/Acme/src/module\(item)/file.swift", at: now) }
+        let deleted = Set((0..<50_000).map { "/u/dev/Acme/build/out/object\($0).o" } + ["/u/dev/Acme/src/module7"])
+        let clock = ContinuousClock()
+        let took = clock.measure { history.forget(paths: deleted) }
+        #expect(history.recent(limit: 1000).count == History.capacity - 1)
+        #expect(took < .milliseconds(20), "\(took)")
     }
 
     @Test func fileBoostsAreByPath() {

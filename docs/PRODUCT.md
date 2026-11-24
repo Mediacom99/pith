@@ -23,8 +23,8 @@ disagree, this section wins:
 - **No materials, motion or glass.** The panel is opaque inside its rounded corners (the window is clear only so the
   corners can be round), with no blur, translucency or Liquid Glass. It appears and disappears in one frame with no
   transition. These are performance rules (`AGENTS.md`), not taste.
-- **Components:** AppKit's table and text field, SF Symbols, the system notification for Zip, the system Quick Look
-  panel.
+- **Components:** AppKit's table and text field, SF Symbols, the system notifications for Zip and failed actions,
+  the system Quick Look panel.
 - **Verifying:** screenshots come from `make snapshots`, never the Simulator or a browser. It draws the panel's states
   off screen, in light and dark, into `docs/snapshots/`. `make run` puts the app on Edoardo's screen, so it needs his
   OK each time. Speed is checked with `make bench` and `make logs`.
@@ -48,8 +48,8 @@ nothing (~0% CPU, under 50 MB).
 
 Speed and small size are the product. It's native AppKit and always resident: the window is built at launch and the
 indexes live in memory, so it opens in one frame. It has Raycast's keyboard actions with the footprint and immediacy of
-rofi and dmenu. It has no AI, extensions, store, account or telemetry, and touches the network only for currency
-rates. Settings are a text file, not a settings window.
+rofi and dmenu. It has no AI, extensions, store, account or telemetry, and touches the network only for an update
+check and currency rates. Settings are a text file, not a settings window.
 
 ## Operating Context
 
@@ -72,8 +72,8 @@ rates. Settings are a text file, not a settings window.
   - Config problems shown as rows.
 - **Planned (`FEATURES.md`):**
   - The calculator: an inline top row for math, units, currency and programmer expressions (§6).
-  - The clipboard manager (§5): opened with ⌘⇧V or the `c ` prefix. A list with a preview pane, pinned items on top,
-    search, paste into the previous app, and an in-panel text editor.
+  - The clipboard manager (§5): opened with ⌘⇧V or the `c ` prefix. A list with a preview pane, newest first, pinned
+    items found by typing, search and paste into the previous app; an in-panel text editor after milestone 3.
   - The design covers these before they're built (decision 26).
 - **Constraints:**
   - The `FEATURES.md` §1 performance targets are requirements.
@@ -83,11 +83,13 @@ rates. Settings are a text file, not a settings window.
 - **Out of scope:** themes and a settings window (`FEATURES.md` §9). Behavior is configurable, but the look isn't
   themable.
 - **Terms:** panel, search bar, rows, empty state, ⌘K actions, commands, config problems, clipboard mode.
-- **Undecided:** a public release, the clipboard hotkey, clipboard privacy.
+- **Distribution:** a landing page and a zip at `pith.edoardobertoli.xyz`, not notarized, that updates itself
+  (decisions 46, 48, 51).
+- **Undecided:** for the clipboard, an ignore-app list.
 
 ## Brand Commitments
 
-The name is Pith (decision 30): the essential part and nothing else. There is no app icon or logo yet. The app's copy today is
+The name is Pith (decision 30): the essential part and nothing else. The app icon is a citrus cross-section in Pith's monochrome: the white pith between the peel and the segments (decision 54). The site uses it as its favicon and beside the wordmark. The app's copy today is
 short and literal ("Config problem, line 3: …", "Filter actions", "Open in Preview").
 
 ## Evidence on Hand
@@ -95,7 +97,7 @@ short and literal ("Config problem, line 3: …", "Filter actions", "Open in Pre
 - `docs/snapshots/`: the panel's current states (search bar, recent, search, ⌘K actions, config problem), in light
   and dark.
 - `docs/ARCHITECTURE.md` (Measured): the latency, memory and idle numbers.
-- There are no users besides Edoardo yet, and no testimonials, website or app icon. Don't invent any.
+- There are no users besides Edoardo and a few friends yet, and no testimonials. Don't invent any. The website and the app icon exist (decisions 51, 54).
 
 ## Product Principles
 
@@ -105,7 +107,7 @@ short and literal ("Config problem, line 3: …", "Filter actions", "Open in Pre
    right one.
 3. **Small scope, done excellently:** launcher, clipboard, calculator, and nothing else.
 4. **Native and quiet.** It behaves like part of macOS, follows the system's appearance, accent color and icon style,
-   and asks for nothing: no account, no network beyond currency rates.
+   and asks for nothing: no account, no network beyond an update check and currency rates.
 
 ## Accessibility & Inclusion
 

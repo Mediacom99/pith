@@ -65,7 +65,8 @@ Status: **in review**.
   and tested.
 - App names resolve by name (as listed, or the file name, any case), bundle id or path, on a worker, once the index
   knows the installed apps.
-- An unknown app or type becomes a problem row: `open_with.md: no app "…"`, `actions.terminal: no app "…"`.
+- An unknown app or type becomes a problem row: `open_with.md: can't find the app "…"`,
+  `actions.terminal: can't find the app "…"`.
 
 ## 5. File and folder actions (features 12, 14)
 
@@ -78,6 +79,7 @@ Status: **in review**.
 - Open With… lists the apps LaunchServices offers for the file, filterable; ⏎ opens it with the chosen app.
 - ⎋ steps back one level as it was, and ⌘K goes back to the search.
 - Copying, revealing and trashing run on a worker. Trash asks no confirmation, since it's reversible.
+- A Move to Trash or an open that fails posts a notification saying what failed and why (decision 32).
 - Covered by tests: the resolver against real apps, type matching, action lists per kind, Open With… navigation. The
   clipboard and Trash actions aren't exercised, so tests never touch your clipboard or Trash.
 
@@ -107,7 +109,8 @@ Status: **in review**.
 
 ## 8. Performance pass
 
-Status: **in progress**. This build measured on screen (with apps and 35.6k files):
+Status: **todo**, after milestone 3 (decision 31): the numbers below are decent for now. Measured on screen (with apps
+and 35.6k files):
 - **⌘P → drawn: ~27 ms**, nearly all "update". Our part, filling the empty state and the rows, takes 0.3 ms
   offscreen, so the rest is the window server.
   - Likely cause: the panel is resized on almost every show. It collapses when hidden and grows for the empty state,

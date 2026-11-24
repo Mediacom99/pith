@@ -14,6 +14,14 @@ public final class DirectoryWatcher {
                 | kFSEventStreamEventFlagKernelDropped
             return flags & FSEventStreamEventFlags(dropped) != 0
         }
+
+        /// The item at `path` was created, removed, or moved in or out: not just changed.
+        public var isAddedRemovedOrMoved: Bool {
+            let kinds =
+                kFSEventStreamEventFlagItemCreated | kFSEventStreamEventFlagItemRemoved
+                | kFSEventStreamEventFlagItemRenamed
+            return flags & FSEventStreamEventFlags(kinds) != 0
+        }
     }
 
     private let handler: @Sendable ([Event]) -> Void

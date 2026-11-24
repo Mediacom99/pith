@@ -127,6 +127,9 @@ struct TOMLReader {
         case let character?
         where character == "+" || character == "-" || character == "." || ("0"..."9").contains(character):
             return try number()
+        case "“", "”", "‘", "’":
+            // TextEdit's smart quotes, the fallback editor's.
+            throw error("curly quotes, expected straight ones (\")")
         default:
             throw error("expected a value")
         }

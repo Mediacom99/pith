@@ -3,17 +3,90 @@ import Foundation
 import UniformTypeIdentifiers
 
 /// What to index: folders, what to skip in them, and how deep to go (FEATURES.md §4.2, decision 22).
+///
+/// A root is never skipped, since it was asked for, and inside it the rules that would skip it don't apply: a folder
+/// in `~/Library/CloudStorage` (Dropbox, Google Drive) is indexed although `~/Library` is ignored, and so is
+/// `~/.config` although hidden files are.
 public struct FileRules: Sendable, Equatable {
     /// Absolute paths.
     public let roots: [String]
     public let ignore: IgnoreRules
     /// How many folders below a root are indexed: 1 means only a root's direct contents.
     public let maxDepth: Int
+    /// Folders macOS asks about before an app reads them (Desktop, Documents, Downloads, iCloud Drive): the index
+    /// leaves each out until it's allowed (decision 60).
+    public let protected: [String]
+    /// `ignore` inside each root, in `roots`' order: without the path rules that hold the root.
+    let ignoreInRoots: [IgnoreRules]
 
-    public init(roots: [String], ignore: IgnoreRules, maxDepth: Int) {
+    /// A folder given twice is scanned once, and one inside another root is scanned only as a root of its own, so each
+    /// file is in the index once.
+    public init(roots: [String], ignore: IgnoreRules, maxDepth: Int, protected: [String] = []) {
+        let roots = roots.reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
         self.roots = roots
         self.ignore = ignore
         self.maxDepth = maxDepth
+        self.protected = protected
+        ignoreInRoots = roots.map { root in
+            ignore.inside(root).adding(roots.filter { $0 != root && IgnoreRules.holds(root, $0) })
+        }
+    }
+
+    /// The protected folders a scan would read: in a root and not ignored there, or holding a root.
+    var protectedFolders: [String] {
+        protected.filter { folder in
+            roots.contains { root in
+                IgnoreRules.holds(folder, root)
+                    || IgnoreRules.holds(root, folder)
+                        && !ignore(at: folder).ignores(name: String(FileIndex.name(of: folder)), path: folder)
+            }
+        }
+    }
+
+    /// These rules without `folders`: a root in one is left out, and inside the other roots they're skipped.
+    func deferring(_ folders: Set<String>) -> FileRules {
+        guard !folders.isEmpty else { return self }
+        let roots = roots.filter { root in !folders.contains { IgnoreRules.holds($0, root) } }
+        return FileRules(
+            roots: roots, ignore: ignore.adding(folders.sorted()), maxDepth: maxDepth, protected: protected)
+    }
+
+    /// The rules for `path`: those of the innermost root it's in.
+    func ignore(at path: String) -> IgnoreRules {
+        var best: (rules: IgnoreRules, length: Int)?
+        for (root, rules) in zip(roots, ignoreInRoots)
+        where (path == root || path.hasPrefix(root + "/")) && root.count > best?.length ?? -1 {
+            best = (rules, root.count)
+        }
+        return best?.rules ?? ignore
+    }
+
+    /// The ignored paths FSEvents can leave out: those that hold no root.
+    var excludedPaths: [String] {
+        ignore.paths.filter { path in !roots.contains { IgnoreRules.holds(path, $0) } }
+    }
+
+    /// What FSEvents leaves out, at most `limit` folders (its own limit is 8): `excludedPaths`, then the folders right
+    /// in a root that its rules skip by name (`.cache`, `.npm`, `node_modules` in `~`), the most recently changed
+    /// first, so writes there never wake Pith. Reads each root's folder: call on a worker.
+    func watchExclusions(limit: Int = 8) -> [String] {
+        var excluded = Array(excludedPaths.prefix(limit))
+        var skipped: [(path: String, changed: Int)] = []
+        for (root, ignore) in zip(roots, ignoreInRoots) {
+            guard let names = try? FileManager.default.contentsOfDirectory(atPath: root) else { continue }
+            for name in names {
+                let path = root == "/" ? "/" + name : root + "/" + name
+                var info = stat()
+                // A folder that is a root or holds one (a nested root counts as skipped in the outer one) stays.
+                guard ignore.ignores(name: name, path: path), !roots.contains(where: { IgnoreRules.holds(path, $0) }),
+                    lstat(path, &info) == 0, info.st_mode & S_IFMT == S_IFDIR,
+                    !excluded.contains(where: { IgnoreRules.holds($0, path) })
+                else { continue }
+                skipped.append((path, info.st_mtimespec.tv_sec))
+            }
+        }
+        excluded += skipped.sorted { $0.changed > $1.changed }.prefix(max(0, limit - excluded.count)).map(\.path)
+        return excluded
     }
 }
 
@@ -30,8 +103,8 @@ public struct IgnoreRules: Sendable, Equatable {
     private let names: Set<String>
     private let patterns: [Pattern]
     /// Absolute, without a trailing slash.
-    public let paths: [String]
-    private let pathBytes: [[CChar]]
+    public private(set) var paths: [String]
+    private var pathBytes: [[CChar]]
 
     public init(_ patterns: [String], home: String = NSHomeDirectory()) {
         var names = Set<String>()
@@ -62,7 +135,28 @@ public struct IgnoreRules: Sendable, Equatable {
     }
 
     public func ignores(name: String, path: String) -> Bool {
-        ignores(name: name) || paths.contains { path == $0 || path.hasPrefix($0 + "/") }
+        ignores(name: name) || paths.contains { Self.holds($0, path) }
+    }
+
+    /// The rules inside `root`, a folder that was asked for: without the path rules that hold it.
+    func inside(_ root: String) -> IgnoreRules {
+        var rules = self
+        rules.paths = paths.filter { !Self.holds($0, root) }
+        rules.pathBytes = rules.paths.map { Array($0.utf8CString.dropLast()) }
+        return rules
+    }
+
+    /// These rules, also skipping `paths` and everything under them.
+    func adding(_ paths: [String]) -> IgnoreRules {
+        var rules = self
+        rules.paths += paths
+        rules.pathBytes = rules.paths.map { Array($0.utf8CString.dropLast()) }
+        return rules
+    }
+
+    /// Whether `folder` is `path` or one of the folders it's in.
+    static func holds(_ folder: String, _ path: String) -> Bool {
+        path == folder || path.hasPrefix(folder + "/")
     }
 
     /// The same, with the path as a C string, as `fts` gives it.
@@ -94,8 +188,8 @@ public enum FileScanner {
     /// Indexes everything under `rules.roots`.
     public static func scan(_ rules: FileRules, into index: inout FileIndex) {
         var packages = PackageCache()
-        for root in rules.roots where !rules.ignore.ignores(name: String(FileIndex.name(of: root)), path: root) {
-            walk(root, under: index.addRoot(root), rules: rules, packages: &packages, into: &index)
+        for (root, ignore) in zip(rules.roots, rules.ignoreInRoots) {
+            walk(root, under: index.addRoot(root), rules: rules, ignore: ignore, packages: &packages, into: &index)
         }
     }
 
@@ -104,7 +198,7 @@ public enum FileScanner {
     public static func scan(folder: String, rules: FileRules, into index: inout FileIndex) {
         guard let entry = index.entry(at: folder) else { return }
         var packages = PackageCache()
-        walk(folder, under: entry, rules: rules, packages: &packages, into: &index)
+        walk(folder, under: entry, rules: rules, ignore: rules.ignore(at: folder), packages: &packages, into: &index)
     }
 
     /// Whether a directory with this name is a package (an app, a bundle, a Photos library…), which the index treats
@@ -115,7 +209,7 @@ public enum FileScanner {
     }
 
     private static func walk(
-        _ start: String, under startEntry: Int32, rules: FileRules, packages: inout PackageCache,
+        _ start: String, under startEntry: Int32, rules: FileRules, ignore: IgnoreRules, packages: inout PackageCache,
         into index: inout FileIndex
     ) {
         let startDepth = index.depth(of: startEntry)
@@ -139,7 +233,7 @@ public enum FileScanner {
             let pathLength = Int(entry.pointee.fts_pathlen)
             let name = String(cString: path + (pathLength - Int(entry.pointee.fts_namelen)))
             let isDirectory = info == FTS_D
-            if rules.ignore.ignores(name: name, path: path, length: pathLength) {
+            if ignore.ignores(name: name, path: path, length: pathLength) {
                 if isDirectory { fts_set(fts, entry, FTS_SKIP) }
                 continue
             }

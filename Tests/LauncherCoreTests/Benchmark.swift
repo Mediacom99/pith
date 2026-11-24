@@ -80,6 +80,59 @@ import Testing
         report(index, iterations: 50)
     }
 
+    /// A month of clipboard history: 5,000 clips, mostly short, some long, a few at the 4,096-character cap; then the
+    /// worst case, every clip at the cap. Queries as they're typed, one keystroke at a time.
+    @Test func clipboardHistory() {
+        var random = SplitMix64(seed: 11)
+        let words = [
+            "docker", "compose", "deploy", "acme", "budget", "review", "meeting", "https://github.com/acme/site",
+            "SELECT", "FROM", "users", "café", "résumé", "the", "and", "notes", "quarterly", "invoice", "2026",
+        ]
+        func text(characters: Int) -> String {
+            var text = ""
+            while text.count < characters {
+                text += words.randomElement(using: &random)! + (Int.random(in: 0..<8, using: &random) == 0 ? "\n" : " ")
+            }
+            return String(text.prefix(characters))
+        }
+        let start = Date(timeIntervalSince1970: 1_790_000_000)
+        func clip(_ number: Int, _ text: String) -> Clip {
+            Clip(
+                id: Int64(number), kind: .text, copied: start + Double(number) * 60, source: nil,
+                pinned: number % 97 == 0,
+                size: text.utf8.count, text: text, lines: Clip.lineCount(of: text))
+        }
+        let typical = (0..<5_000).map { number in
+            let length =
+                switch Int.random(in: 0..<100, using: &random) {
+                case 0..<70: Int.random(in: 10...200, using: &random)
+                case 70..<95: Int.random(in: 200...2_000, using: &random)
+                default: Clip.textLimit
+                }
+            return clip(number, text(characters: length))
+        }
+        let worst = (0..<5_000).map { clip($0, text(characters: Clip.textLimit)) }
+        let typed = [
+            "d", "do", "doc", "dock", "docker", "docker c", "docker co", "docker comp", "zzz", "caf", "qua inv",
+            // Letters every long clip has, in words none of them do: nothing stops the scan early.
+            "acmebudget", "dockerdeploy", "budget review meeting",
+        ]
+        for (name, clips) in [("typical", typical), ("every clip 4,096 characters", worst)] {
+            var index = ClipboardIndex()
+            let build = ContinuousClock().measure { index = ClipboardIndex(clips: clips) }
+            print("clipboard, \(name): \(clips.count) clips, index \(build.ms)")
+            for query in typed {
+                var matches = 0
+                let elapsed = ContinuousClock().measure {
+                    for _ in 0..<50 { matches = index.search(query, limit: 100).count }
+                }
+                print(
+                    "  \(query.padding(toLength: 22, withPad: " ", startingAt: 0)) \((elapsed / 50).ms) per search, \(matches) shown"
+                )
+            }
+        }
+    }
+
     private func report(_ index: FileIndex, iterations: Int) {
         for query in Self.queries {
             var matches = 0

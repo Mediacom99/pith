@@ -75,4 +75,4 @@ shows its "login item added" notification.
 
 ## 9. Performance pass
 
-Status: **in progress**, merged with milestone 2 step 8, which measures both on the same build.
+Status: **todo**, after milestone 3 (decision 31). Merged with milestone 2 step 8, which measures both on the same build.

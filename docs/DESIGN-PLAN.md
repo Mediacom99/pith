@@ -9,7 +9,8 @@ Goal: a deliberate look for every surface in `FEATURES.md`, done through the imp
 - **What doesn't change:** the speed targets (one frame from ⌘P, under 5 ms per keystroke), and an opaque panel with
   no animation and no blur.
 
-This plan runs alongside the milestone plans.
+This plan runs alongside the milestone plans. Step 7 comes before step 6, and step 6 starts with the clipboard,
+milestone 3 (decision 31).
 
 Status values: **done**, **in review** (built and tested, waiting for Edoardo), **in progress**, **todo**.
 
@@ -127,14 +128,51 @@ Status: **done**. Stage is built, reviewed, documented and installed.
 
 ## 6. Briefs for the planned surfaces
 
-Status: **todo**.
-- Run `/impeccable shape` for the calculator row, the clipboard browser (list, preview pane, pinned items) and the
-  text editor.
+Status: **done** for the clipboard, **todo** for the calculator.
+- Clipboard: `docs/BRIEF-CLIPBOARD.md`, confirmed by Edoardo; `docs/MILESTONE-3.md` builds it. Shaped with him: what he copies (text, links, images,
+  files), that he mostly wants the last few copies, and decisions 33–36 (newest first, ⌘⇧V, concealed copies
+  skipped, the editor after milestone 3).
+- Calculator: run `/impeccable shape` for its row when its milestone comes. The text editor gets its own brief after
+  milestone 3 (decision 36).
 - Their milestone plans point to the briefs.
 
 ## 7. Polish
 
-Status: **todo**.
-- `/impeccable polish` and `/impeccable clarify` cover the copy: the placeholder, problem rows and action names.
-- `/impeccable harden`: a failed Move to Trash is reported, not only logged.
-- Check AA contrast in light and dark, then take the final snapshots.
+Status: **done**. Polish, clarify and harden passes are done, Edoardo checked them in the installed app, and the
+snapshots are final for the launcher.
+- **Harden:** an action that fails after the panel closes posts a notification saying what failed and why, and a
+  click reveals the item (decision 32): Move to Trash, opening a file, folder or app, Open With…, Open in Terminal.
+  A failed Move to Trash keeps the item in the history. `Notifier` (was `ZipNotifier`) posts these and Zip's.
+  Tested by `aFailedMoveToTrashIsReported`, on a file that doesn't exist, so nothing reaches the Trash.
+- **Copy:**
+  - Escape's key cap reads "esc", as on the keyboard: ⎋ at 11 pt read as an undo arrow.
+  - Commands say "Pith command" on the tile, not "Launcher command".
+  - Problems say what Pith does meanwhile: a config that isn't valid TOML adds "so every setting is at its
+    default", a taken hotkey "so it's still "cmd+p"". An app that doesn't resolve reads "can't find the app "…""
+    instead of "no app "…"".
+  - Kept: "Search" as the placeholder (the calculator and the `c ` prefix join the root search, so "Search apps and
+    files" would go stale), and the action names, which are Finder's.
+- **Contrast**, measured on the snapshots: the key caps' glyphs were 4.1:1 in dark mode, under AA. They now use a
+  Key color shared with the row's ↩ (#3C3C3C light, #D6D6D6 dark): 8.8:1 and 7.4:1 on a cap. Everything else
+  passes: the placeholder 10.4:1 and 10.9:1, "running" 5.7:1 and 6.5:1, and the step 5 numbers.
+- Checked on screen: the key caps in both modes, and a failed Move to Trash (a locked file) posting its notification.
+
+## 8. The landing page
+
+Status: **in review**. Built, through impeccable's finish review (a fix round: the panel at its real size, the keys as
+a list on phones, a truthful "te" demo, drawn arrow keys, a visible hover, a config sample that fits; on 2026-11-23 a polish of the
+setup, settings and updates for the installer, decision 56), and documented
+in `DESIGN.md`'s Website section. `site/index.html` on `pith.edoardobertoli.xyz` (decision 51): Raycast's structure, pinned by
+Edoardo, in Stage's world carried to the web. The direction contract is in `.impeccable/surfaces/site-index-html.md`.
+- **First viewport:** the claim "Fast, small, and out of your way.", Download for Mac, four key caps (⌘P, te, ⌘K,
+  ⌘⇧V) that switch the real panel underneath in one frame, as do the same keys pressed on the page.
+- **Below:** a keyboard of key caps where Pith's keys are lit and explain themselves, four reasons with measured
+  numbers (44 MB and 0 % CPU idle on 2026-11-23), rows for the launcher, ⌘K and the clipboard, a configuration
+  section (the whole `config.toml` beside every setting, its default and what it does, each lighting the other),
+  Edoardo's why, setting it up in four steps (Download, the installer's window, Open Anyway in System Settings, ⌘P),
+  each with what it looks like, then how a setting changes and how updates arrive, and a closing ⌘P with Download.
+  The config file stays pinned beside the settings and scrolls inside itself when it's taller than the window.
+- **Motion** (decision 53), in the keys only: presses, a one-time hero tour, chords, a retyped config value; the
+  snapshots change in one frame, and Reduce Motion plays nothing by itself. Checked by impeccable's motion review.
+- **Web-only additions to Stage**, in `DESIGN.md`'s Website section: a page ground (#ECECEC light, #141414 dark),
+  the Download button in the label color, and key caps at web sizes (7 px corners); no accent, no fades.
