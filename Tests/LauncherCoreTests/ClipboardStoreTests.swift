@@ -109,9 +109,24 @@ struct ClipboardStoreTests {
         let tooOld = try await store.prune(.init(maxBytes: .max, maxAge: 1.5 * day), now: now)
         #expect(tooOld == [clips[1].id, clips[2].id], "the pinned clip is older still, and stays")
 
-        let tooBig = try await store.prune(.init(maxBytes: 2 * clips[3].size, maxAge: .infinity), now: now)
-        #expect(tooBig == [clips[3].id], "the oldest unpinned clip goes first")
+        let tooBig = try await store.prune(.init(maxBytes: clips[3].size, maxAge: .infinity), now: now)
+        #expect(tooBig == [clips[3].id], "the oldest unpinned clip goes first; the pin doesn't count")
         #expect(try await store.load().map(\.id) == [clips[4].id, clips[0].id])
+    }
+
+    /// Pins bigger than the size limit don't drop every new copy: they don't count toward it (decision 62).
+    @Test func pinsDontCountTowardTheSizeLimit() async throws {
+        let folder = try TemporaryDirectory()
+        let store = ClipboardStore(folder: folder.url)
+        let pinned = try await store.add(text(String(repeating: "Acme ", count: 100)), from: nil, at: start)
+        try await store.setPinned(true, for: pinned.id)
+        let copy = try await store.add(text("Quarterly_Budget_Review"), from: nil, at: start + 60)
+        let limit = ClipboardStore.Retention(maxBytes: copy.size, maxAge: .infinity)
+        #expect(try await store.prune(limit, now: start + 60).isEmpty)
+
+        let next = try await store.add(text("ssh deploy@acme.example"), from: nil, at: start + 120)
+        #expect(try await store.prune(limit, now: start + 120) == [copy.id], "the oldest unpinned clip goes")
+        #expect(try await store.load().map(\.id) == [next.id, pinned.id])
     }
 
     @Test func deletingAnImageRemovesItsFiles() async throws {

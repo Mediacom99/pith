@@ -455,7 +455,26 @@ struct KeysConfigTests {
         #expect(config.clipboardHotkey == nil)
         #expect(
             problems == [
-                "line 2: hotkeys.launcher and hotkeys.clipboard are both \"shift+cmd+v\", so the clipboard's is off"
+                "line 2: hotkeys.launcher and hotkeys.clipboard are both \"shift+cmd+v\", so hotkeys.clipboard is off"
+            ])
+    }
+
+    /// Paste next is ⌃⌥V unless the file says otherwise (decision 63); "" turns it off, and it can't take another
+    /// hotkey's key or a panel key's.
+    @Test func readsPasteNext() {
+        #expect(Config().pasteNextHotkey?.description == "ctrl+alt+v")
+        #expect(Config.parse("hotkeys.paste_next = \"\"").config.pasteNextHotkey == nil)
+        #expect(Config.parse("hotkeys.paste_next = \"cmd+alt+b\"").config.pasteNextHotkey?.description == "alt+cmd+b")
+
+        let (taken, problems) = Config.parse("[hotkeys]\npaste_next = \"cmd+shift+v\"")
+        #expect(taken.pasteNextHotkey == nil && taken.clipboardHotkey?.description == "shift+cmd+v")
+        #expect(
+            problems == [
+                "line 2: hotkeys.clipboard and hotkeys.paste_next are both \"shift+cmd+v\", so hotkeys.paste_next is off"
+            ])
+        #expect(
+            Config.parse("keys.actions = \"ctrl+alt+v\"").problems == [
+                "line 1: keys.actions \"ctrl+alt+v\" is hotkeys.paste_next, so it's left out"
             ])
     }
 

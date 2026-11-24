@@ -334,9 +334,10 @@ release with them, for Edoardo to install as a new user would.
 
 ## 12. Bug check before friends
 
-Status: **in progress**. The check is done, and 1–17 are fixed and published in 0.3.8 (2026-11-23), which also fixes
-0.3.7's ⌘Y (10). Edoardo checked ⌘Y on the 0.3.8 build. The low ones are next. Still to check on a run: 14, and the
-real folder prompts (4) on a first install.
+Status: **in progress**. The check is done. 1–17 are fixed and published in 0.3.8 (2026-11-23), which also fixes
+0.3.7's ⌘Y (10); Edoardo checked ⌘Y on that build. 18–39 are fixed, confirmed or kept (26), and published in 0.3.9
+(2026-11-24) with paste next (decision 63). `make lint test` passes (94 + 144 tests). Still to check on a run: 14, the
+real folder prompts (4) on a first install, and paste next in real apps.
 - **How it was checked:**
   - Read every source file, the install script, the Makefile and the landing page.
   - `make lint test` (197 tests), `make bench`, `make snapshots` and `make page` pass. A keystroke takes 2.2 ms to
@@ -431,7 +432,8 @@ real folder prompts (4) on a first install.
     19. **Fixed:** files keep about 2,500 paths in memory, none cut short, and the title counts the whole list; a
         test covers 3,000 files. What it was: a copy of hundreds of files was cut at 4,096 characters, so the title
         said "and ~50 more", Reveal selected only those, and the last path was cut.
-    20. Pins over `max_size_gb` drop every new copy right after it's recorded.
+    20. **Fixed** (decision 62): pins don't count toward `max_size_gb`; a test covers it. What it was: pins over the
+        cap dropped every new copy right after it was recorded.
     21. **Fixed:** the tables and the version are created in one transaction. What it was: a crash during the very
         first launch broke the history for good ("table already exists").
     22. **Confirmed in theory, made impossible:** the copy's notice reaches the main thread through another executor
@@ -447,8 +449,8 @@ real folder prompts (4) on a first install.
         holding ⌫ to clear a clipboard search overshot into the launcher, and holding Space flickered Quick Look.
     25. **Fixed:** typing cancels a waiting second ⏎ whatever the rows do; a test covers it. What it was: typing that
         left the rows unchanged kept the confirmation armed (Clear Clipboard History ⏎, a space, ⏎ cleared).
-    26. Update Pith is selected when the empty state is empty (a new user with no history), so ⏎ on an empty field
-        restarts into the update.
+    26. **Kept as it is** (Edoardo): Update Pith is selected when the empty state is empty (a new user with no
+        history), so ⏎ on an empty field restarts into the update; the tile shows Update Pith and its key.
     27. **Confirmed and fixed:** a copied file's facts are read again the first time the clipboard shows it after
         opening, the last answer showing meanwhile; a test covers a file deleted since. What it was: they were
         cached until relaunch, so a deleted file never said "No longer in".
@@ -491,5 +493,7 @@ real folder prompts (4) on a first install.
         doesn't touch the installed copy's updates. What it was: the Terminal line stopped Pith with a signal, and a
         waiting update could put an older build over the new copy.
 - **Still open beside it:**
-  - repeat-to-paste (FEATURES §11, Edoardo picks);
+  - **Done:** paste next (decision 63), Edoardo's pick for repeat-to-paste: after ⏎ pastes a clip, ⌃⌥V
+    (`[hotkeys] paste_next`) pastes the one copied right after it, then the next, up to the newest. `PasteRun` holds
+    the order at that paste; tests cover the order, skipped and meanwhile copies, the config and the panel.
   - the quieter first install's other prompts (FEATURES §11).

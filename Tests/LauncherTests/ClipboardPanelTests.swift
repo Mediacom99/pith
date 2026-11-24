@@ -154,6 +154,39 @@ struct ClipboardPanelTests {
         #expect(copied.clips.last?.text == "newest")
     }
 
+    /// Paste next (decision 63): after ⏎ pastes a clip, each ⌃⌥V pastes the one copied right after it, up to the
+    /// newest. Copy to Clipboard ends the run.
+    @Test func pasteNextPastesWhatWasCopiedAfterThePastedClip() async throws {
+        let folder = try TemporaryDirectory()
+        let copied = CopiedClips()
+        let panel = try await clipboardPanel(
+            folder.url,
+            [(text("Jane Appleseed"), nil, 4), (text("jane@acme.example"), nil, 3), (text("1 Infinite Loop"), nil, 2)],
+            copied: copied)
+        panel.launcher.canPaste = true
+        #expect(!panel.launcher.pasteNext(), "nothing pasted yet: the hotkey opens the clipboard instead")
+
+        panel.launcher.prepareToShow(.clipboard)
+        press("down", in: panel)
+        press("down", in: panel)
+        press("return", in: panel)
+        #expect(panel.launcher.pasteNext() && panel.launcher.pasteNext())
+        #expect(!panel.launcher.pasteNext(), "the newest was the last")
+        #expect(copied.clips.map(\.text) == ["Jane Appleseed", "jane@acme.example", "1 Infinite Loop"])
+        #expect(copied.deliveries.map(\.delivery) == [.paste, .paste, .paste])
+
+        panel.launcher.reset()
+        panel.launcher.prepareToShow(.clipboard)
+        press("down", in: panel)
+        press("return", in: panel)
+        panel.launcher.reset()
+        panel.launcher.prepareToShow(.clipboard)
+        panel.launcher.toggleActions()
+        press("cmd+w", in: panel)
+        #expect(copied.deliveries.last?.delivery == .copy)
+        #expect(!panel.launcher.pasteNext(), "a copy ends the run")
+    }
+
     @Test func commandKOffersWhatEachKindCanDo() async throws {
         let folder = try TemporaryDirectory()
         let rich = ClipContent(

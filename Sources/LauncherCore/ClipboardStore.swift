@@ -15,7 +15,8 @@ public final class ClipboardStore: @unchecked Sendable {
         }
     }
 
-    /// How much history is kept: whichever limit is hit first drops the oldest unpinned clips (decision 37).
+    /// How much history is kept: whichever limit is hit first drops the oldest unpinned clips (decision 37). Pinned
+    /// clips don't count toward `maxBytes` (decision 62).
     public struct Retention: Sendable, Equatable {
         public var maxBytes: Int
         public var maxAge: TimeInterval
@@ -249,7 +250,8 @@ public final class ClipboardStore: @unchecked Sendable {
     }
 
     /// Applies `retention` and returns the ids it deleted: unpinned clips older than its age go, then the oldest
-    /// unpinned ones until the history fits its size. Pinned clips always stay.
+    /// unpinned ones until they fit its size. Pinned clips always stay, and don't count toward it (decision 62): pins
+    /// bigger than the limit would otherwise drop every new copy.
     public func prune(_ retention: Retention, now: Date) async throws(Failure) -> [Int64] {
         try await run { () throws(Failure) in
             let statement = try self.database().prepare(
@@ -260,7 +262,7 @@ public final class ClipboardStore: @unchecked Sendable {
                 rows.append(
                     (statement.integer(0), statement.real(1), Int(statement.integer(2)), statement.integer(3) != 0))
             }
-            var total = rows.reduce(0) { $0 + $1.size }
+            var total = rows.reduce(0) { $0 + ($1.pinned ? 0 : $1.size) }
             let oldest = now.timeIntervalSince1970 - retention.maxAge
             var removed: [Int64] = []
             for row in rows where !row.pinned && (row.copied < oldest || total > retention.maxBytes) {

@@ -124,6 +124,17 @@ final class LauncherPanel: NSPanel {
         toggle(.clipboard, pressedAt: pressedAt)
     }
 
+    /// Paste next's hotkey (⌃⌥V, decision 63): pastes the next clip of the run into the app you're in; with nothing
+    /// to paste, opens the clipboard, where you pick the first.
+    func pasteNext(pressedAt: TimeInterval) {
+        if launcher.pasteNext() { return }
+        if !isVisible {
+            present(.clipboard, pressedAt: pressedAt)
+        } else {
+            launcher.switchMode(to: .clipboard)
+        }
+    }
+
     private func toggle(_ mode: LauncherViewController.Mode, pressedAt: TimeInterval) {
         if !isVisible {
             present(mode, pressedAt: pressedAt)

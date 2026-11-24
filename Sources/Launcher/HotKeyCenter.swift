@@ -62,7 +62,7 @@ final class HotKeyCenter {
     }
 }
 
-/// The configured global hotkeys by name (`launcher`, `clipboard`: `[hotkeys]`, decision 55), registered with a
+/// The configured global hotkeys by name (`launcher`, `clipboard`, `paste_next`: `[hotkeys]`), registered with a
 /// `HotKeyCenter`, and the problem for each one that couldn't be.
 final class GlobalHotkeys {
     private let center: HotKeyCenter

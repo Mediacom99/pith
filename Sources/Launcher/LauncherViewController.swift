@@ -88,6 +88,9 @@ final class LauncherViewController: NSViewController {
     var canPaste = false {
         didSet { if canPaste != oldValue, mode == .clipboard { refresh() } }
     }
+    /// What paste next pastes (decision 63): the clips copied after the one pasted last from the clipboard, pasted
+    /// the way it was.
+    private(set) var pasteRun: (clips: PasteRun, delivery: ClipDelivery)?
     /// The first ⏎ without Accessibility access asks for it.
     var askForAccessibility: () -> Void = {}
     /// Called as the clipboard is shown, to check access again.
@@ -1298,16 +1301,37 @@ extension LauncherViewController {
         }
         panel?.dismiss()
         switch action {
-        case .paste: deliverClip(clip, .paste)
-        case .copy:
-            deliverClip(clip, .copy)
-        case .pastePlainText: deliverClip(clip, canPaste ? .pastePlainText : .copyPlainText)
+        case .paste, .copy, .pastePlainText:
+            let delivery: ClipDelivery =
+                switch action {
+                case .paste: .paste
+                case .pastePlainText: canPaste ? .pastePlainText : .copyPlainText
+                default: .copy
+                }
+            deliverClip(clip, delivery)
+            // A paste starts paste next's run from this clip (decision 63); a copy ends the one before.
+            pasteRun = delivery.presses ? (PasteRun(after: clip.id, in: clipboard?.index.clips ?? []), delivery) : nil
         case .openLink:
             if let url = URL(string: clip.text) { open(url, with: linkApp(for: clip)?.url) }
         case .reveal: reveal(clip)
         case .save: save(clip)
         case .pin, .unpin, .delete: break
         }
+    }
+
+    /// Paste next (`[hotkeys] paste_next`, decision 63): pastes the clip copied right after the one pasted last, as that
+    /// one was (plain text stays plain), closing the panel first. False when there's nothing to paste: no paste from
+    /// the clipboard yet, the run is over, or Pith can't press ⌘V.
+    func pasteNext() -> Bool {
+        guard canPaste, let clipboard, var run = pasteRun else { return false }
+        guard let clip = run.clips.next(in: clipboard.index) else {
+            pasteRun = nil
+            return false
+        }
+        pasteRun = run
+        panel?.dismiss()
+        deliverClip(clip, run.delivery)
+        return true
     }
 
     /// Puts the clip back on the clipboard, then presses ⌘V for a paste. Plain text is the clip itself, so it's marked

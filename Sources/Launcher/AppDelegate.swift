@@ -135,6 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeys.apply([
             ("launcher", config.launcherHotkey, { [weak panel] in panel?.toggle(pressedAt: $0) }),
             ("clipboard", config.clipboardHotkey, { [weak panel] in panel?.toggleClipboard(pressedAt: $0) }),
+            ("paste_next", config.pasteNextHotkey, { [weak panel] in panel?.pasteNext(pressedAt: $0) }),
         ])
         panel.launcher.clipboardHotkey = hotkeys.current("clipboard")?.symbols
         panel.launcher.keys = config.keys

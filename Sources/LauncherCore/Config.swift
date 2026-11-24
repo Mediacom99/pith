@@ -15,6 +15,8 @@ public struct Config: Sendable, Equatable {
     public var launcherHotkey = Shortcut("cmd+p")!
     /// Opens the panel straight in the clipboard (decision 34). Nil when it's off, which leaves the key to apps.
     public var clipboardHotkey = Shortcut("cmd+shift+v")
+    /// Pastes the clip copied right after the one pasted last (decision 63). Nil when it's off.
+    public var pasteNextHotkey = Shortcut("ctrl+alt+v")
     /// The keys inside the panel (decision 55).
     public var keys = KeyBindings.defaults
     /// Clipboard History's alias in the launcher (decision 42); followed by a space, it opens the clipboard. Empty
@@ -113,6 +115,7 @@ public struct Config: Sendable, Equatable {
                     switch name {
                     case "hotkeys.launcher": config.launcherHotkey = fallback.launcherHotkey
                     case "hotkeys.clipboard": config.clipboardHotkey = fallback.clipboardHotkey
+                    case "hotkeys.paste_next": config.pasteNextHotkey = fallback.pasteNextHotkey
                     case "launcher.empty_state": config.emptyState = fallback.emptyState
                     case "launcher.clipboard_alias": config.clipboardAlias = fallback.clipboardAlias
                     case "launcher.launch_at_login": config.launchAtLogin = fallback.launchAtLogin
@@ -146,10 +149,11 @@ public struct Config: Sendable, Equatable {
                 switch (name, entry.value) {
                 case ("hotkeys.launcher", .string("")):
                     problem("hotkeys.launcher can't be off: it's how Pith opens")
-                case ("hotkeys.clipboard", .string("")):
+                case ("hotkeys.clipboard", .string("")), ("hotkeys.paste_next", .string("")):
                     hotkeyLines[key] = entry.line
-                    config.clipboardHotkey = nil
-                case ("hotkeys.launcher", .string(let text)), ("hotkeys.clipboard", .string(let text)):
+                    if key == "clipboard" { config.clipboardHotkey = nil } else { config.pasteNextHotkey = nil }
+                case ("hotkeys.launcher", .string(let text)), ("hotkeys.clipboard", .string(let text)),
+                    ("hotkeys.paste_next", .string(let text)):
                     if let hotkey = Shortcut(text),
                         let editing = KeyBindings.editingKeys.first(where: {
                             $0.shortcut == hotkey
@@ -159,7 +163,11 @@ public struct Config: Sendable, Equatable {
                         problem("\(name) \"\(text)\" is \(editing.name) in every app, so it's left as it was")
                     } else if let hotkey = Shortcut(text), hotkey.isGlobal {
                         hotkeyLines[key] = entry.line
-                        if key == "launcher" { config.launcherHotkey = hotkey } else { config.clipboardHotkey = hotkey }
+                        switch key {
+                        case "launcher": config.launcherHotkey = hotkey
+                        case "clipboard": config.clipboardHotkey = hotkey
+                        default: config.pasteNextHotkey = hotkey
+                        }
                     } else {
                         problem("\(name) \"\(text)\" isn't a shortcut like \"cmd+p\"")
                     }
@@ -242,8 +250,8 @@ public struct Config: Sendable, Equatable {
                     problem("clipboard.max_size_gb should be a number, like 2 or 0.5")
                 case ("clipboard.max_age_days", _):
                     problem("clipboard.max_age_days should be a whole number of days")
-                case ("hotkeys.launcher", _), ("hotkeys.clipboard", _), ("launcher.empty_state", _),
-                    ("launcher.clipboard_alias", _), ("actions.terminal", _):
+                case ("hotkeys.launcher", _), ("hotkeys.clipboard", _), ("hotkeys.paste_next", _),
+                    ("launcher.empty_state", _), ("launcher.clipboard_alias", _), ("actions.terminal", _):
                     problem("\(name) should be a string in quotes")
                 case ("launcher.launch_at_login", _):
                     problem("launcher.launch_at_login should be true or false")
@@ -256,16 +264,23 @@ public struct Config: Sendable, Equatable {
                 }
             }
         }
-        // One hotkey can't open both: the launcher keeps it, at the later line's say.
-        if config.clipboardHotkey == config.launcherHotkey, let line = hotkeyLines.values.max() {
-            config.clipboardHotkey = nil
+        // One key can't be two hotkeys: the first of launcher, clipboard and paste_next keeps it, and the problem is
+        // on the later line of the two.
+        var hotkeys = [(name: "launcher", shortcut: config.launcherHotkey)]
+        for (name, setting) in [("clipboard", \Config.clipboardHotkey), ("paste_next", \Config.pasteNextHotkey)] {
+            guard let hotkey = config[keyPath: setting] else { continue }
+            guard let owner = hotkeys.first(where: { $0.shortcut == hotkey }) else {
+                hotkeys.append((name, hotkey))
+                continue
+            }
+            config[keyPath: setting] = nil
+            let line = max(hotkeyLines[owner.name] ?? 0, hotkeyLines[name] ?? 0)
             problems.append(
                 (
                     line,
-                    "line \(line): hotkeys.launcher and hotkeys.clipboard are both \"\(config.launcherHotkey)\", so the clipboard's is off"
+                    "line \(line): hotkeys.\(owner.name) and hotkeys.\(name) are both \"\(hotkey)\", so hotkeys.\(name) is off"
                 ))
         }
-        let hotkeys = [("launcher", config.launcherHotkey)] + (config.clipboardHotkey.map { [("clipboard", $0)] } ?? [])
         let keys = KeyBindings.resolve(written: writtenKeys, hotkeys: hotkeys)
         config.keys = keys.bindings
         problems += keys.problems
@@ -298,6 +313,10 @@ public struct Config: Sendable, Equatable {
         # Opens the clipboard history. It takes the key from every app: cmd+shift+v is Paste and Match Style in many,
         # and the clipboard's Paste as Plain Text does the same. "" turns it off.
         clipboard = "cmd+shift+v"
+        # After you paste a clip from the clipboard, pastes the one you copied right after it, then the next, up to
+        # the newest: for filling in a form with what you copied in order. A clip pasted as plain text keeps the rest
+        # plain. With nothing left to paste, opens the clipboard. "" turns it off.
+        paste_next = "ctrl+alt+v"
 
         [keys]
         # The keys inside Pith: one key, or a list of them like ["up", "ctrl+k"]. [] turns one off.
@@ -342,7 +361,8 @@ public struct Config: Sendable, Equatable {
         max_depth = 6
 
         [clipboard]
-        # How much history to keep: whichever limit is reached first drops the oldest items. Pinned items always stay.
+        # How much history to keep: whichever limit is reached first drops the oldest items. Pinned items always stay,
+        # and don't count toward max_size_gb.
         max_size_gb = 2
         max_age_days = 30
 

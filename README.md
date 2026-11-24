@@ -98,6 +98,7 @@ bar icon.
 |---|---|
 | ⌘P | Open or close the launcher, from any app |
 | ⌘⇧V, or Clipboard History in the launcher (type `c`) | Open the clipboard history; ⌫ on its empty field goes back to the launcher |
+| ⌃⌥V | Paste next: after you paste a clip, paste the one you copied right after it, then the next, from any app |
 | ↑ ↓ or ⌃K ⌃J | Move the selection |
 | ⏎ | Open the selected item, run the selected action, or paste the selected clip into the app you were in |
 | ⌘K | Show the selected item's actions, or go back to the search |
@@ -180,6 +181,7 @@ it's fixed, the settings it touches stay as they were.
 [hotkeys]
 launcher = "cmd+p"
 clipboard = "cmd+shift+v"   # "" turns it off
+paste_next = "ctrl+alt+v"   # after a paste from the clipboard, the clip copied right after it; "" turns it off
 
 [keys]                      # the keys inside Pith: one, or a list; [] turns one off
 up = ["up", "ctrl+k"]
@@ -200,7 +202,7 @@ ignore = [".*", "~/Library", "node_modules", ".build", "*.photoslibrary"]
 max_depth = 6
 
 [clipboard]
-max_size_gb = 2             # whichever is reached first drops the oldest items; pinned ones stay
+max_size_gb = 2             # whichever is reached first drops the oldest items; pinned ones stay and don't count
 max_age_days = 30
 
 [actions]
