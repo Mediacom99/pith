@@ -14,7 +14,7 @@ Scope: the front page of pith.edoardobertoli.xyz. Mode: Persuade.
 - **Proof:** the real panel snapshots from `docs/snapshots/`, light and dark; measured numbers only: 44 MB and 0 % CPU
   idle (`make stats`, 2026-11-23), about 2 ms of work per keystroke over 111 apps and 35,000+ files (milestone 2).
 - **Constraints:** static files served by the Worker in `Support/wrangler.toml`, beside the update feed; no claims
-  beyond `FEATURES.md` and the measurements; no Raycast text, logo or artwork; the repo is private, so no source link.
+  beyond `FEATURES.md` and the measurements; no Raycast text, logo or artwork. The repo is public (decision 65), so a source link could join the page; it hasn't yet.
 - **Answers (Edoardo, 2026-11-23):** the headline leads with fast and small; Edoardo's first-person "why" names
   Raycast once; features are what ships (launcher, ⌘K, clipboard, updates), and the calculator is one line under
   "coming next".
