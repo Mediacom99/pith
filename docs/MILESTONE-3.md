@@ -221,4 +221,9 @@ before each release.
 - **Docs:** done. The status lines say what's true now and what's left, and the narrative of fixed bugs is in git.
   README is for people using Pith and FEATURES the spec, without the same tables in both; every link and anchor
   resolves.
-- **Memory, release checks:** todo.
+- **Release checks:** done. Quick Look sits behind a small `PreviewPanel` protocol, and the panel's visibility and
+  its click monitor can be swapped, so `PanelFocusTests` runs the focus rules off screen with a fake preview: one
+  press toggles it once, the arrows move it, losing the keyboard to it keeps the panel (0.3.7's ⌘Y), a click in
+  another app or another app in front closes both, ⎋ closes it first. Reintroducing 0.3.7's bug or the double toggle
+  fails them. `docs/RELEASING.md` has the checks on the installed build before each `make publish`.
+- **Memory:** todo.

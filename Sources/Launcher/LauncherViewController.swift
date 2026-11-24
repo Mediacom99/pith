@@ -1,5 +1,6 @@
 import AppKit
 import LauncherCore
+import Quartz
 
 /// The search field, the tile under it and the list under that: the empty state before you type, search results while
 /// you do, and an item's ⌘K actions. The tile shows what ⏎ acts on and the keys for it (decision 29).
@@ -179,6 +180,11 @@ final class LauncherViewController: NSViewController {
     /// whatever path it takes to the panel (a key equivalent, then a key).
     var pressing: NSEvent?
     weak var previewToggle: NSEvent?
+    /// Quick Look's shared panel, made the first time the preview opens (`create`), nil before. Tests swap in a fake.
+    var previewPanel: (_ create: Bool) -> (any PreviewPanel)? = { create in
+        guard create || QLPreviewPanel.sharedPreviewPanelExists() else { return nil }
+        return QLPreviewPanel.shared()
+    }
 
     var panel: LauncherPanel? { viewIfLoaded?.window as? LauncherPanel }
 

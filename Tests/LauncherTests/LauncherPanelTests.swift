@@ -37,6 +37,11 @@ func type(_ text: String, in panel: LauncherPanel) async {
 /// when the panel took it; false when it would go on to the search field.
 @discardableResult
 func press(_ key: String, in panel: LauncherPanel, held: Bool = false) -> Bool {
+    panel.handleKey(keyEvent(key, in: panel, held: held))
+}
+
+/// The key-down event for `key`, as the keyboard would send it to the panel.
+func keyEvent(_ key: String, in panel: LauncherPanel, held: Bool = false) -> NSEvent {
     let shortcut = Shortcut(key)!
     var flags: NSEvent.ModifierFlags = []
     for (carbon, flag) in [(cmdKey, NSEvent.ModifierFlags.command), (shiftKey, .shift), (optionKey, .option)]
@@ -55,11 +60,10 @@ func press(_ key: String, in panel: LauncherPanel, held: Bool = false) -> Bool {
         case "down": String(UnicodeScalar(UInt16(NSDownArrowFunctionKey))!)
         default: shortcut.key
         }
-    let event = NSEvent.keyEvent(
+    return NSEvent.keyEvent(
         with: .keyDown, location: .zero, modifierFlags: flags, timestamp: 0, windowNumber: panel.windowNumber,
         context: nil, characters: characters, charactersIgnoringModifiers: characters, isARepeat: held,
         keyCode: UInt16(shortcut.keyCode))!
-    return panel.handleKey(event)
 }
 
 /// Made-up apps, so none of them is running on the machine that runs the tests.

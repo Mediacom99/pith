@@ -3,6 +3,25 @@ import Quartz
 
 // MARK: Quick Look
 
+/// What the launcher asks of Quick Look's panel. `QLPreviewPanel` is the real one; tests give a fake, so nothing goes
+/// on screen.
+protocol PreviewPanel: AnyObject {
+    var isVisible: Bool { get }
+    /// Puts the preview one level above `window`, and asks the launcher, its controller, for the file.
+    func show(above window: NSWindow)
+    func reloadData()
+    func orderOut(_ sender: Any?)
+}
+
+extension QLPreviewPanel: PreviewPanel {
+    func show(above window: NSWindow) {
+        level = NSWindow.Level(rawValue: window.level.rawValue + 1)
+        updateController()
+        orderFront(nil)
+        reloadData()
+    }
+}
+
 extension LauncherViewController {
     /// The selected file or folder, which Quick Look previews (FEATURES.md §4.2), or the clipboard's image or first
     /// file.
@@ -26,9 +45,7 @@ extension LauncherViewController {
         }
     }
 
-    private var quickLook: QLPreviewPanel? {
-        QLPreviewPanel.sharedPreviewPanelExists() ? QLPreviewPanel.shared() : nil
-    }
+    private var quickLook: (any PreviewPanel)? { previewPanel(false) }
 
     var isPreviewing: Bool { quickLook?.isVisible == true }
 
@@ -39,13 +56,10 @@ extension LauncherViewController {
             closePreview()
             return
         }
-        guard let url = previewURL, let preview = QLPreviewPanel.shared(), let window = view.window else { return }
+        guard let url = previewURL, let preview = previewPanel(true), let window = view.window else { return }
         previewing = url
         (window as? LauncherPanel)?.previewWillShow()
-        preview.level = NSWindow.Level(rawValue: window.level.rawValue + 1)
-        preview.updateController()
-        preview.orderFront(nil)
-        preview.reloadData()
+        preview.show(above: window)
     }
 
     func closePreview() {

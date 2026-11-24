@@ -92,8 +92,8 @@ Status: **in review**.
   refreshed by anything else closes it (`PreviewTarget`).
 - ⎋ closes the preview before anything else. Dismissing the launcher closes it, and focus moving into the preview
   doesn't dismiss the launcher. A click in another app, or another app coming to the front, closes both.
-- Tested: which rows can be previewed, and `PreviewTarget`'s rule. Focus can't change off screen: Edoardo checked the
-  real windows on 0.3.11.
+- Tested: which rows can be previewed, `PreviewTarget`'s rule, and the panel's focus rules with a fake preview
+  (`PanelFocusTests`). The real windows are checked before each release (`docs/RELEASING.md`).
 
 ## 7. Zip (feature 15)
 
