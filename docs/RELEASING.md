@@ -29,7 +29,7 @@ Pith updates itself with [Sparkle](https://sparkle-project.org) from `pith.edoar
 - Check for Updates in the launcher checks right away.
 - A notification says when it has updated, or why it couldn't.
 - Settings, history and Accessibility access carry over.
-- The Quit Pith row shows the version, so a report can say which build it's about.
+- The Quit Pith tile shows the version, so a report can say which build it's about.
 
 Pith isn't notarized (decision 46), so the installer's first open needs Open Anyway in System Settings, Privacy &
 Security; the Terminal line doesn't. Their Mac needs macOS 26 and Apple Silicon.
