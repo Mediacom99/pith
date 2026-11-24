@@ -512,7 +512,8 @@ every app's banners then (`isScreenShared=1` in `donotdisturbd`'s log), and they
   (`PreviewTarget`) and follows only the user's moves (a key, a click, typing), so a list refreshed by anything else
   closes it rather than switch files; if Quick Look still gets a key, ⌘Y, Space and ⎋ close it and give the keyboard
   back, the panel's other keys work as in the launcher, and typing goes to the search; one press toggles the preview
-  once. A test covers the rule; Edoardo checked the real windows on the installed build.
+  once. A test covers the rule; Edoardo checked the real windows on the installed build. Published in 0.3.11
+  (2026-11-24).
 - **Still open beside it:**
   - **Done:** paste next (decisions 63, 64), Edoardo's pick for repeat-to-paste: each ⌃⌥V (`[hotkeys] paste_next`)
     pastes the next clip down the history from the newest, without the panel; a 10 s pause or a new copy starts over.
