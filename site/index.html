@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Pith · a fast, small launcher for macOS</title>
-<meta name="description" content="Press ⌘P from any app, type a few letters, press ⏎. Apps, files, folders and your clipboard history in a native Mac app that uses 44 MB and no CPU while it waits.">
+<meta name="description" content="Press ⌘P from any app, type a few letters, press ⏎. Apps, files, folders and your clipboard history in a native Mac app that uses 62 MB and no CPU while it waits.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://pith.edoardobertoli.xyz/">
 <meta property="og:title" content="Pith · a fast, small launcher for macOS">
-<meta property="og:description" content="Press ⌘P, type a few letters, press ⏎. Apps, files, folders and your clipboard, in 44 MB.">
+<meta property="og:description" content="Press ⌘P, type a few letters, press ⏎. Apps, files, folders and your clipboard, in one native panel.">
 <meta property="og:image" content="https://pith.edoardobertoli.xyz/snapshots/recent-dark.png">
 <meta property="og:image:width" content="1360">
 <meta property="og:image:height" content="846">
@@ -278,6 +278,9 @@ button.k.down { background: var(--action); color: var(--on-action); border-color
 }
 .reasons h3 { font-size: 1.1875rem; letter-spacing: -0.015em; }
 .reasons p { margin-top: 8px; color: var(--quiet); font-size: 1rem; }
+/* Where the numbers come from (step 8): the machine, the date, the method, one quiet line. */
+.measured { margin-top: 28px; max-width: 52rem; font-size: 0.875rem; color: var(--quiet); }
+.measured a { color: var(--quiet); }
 
 /* Feature rows */
 .feature {
@@ -437,6 +440,13 @@ button.k.down { background: var(--action); color: var(--on-action); border-color
 .after kbd, .head kbd { font-size: 0.78em; }
 .needs { margin-top: 32px; color: var(--quiet); font-size: 0.9375rem; }
 .needs + .needs { margin-top: 8px; }
+/* FAQ: what a first visit asks, each question over its answer, two columns. */
+.faq { margin-top: clamp(32px, 4vw, 48px); display: grid; grid-template-columns: 1fr 1fr; gap: 36px clamp(24px, 3vw, 44px); }
+.faq h3 { font-size: 1.1875rem; letter-spacing: -0.015em; }
+.faq h3 code { font: 500 0.9em var(--mono); }
+.faq p { margin-top: 8px; color: var(--quiet); max-width: 34rem; }
+.faq p code { font: 400 0.9em var(--mono); overflow-wrap: anywhere; }
+.faq kbd { font-size: 0.78em; }
 
 /* Close */
 .close { text-align: center; padding-bottom: var(--section); }
@@ -470,7 +480,7 @@ footer .source-link:hover { color: var(--label); }
 }
 @media (max-width: 600px) {
   footer .wordmark { flex-basis: 100%; }
-  .steps, .after { grid-template-columns: 1fr; }
+  .steps, .after, .faq { grid-template-columns: 1fr; }
   .command { flex-wrap: wrap; padding: 12px 6px 6px 14px; }
   .command code { flex-basis: 100%; font-size: 0.8125rem; }
   .copy { margin-left: auto; }
@@ -503,6 +513,7 @@ footer .source-link:hover { color: var(--label); }
       <a href="#clipboard">Clipboard</a>
       <a href="#config">Config</a>
       <a href="#why">Why</a>
+      <a href="#faq">FAQ</a>
     </nav>
     <a class="source" href="https://github.com/Mediacom99/pith" aria-label="Pith on GitHub" title="Pith on GitHub"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
     <a class="button small" href="#install">
@@ -516,7 +527,7 @@ footer .source-link:hover { color: var(--label); }
   <section class="hero" aria-labelledby="claim">
     <div class="wrap">
       <h1 id="claim">Fast, small, and out of your way.</h1>
-      <p class="lede">Pith is a keyboard launcher for the Mac. Press <kbd>⌘</kbd> <kbd>P</kbd> from any app, type a few letters, press <kbd>⏎</kbd>. Apps, files, folders and everything you copied, in a native app that uses 44&nbsp;MB and no CPU while it waits.</p>
+      <p class="lede">Pith is a keyboard launcher for the Mac. Press <kbd>⌘</kbd> <kbd>P</kbd> from any app, type a few letters, press <kbd>⏎</kbd>. Apps, files, folders and everything you copied, in a native app that uses 62&nbsp;MB and no CPU while it waits.</p>
       <div class="get" id="get">
         <div class="terminal">
           <p>Install it with one line in Terminal</p>
@@ -633,11 +644,11 @@ footer .source-link:hover { color: var(--label); }
       <div class="reasons">
         <div>
           <h3>Fast</h3>
-          <p>Built when your Mac starts and searched in memory: about 2&nbsp;ms of work per keystroke, over 35,000 files.</p>
+          <p>Built when your Mac starts and searched in memory: under 3&nbsp;ms of work per keystroke over 35,800 files, and a month of clipboard opens in 1.4&nbsp;ms.</p>
         </div>
         <div>
           <h3>Small</h3>
-          <p>44&nbsp;MB of memory and 0&nbsp;% CPU while it waits, measured on my Mac today.</p>
+          <p>62&nbsp;MB of memory and 0&nbsp;% CPU while it waits, an hour into use. A month of clipboard adds about 7&nbsp;MB.</p>
         </div>
         <div>
           <h3>Private</h3>
@@ -648,6 +659,7 @@ footer .source-link:hover { color: var(--label); }
           <p>Swift and AppKit, light or dark with your Mac, and set up in one text file.</p>
         </div>
       </div>
+      <p class="measured">Measured on 24 November 2026 on a MacBook Pro with an M4 Pro (12 cores) and 24&nbsp;GB of memory, on macOS 27.2.1. The benchmarks drive the real panel off screen in a release build, over the Mac’s 110 apps, its 35,800 files and a generated month of clipboard: 5,000 clips with 312 screenshots. Memory and CPU are the installed app’s. <a href="https://github.com/Mediacom99/pith#performance">How, in detail</a>.</p>
     </div>
   </section>
 
@@ -823,6 +835,36 @@ footer .source-link:hover { color: var(--label); }
       </div>
       <p class="needs">Pith is in beta: usable every day, with rough edges. Fixes arrive on their own with each update, and you can say what you find in an <a href="https://github.com/Mediacom99/pith/issues">issue on GitHub</a>.</p>
       <p class="needs">Needs macOS 26 Tahoe or later and Apple Silicon. Pith takes <kbd>⌘</kbd> <kbd>P</kbd> from every app, Print included; you can change that, and every other key, in the config.</p>
+    </div>
+  </section>
+
+  <section id="faq" aria-labelledby="faq-title">
+    <div class="wrap">
+      <div class="head">
+        <h2 id="faq-title">Fair questions.</h2>
+      </div>
+      <div class="faq">
+        <div>
+          <h3><code>curl | sh</code>, really?</h3>
+          <p>The script is about 75 lines: <a href="install.sh">install.sh</a>, also in the <a href="https://github.com/Mediacom99/pith/blob/main/site/install.sh">repo</a>. It downloads Pith.dmg over HTTPS and checks that the app is signed with Pith’s certificate, refusing anything else. Then it copies Pith into Applications and opens it. Read it before you run it. A file curl downloads isn’t quarantined, so Gatekeeper doesn’t ask. That’s convenient, and also why the signature check is there. If you’d rather not pipe to a shell, use the .dmg (one Open Anyway) or <a href="https://github.com/Mediacom99/pith#build-from-source">build it from source</a>.</p>
+        </div>
+        <div>
+          <h3>Why isn’t it notarized?</h3>
+          <p>Notarizing needs Apple’s Developer Program, $99 a year, and Pith is free with no income. I’ll consider it if enough people use it. Until then it’s signed with its own certificate, which keeps your permissions across updates. Updates are signed too: Sparkle checks each one against a key built into the app.</p>
+        </div>
+        <div>
+          <h3>Why not Spotlight, Raycast, Alfred or Maccy?</h3>
+          <p>Honestly, if Spotlight in Tahoe covers you, use it. I used Raycast and think it’s excellent, but all I used was the launcher, and it comes with extensions, AI, an account and a paid tier. Alfred is great, but its clipboard is in the paid Powerpack. Maccy is a great clipboard manager, but only that. Pith is the part I used: apps, files, folders and the clipboard in one panel, with actions on <kbd>⌘</kbd> <kbd>K</kbd>, paste next, and every key in a text file. It’s native, opens in one frame, and is open source.</p>
+        </div>
+        <div>
+          <h3>Is it safe? It has Accessibility and reads my clipboard.</h3>
+          <p>Everything stays on your Mac. The only network access is a daily update check to this site. Accessibility is only used to press <kbd>⌘</kbd> <kbd>V</kbd> in the app you were in. Copies that password managers mark as concealed are skipped. The history is kept 30 days or 2&nbsp;GB, and can be paused or cleared from the launcher. It’s stored unencrypted in <code>~/Library/Application Support/pith</code>, like other clipboard managers, so FileVault is what protects it. The code is <a href="https://github.com/Mediacom99/pith/blob/main/LICENSE">GPL-3.0</a>, so you can check all of this.</p>
+        </div>
+        <div>
+          <h3>No AI, but the commits say Co-Authored-By Claude?</h3>
+          <p>There’s no AI in the product: it never sends anything anywhere. Building it is another matter. I made Pith with Claude Code as a pair programmer. I decide what it does and how, and every decision is in <a href="https://github.com/Mediacom99/pith/blob/main/docs/ARCHITECTURE.md">docs/ARCHITECTURE.md</a> with its reason. Claude writes much of the code, and everything goes through tests, benchmarks and my daily use. <a href="https://github.com/Mediacom99/pith/blob/main/AGENTS.md">AGENTS.md</a> is the brief it works from.</p>
+        </div>
+      </div>
     </div>
   </section>
 

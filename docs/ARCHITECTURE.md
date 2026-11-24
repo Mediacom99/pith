@@ -276,20 +276,27 @@ identical.
 
 ### Measured (this Mac)
 
+Edoardo's MacBook Pro (Mac16,8): Apple M4 Pro, 12 cores (8 performance, 4 efficiency), 24 GB, macOS 27.2.1. The
+`make bench` rows are a release build driving the real panel off screen, averaged over 20–50 rounds after a warm-up;
+they were last run on 2026-11-24 (step 8), the on-screen and footprint rows on the build they name.
+
 | Case | Result | How |
 |---|---|---|
-| Scan of the 3 app folders (113 apps) | ~12–15 ms, on a worker | `make bench` |
+| Scan of the 3 app folders (110 apps) | ~12–15 ms, on a worker | `make bench` |
 | Search over installed apps | ≤ 0.003 ms per keystroke | `make bench` |
-| Scan of the home folder with the default rules (35,627 entries) | 130–150 ms on a worker (warm cache) | `make bench` |
+| Scan of the home folder with the default rules (35,801 entries) | 130–150 ms on a worker (warm cache) | `make bench` |
 | File index memory | 4.4 MB for the home folder; 16 MB for 100k files | `make bench` (`FileIndex.memoryBytes`) |
 | File search | 0.1–0.3 ms for one word, 0.2–0.4 ms for two or three (35k entries); up to 0.7 ms at 100k; round trip from the main thread 0.1–0.2 ms | `make bench` |
-| Keystroke work in-process (apps + 35.6k files, merge, update the rows and the tile, render; offscreen) | ~2.0 ms (1.9 ms before Stage, same session) | `make bench` (UIBenchmark) |
-| ⌘P work in-process (sync running apps, fill the empty state, lay out, draw; offscreen) | 0.4–0.5 ms recent (8 rows), 0.45 ms running (111 rows), 0.2 ms none | `make bench` (UIBenchmark) |
+| Keystroke work in-process (apps + 35.8k files, merge, update the rows and the tile, render; offscreen) | 2.3–2.9 ms (0.3.10, 2026-11-24); ~2.0 ms on the Stage build | `make bench` (UIBenchmark) |
+| ⌘P work in-process (sync running apps, fill the empty state, lay out, draw; offscreen) | 0.6–0.8 ms recent (8 rows), 0.4–0.7 ms running (110 rows), 0.2–0.3 ms none (0.3.10) | `make bench` (UIBenchmark) |
+| A month of clipboard (5,000 clips with 312 screenshots, 33 MB on disk as flat test images) | loaded at launch 5.8 ms; ⌘⇧V → drawn 1.4 ms; a keystroke in it 0.16 ms to update, 0.004 ms to draw | `make bench` (UIBenchmark) |
+| Clipboard search, 5,000 clips | 0.01–1.6 ms; 2.4 ms at worst, every clip at 4,096 characters; the clips and their keys take 6.9 MB | `make bench` |
 | FSEvents → file searchable | about 0.5–1 s (0.5 s coalescing) | tests |
 | ⌘P → panel drawn, on screen | Stage build, clear window with round corners: 23 ms, almost all "update" (one sample); milestone 2 build: ~27 ms | `make logs` |
 | Keystroke → results drawn, on screen (apps + 35.6k files) | Stage build: typically 7–12 ms: delivery 2–3, update 4.7–6, draw 0–2; a few at 19–22 ms with 8–13 ms of delivery. Milestone 2 build: 7–10 ms | `make logs` |
 | Footprint 25 s after launch, untouched | Stage build 39 MB, the milestone 2 build 30 MB, measured the same way. 5.9 MB of the Stage build is the tile's 96 px icons: 123 bitmaps of 36 KB, each in its own 48 KB block | `make stats`, `footprint` |
 | Idle (milestone 2 build) | 24 MB footprint, 0% CPU, 6 threads | `make stats` |
+| Installed 0.3.10, an hour after a clean install, launcher, clipboard, Quick Look and notifications used | 62 MB footprint (34 MB heap, 8 MB CoreAnimation, 7 MB icon bitmaps), steady for 30 minutes; 0% CPU, 5 threads, about 7 idle wakeups a minute | `make stats`, `footprint`, `top` |
 
 ## Visual decisions
 

@@ -269,8 +269,9 @@ keystroke is 2.3–2.9 ms. Edoardo's installed 0.3.10 (`make stats`, `top`), an 
 Look, notifications and the clipboard used, 38,700 items in the home folder: 62 MB, steady over 30 minutes, 0 % CPU,
 5 threads, 7 idle wakeups a minute (the 500 ms clipboard timer coalesces). 62 MB is over the 50 MB target and the
 published 44 MB (page) and 39 MB (README): 34 MB heap, 8 MB CoreAnimation, 7 MB icon bitmaps. Next: the footprint
-right after launch, after a few ⌘P and ⌘⇧V, and after Quick Look, to see what holds the rest; then the published
-numbers. Measured with Sparkle in the build:
+right after launch, after a few ⌘P and ⌘⇧V, and after Quick Look, to see what holds the rest. Published as they
+are, with the machine and the method: the README's Performance section, the landing page's reasons and the line
+under them, and `docs/ARCHITECTURE.md`'s measurements. Measured with Sparkle in the build:
 - ⌘⇧V → drawn;
 - keystroke → drawn;
 - idle CPU and wakeups with the recording timer;
