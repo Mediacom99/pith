@@ -1,15 +1,21 @@
-# Pith
+<p align="center">
+  <img src="Support/AppIcon.svg" width="128" height="128" alt="Pith's icon: a citrus cross-section in grays, the white pith between the peel and the segments.">
+</p>
 
-**A keyboard-only launcher and clipboard manager for macOS.**
+<h1 align="center">Pith</h1>
+
+<p align="center"><b>A keyboard-only launcher and clipboard manager for macOS.</b></p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-26%2B-000?logo=apple&logoColor=white" alt="macOS 26+">
+  <img src="https://img.shields.io/badge/Apple%20Silicon-only-000" alt="Apple Silicon">
+  <img src="https://img.shields.io/badge/Swift-6.4-F05138?logo=swift&logoColor=white" alt="Swift 6.4">
+  <img src="https://img.shields.io/badge/dependencies-1%20%28Sparkle%29-2ea44f" alt="Dependencies: 1">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="License: GPL-3.0"></a>
+</p>
 
 Press ⌘P from any app, type a few letters, press ⏎: apps, files and folders in one ranked list, with their actions on
 ⌘K. Press ⌘⇧V for everything you've copied. Native AppKit, always resident, and free: no account, no telemetry, no AI.
-
-![macOS 26+](https://img.shields.io/badge/macOS-26%2B-000?logo=apple&logoColor=white)
-![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-only-000)
-![Swift 6.4](https://img.shields.io/badge/Swift-6.4-F05138?logo=swift&logoColor=white)
-![Dependencies: 1](https://img.shields.io/badge/dependencies-1%20%28Sparkle%29-2ea44f)
-[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
 <p align="center">
   <picture>
