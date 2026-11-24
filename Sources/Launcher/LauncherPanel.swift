@@ -35,20 +35,16 @@ final class LauncherPanel: NSPanel {
             [weak self] notification in
             guard notification.object is QLPreviewPanel else { return }
             MainActor.assumeIsolated {
-                guard let self, self.isVisible, self.launcher.isPreviewing else { return }
+                guard let self, self.isShown(), self.launcher.isPreviewing else { return }
                 self.makeKey()
             }
         }
-        // While Quick Look is up, another app coming to the front (⌘Tab, a click on its icon) closes both.
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
         ) { [weak self] notification in
             let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            guard app?.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
-            MainActor.assumeIsolated {
-                guard let self, self.launcher.isPreviewing else { return }
-                self.dismiss()
-            }
+            let pid = app?.processIdentifier
+            MainActor.assumeIsolated { self?.appActivated(pid) }
         }
     }
 
@@ -94,7 +90,7 @@ final class LauncherPanel: NSPanel {
 
     /// Opens the launcher if it isn't showing: for opening Pith.app again, the way in when the hotkey doesn't fire.
     func show() {
-        guard !isVisible else { return }
+        guard !isShown() else { return }
         present(.launcher, pressedAt: ProcessInfo.processInfo.systemUptime)
     }
 
@@ -104,7 +100,7 @@ final class LauncherPanel: NSPanel {
     }
 
     private func toggle(_ mode: LauncherViewController.Mode, pressedAt: TimeInterval) {
-        if !isVisible {
+        if !isShown() {
             present(mode, pressedAt: pressedAt)
         } else if launcher.mode == mode {
             dismiss()
@@ -137,8 +133,8 @@ final class LauncherPanel: NSPanel {
     var onDismiss: () -> Void = {}
 
     func dismiss() {
-        guard isVisible else { return }
-        if let previewMonitor { NSEvent.removeMonitor(previewMonitor) }
+        guard isShown() else { return }
+        if let previewMonitor { stopWatchingClicks(previewMonitor) }
         previewMonitor = nil
         launcher.closePreview()
         orderOut(nil)
@@ -170,12 +166,25 @@ final class LauncherPanel: NSPanel {
 
     func previewWillShow() {
         guard previewMonitor == nil else { return }
-        previewMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown])
-        {
-            [weak self] _ in
-            MainActor.assumeIsolated { self?.dismiss() }
+        previewMonitor = watchClicksElsewhere { [weak self] in self?.dismiss() }
+    }
+
+    /// Another app came to the front (⌘Tab, a click on its icon): while Quick Look is up, that closes both. Without
+    /// it, the panel closes as it loses the keyboard.
+    func appActivated(_ pid: pid_t?) {
+        guard pid != ProcessInfo.processInfo.processIdentifier, launcher.isPreviewing else { return }
+        dismiss()
+    }
+
+    /// Whether the panel is on screen. Tests, whose panels never are, swap it.
+    lazy var isShown: () -> Bool = { [unowned self] in self.isVisible }
+    /// Starts watching for a click in another app, and stops. Tests swap both, so they install no global monitor.
+    var watchClicksElsewhere: (_ clicked: @escaping @MainActor () -> Void) -> Any? = { clicked in
+        NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { _ in
+            MainActor.assumeIsolated { clicked() }
         }
     }
+    var stopWatchingClicks: (Any) -> Void = { NSEvent.removeMonitor($0) }
 
     /// The panel's keys (`[keys]`, decision 55) come before the field editor and the editing keys, unless an input
     /// method is composing text: it keeps its keys.

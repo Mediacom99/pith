@@ -122,8 +122,9 @@ Status: **done** (decisions 48–50).
 
 Status: **in progress**. `make bench` on a month of history, 5,000 clips with 312 screenshots: loading it at launch
 5.8 ms, ⌘⇧V → drawn 1.4 ms, a keystroke in the clipboard 0.16 ms; a search 0.01–1.6 ms, 2.4 ms at worst; the clips
-and their keys take 6.9 MB. The launcher's keystroke is 2.3–2.9 ms of work. The installed 0.3.10, an hour into use:
-62 MB, 0 % CPU, 5 threads, 7 idle wakeups a minute. 62 MB is over the 50 MB target: step 13 finds what each use adds.
+and their keys take 6.9 MB. The launcher's keystroke is 2.3–2.9 ms of work. Memory, by use (step 13): 43 MB at launch,
+53 MB after searching, the clipboard and pasting, 63 MB after a first Quick Look, and up to 90 MB after scrolling a
+long PDF in it, over the 50 MB target; 0 % CPU and 5 threads idle.
 
 ## 9. Design review
 
@@ -221,4 +222,18 @@ before each release.
 - **Docs:** done. The status lines say what's true now and what's left, and the narrative of fixed bugs is in git.
   README is for people using Pith and FEATURES the spec, without the same tables in both; every link and anchor
   resolves.
-- **Memory, release checks:** todo.
+- **Release checks:** done. Quick Look sits behind a small `PreviewPanel` protocol, and the panel's visibility and
+  its click monitor can be swapped, so `PanelFocusTests` runs the focus rules off screen with a fake preview: one
+  press toggles it once, the arrows move it, losing the keyboard to it keeps the panel (0.3.7's ⌘Y), a click in
+  another app or another app in front closes both, ⎋ closes it first. Reintroducing 0.3.7's bug or the double toggle
+  fails them. `docs/RELEASING.md` has the checks on the installed build before each `make publish`.
+- **Memory:** measured, not fixed. The installed 0.3.11, relaunched, one use at a time with `footprint` every 2 s and
+  `heap` after each: 43 MB at launch; ⌘P and typing +7 MB (3 MB of heap the first time text is searched and drawn, the
+  rest the panel's surfaces, kept for a one-frame ⌘P); ⌘⇧V +3 MB; the first Quick Look +10 MB (6 MB of heap for its own
+  panel, which stays); paste, paste next and idle nothing; a screenshot copy a 6 MB peak. Scrolling a long PDF in Quick
+  Look peaks at 121 MB, the spike seen before, and leaves 85–90 MB: its freed heap is scattered through pages still in
+  use. About 8 MB of heap is AppKit's drawing caches, most of them for text, which any app holds once it draws. Tried on the installed build
+  and reverted, neither measurably helping: giving freed pages back after the panel closes
+  (`malloc_zone_pressure_relief`, at once or 5 s later), and Quick Look letting go of its file as it closes. Left:
+  Quick Look's memory. Freeing it means a preview window of Pith's own, made and dropped per use, which looks and
+  behaves differently from Quick Look's; Edoardo kept ⌘P and Quick Look as they are for now.

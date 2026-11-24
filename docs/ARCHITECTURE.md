@@ -313,9 +313,7 @@ they were last run on 2026-11-24 (step 8), the on-screen and footprint rows on t
 | FSEvents → file searchable | about 0.5–1 s (0.5 s coalescing) | tests |
 | ⌘P → panel drawn, on screen | Stage build, clear window with round corners: 23 ms, almost all "update" (one sample); milestone 2 build: ~27 ms | `make logs` |
 | Keystroke → results drawn, on screen (apps + 35.6k files) | Stage build: typically 7–12 ms: delivery 2–3, update 4.7–6, draw 0–2; a few at 19–22 ms with 8–13 ms of delivery. Milestone 2 build: 7–10 ms | `make logs` |
-| Footprint 25 s after launch, untouched | Stage build 39 MB, the milestone 2 build 30 MB, measured the same way. 5.9 MB of the Stage build is the tile's 96 px icons: 123 bitmaps of 36 KB, each in its own 48 KB block | `make stats`, `footprint` |
-| Idle (milestone 2 build) | 24 MB footprint, 0% CPU, 6 threads | `make stats` |
-| Installed 0.3.10, an hour after a clean install, launcher, clipboard, Quick Look and notifications used | 62 MB footprint (34 MB heap, 8 MB CoreAnimation, 7 MB icon bitmaps), steady for 30 minutes; 0% CPU, 5 threads, about 7 idle wakeups a minute | `make stats`, `footprint`, `top` |
+| Installed 0.3.11 by use, 2026-11-24 (relaunched, then one use at a time, 20 s apart) | 43 MB at launch, untouched: 22.5 MB heap, 5.8 MB icon bitmaps. 53 MB after ⌘P and typing, the clipboard, a paste and paste next: +3.5 MB of heap the first time text is searched and drawn, and ~5 MB of the panel's drawing surfaces, kept between shows so ⌘P draws in one frame. +10 MB at the first Quick Look, 6 MB of it heap for Quick Look's own panel, which lives as long as Pith. Scrolling a long PDF in Quick Look peaks at 114–121 MB and leaves 85–90 MB: 30–37 MB of freed heap scattered through pages still in use, which macOS doesn't take back, even when asked (`malloc_zone_pressure_relief`). A screenshot copy peaks 6 MB higher for a moment. Idle: 0 % CPU, 5 threads, about 7 wakeups a minute | `footprint` every 2 s, `heap`, `vmmap` |
 
 ## Visual decisions
 
