@@ -261,8 +261,16 @@ Status: **done** (Edoardo, 2026-11-23). Built and tested (decisions 48–50). On
 
 ## 8. Performance
 
-Status: **todo**. Measured with a month-sized history (thousands of entries, a few hundred screenshots), and Sparkle
-in the build:
+Status: **in progress** (2026-11-24). `make bench` (release) on a month of history, 5,000 clips with 312 screenshots
+(33 MB on disk as flat test images; real screenshots weigh more, up to the 2 GB cap): loading it at launch 5.8 ms,
+⌘⇧V → drawn 1.4 ms, a keystroke in the clipboard 0.16 ms to update and 0.004 ms to draw; a search 0.01–1.6 ms, and
+2.4 ms at worst with every clip at 4,096 characters; the clips and their search keys take 6.9 MB. The launcher's
+keystroke is 2.3–2.9 ms. Edoardo's installed 0.3.10 (`make stats`, `top`), an hour after a clean install with Quick
+Look, notifications and the clipboard used, 38,700 items in the home folder: 62 MB, steady over 30 minutes, 0 % CPU,
+5 threads, 7 idle wakeups a minute (the 500 ms clipboard timer coalesces). 62 MB is over the 50 MB target and the
+published 44 MB (page) and 39 MB (README): 34 MB heap, 8 MB CoreAnimation, 7 MB icon bitmaps. Next: the footprint
+right after launch, after a few ⌘P and ⌘⇧V, and after Quick Look, to see what holds the rest; then the published
+numbers. Measured with Sparkle in the build:
 - ⌘⇧V → drawn;
 - keystroke → drawn;
 - idle CPU and wakeups with the recording timer;
