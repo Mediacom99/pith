@@ -48,7 +48,7 @@ nothing (~0% CPU, under 50 MB).
 
 Speed and small size are the product. It's native AppKit and always resident: the window is built at launch and the
 indexes live in memory, so it opens in one frame. It has Raycast's keyboard actions with the footprint and immediacy of
-rofi and dmenu. It has no AI, extensions, store, account or telemetry, and touches the network only for an update
+rofi and dmenu. It has no AI, extension store, account or telemetry (Lua scripting, the user's own, is planned: decision 70), and touches the network only for an update
 check and currency rates. Settings are a text file, not a settings window.
 
 ## Operating Context

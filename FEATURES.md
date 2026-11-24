@@ -2,7 +2,7 @@
 
 > The app is called **Pith** (decision 30): bundle ID `dev.edoardo.pith`, config in `~/.config/pith/`.
 
-A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppKit. No AI, no extensions, no account, no telemetry. Opens in one frame.
+A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppKit. No AI, no extension store, no account, no telemetry. Opens in one frame.
 
 ---
 
@@ -249,7 +249,7 @@ max_age_days = 30
 
 ## 9. Out of scope
 
-AI of any kind · extensions / store · snippets · quicklinks · window management · emoji picker · translate · calendar · notes · focus · hyper key · script commands · themes · cloud sync · accounts.
+AI of any kind · an extension store · snippets · quicklinks · window management · emoji picker · translate · calendar · notes · focus · hyper key · themes · cloud sync · accounts. Anything else people want, they add themselves with Lua scripting, later (§12).
 
 ---
 
@@ -282,3 +282,25 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
   download (Edoardo, 2026-11-23): the first install is an installer, the window that opens with Pith and an arrow to
   drag it into Applications (a disk image, decision 56), and one line in Terminal skips the dialog (decision 57).
 - [x] Default size cap / max age: 2 GB, 30 days (decision 37)
+
+---
+
+## 12. Later: Lua scripting
+
+*Planned, not scheduled (decision 70): after milestone 3, and designed when it starts.* The core stays small, fast and
+minimal; users add what they want themselves, in Lua, through a small internal API, as Neovim, WezTerm, mpv and
+Hammerspoon do.
+
+- **Where:** one file of the user's, `~/.config/pith/init.lua` (beside `config.toml`), reloaded when it's saved. No
+  store and nothing downloaded: scripts are the user's own.
+- **A small first API**, to be settled at design time: commands in the launcher, ⌘K actions on files, apps and clips,
+  hotkeys, and hooks on a copy (skip it, or change it).
+- **It can't make typing slow:** anything a script adds while you type runs with a time limit (Lua stops a script
+  after a set number of instructions) and under the same newest-wins rule as the file search; or the first API
+  leaves out results-as-you-type, and has only commands and actions, which run when chosen.
+- **Permissions:** a script runs with Pith's (Accessibility, the clipboard), so the docs say to run only scripts you
+  trust.
+- **Dependency:** Lua itself, vendored as C source (MIT, compatible with the GPL), the second dependency beside
+  Sparkle.
+- **Positioning:** "no extensions" becomes "no extension store" (done with decision 70); the README's Why and the
+  landing page get a line about scripting when it ships.
