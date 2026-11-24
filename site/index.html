@@ -135,6 +135,9 @@ kbd.down {
 .button svg { width: 18px; height: 18px; flex: none; }
 .button.small { font-size: 0.9375rem; padding: 9px 14px 9px 12px; border-radius: 7px; }
 .button.small svg { width: 15px; height: 15px; }
+/* The installer, the other way in (decision 67): a key with an edge, not the label's fill. */
+.button.secondary { color: var(--label); background: var(--panel); box-shadow: inset 0 0 0 1px var(--edge), 0 1px 1px rgba(0, 0, 0, 0.06); }
+.button.secondary:hover { background: var(--fill); box-shadow: inset 0 0 0 1px var(--edge), 0 1px 1px rgba(0, 0, 0, 0.06); }
 
 /* Hero */
 .hero { padding-top: clamp(48px, 7vw, 84px); text-align: center; }
@@ -147,6 +150,10 @@ kbd.down {
 .get { margin-top: 32px; display: grid; justify-items: center; gap: 14px; }
 .get .note { font-size: 0.875rem; color: var(--quiet); }
 .get .note a { color: var(--quiet); }
+.get .alt { font-size: 0.875rem; color: var(--quiet); }
+.get .alt a { color: var(--quiet); white-space: nowrap; }
+.get .alt a:hover { color: var(--label); }
+.get .alt svg { width: 13px; height: 13px; margin-right: 4px; vertical-align: -1px; }
 
 .stage { margin: clamp(36px, 5vw, 52px) auto 0; width: min(680px, 100%); }
 .shot {
@@ -348,14 +355,15 @@ button.k.down { background: var(--action); color: var(--on-action); border-color
 .next strong { color: var(--label); font-weight: 600; }
 
 /* Install */
-/* One line in Terminal (decision 57), under Download: the command on a panel surface, with a key-cap Copy. */
-.terminal { display: grid; justify-items: center; gap: 8px; width: min(100%, 42rem); }
-.terminal p { font-size: 0.875rem; color: var(--quiet); }
+/* One line in Terminal, the way in (decisions 57, 67): the command on a panel surface, with a key-cap Copy. */
+.terminal { display: grid; justify-items: center; gap: 10px; width: min(100%, 44rem); }
+.terminal p { font-size: 0.9375rem; color: var(--label); font-weight: 500; }
+.terminal.wide { margin-top: 28px; width: min(100%, 48rem); }
 .command {
-  width: 100%; display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 16px; text-align: left;
-  border-radius: 10px; background: var(--panel); box-shadow: var(--panel-shadow);
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 20px; text-align: left;
+  border-radius: 12px; background: var(--panel); box-shadow: var(--panel-shadow);
 }
-.command code { flex: 1; min-width: 0; font: 400 0.875rem/1.5 var(--mono); color: var(--label); overflow-wrap: anywhere; user-select: all; }
+.command code { flex: 1; min-width: 0; font: 400 0.9375rem/1.5 var(--mono); color: var(--label); overflow-wrap: anywhere; user-select: all; }
 .or { font-size: 1.1875rem; letter-spacing: -0.015em; }
 .copy {
   flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 6px 8px; border: 0; border-radius: 7px;
@@ -366,7 +374,16 @@ button.k.down { background: var(--action); color: var(--on-action); border-color
 .copy span { margin-left: 4px; }
 .copy:hover, .copy.done { background: var(--fill); }
 .copy.done span { color: var(--label); }
-.or { margin-top: 40px; }
+/* The page's main action (decision 67): Copy takes the label's fill that Download had; its keys stay keys. */
+.copy.primary {
+  padding: 8px 14px 8px 8px; color: var(--on-action); background: var(--action); font-weight: 600;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2), 0 6px 16px rgba(0, 0, 0, 0.14);
+}
+.copy.primary:hover, .copy.primary.done { background: var(--action-hover); }
+.copy.primary.done span { color: var(--on-action); }
+.copy.primary kbd.down { background: var(--key); color: var(--label); }
+.or { margin-top: 48px; }
+.or-note { margin-top: 8px; max-width: 40rem; color: var(--quiet); }
 /* Each step is its number, title, words and what to look for; a subgrid lines the four rows up across the steps. */
 .steps {
   margin: 24px 0 0; padding: 0; list-style: none; counter-reset: step;
@@ -452,7 +469,7 @@ footer .source-link:hover { color: var(--label); }
   footer .wordmark { flex-basis: 100%; }
   .steps, .after { grid-template-columns: 1fr; }
   .command { flex-wrap: wrap; padding: 12px 6px 6px 14px; }
-  .command code { flex-basis: 100%; }
+  .command code { flex-basis: 100%; font-size: 0.8125rem; }
   .copy { margin-left: auto; }
 }
 @media (max-width: 520px) {
@@ -483,12 +500,11 @@ footer .source-link:hover { color: var(--label); }
       <a href="#clipboard">Clipboard</a>
       <a href="#config">Config</a>
       <a href="#why">Why</a>
-      <a href="#install">Install</a>
     </nav>
     <a class="source" href="https://github.com/Mediacom99/pith" aria-label="Pith on GitHub" title="Pith on GitHub"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg></a>
-    <a class="button small" href="Pith.dmg" download>
-      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12"/></svg>
-      Download
+    <a class="button small" href="#install">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 6l4 4-4 4M10.5 15h5"/></svg>
+      Install
     </a>
   </div>
 </header>
@@ -498,19 +514,16 @@ footer .source-link:hover { color: var(--label); }
     <div class="wrap">
       <h1 id="claim">Fast, small, and out of your way.</h1>
       <p class="lede">Pith is a keyboard launcher for the Mac. Press <kbd>⌘</kbd> <kbd>P</kbd> from any app, type a few letters, press <kbd>⏎</kbd>. Apps, files, folders and everything you copied, in a native app that uses 44&nbsp;MB and no CPU while it waits.</p>
-      <div class="get">
-        <a class="button" id="download" href="Pith.dmg" download>
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12"/></svg>
-          Download for Mac
-        </a>
+      <div class="get" id="get">
         <div class="terminal">
-          <p>or paste this in Terminal, with no Open Anyway</p>
+          <p>Install it with one line in Terminal</p>
           <div class="command">
             <code id="command">curl -fsSL https://pith.edoardobertoli.xyz/install.sh | sh</code>
-            <button type="button" class="copy" data-copy="command" aria-label="Copy the command"><kbd>⌘</kbd><kbd>C</kbd><span>Copy</span></button>
+            <button type="button" class="copy primary" data-copy="command" aria-label="Copy the command"><kbd>⌘</kbd><kbd>C</kbd><span>Copy</span></button>
           </div>
         </div>
         <p class="note">Free · macOS 26 Tahoe or later · Apple Silicon · <a href="#install">setting it up</a></p>
+        <p class="alt">Or <a href="Pith.dmg" download><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12"/></svg>download Pith.dmg</a>, which macOS asks you to trust once.</p>
       </div>
 
       <div class="stage">
@@ -751,14 +764,21 @@ footer .source-link:hover { color: var(--label); }
     <div class="wrap">
       <div class="head">
         <h2 id="install-title">Set it up once.</h2>
-        <p>Pith isn’t notarized by Apple. <a href="#download">The Terminal line under Download</a> installs it without a question: it checks that Pith is signed with Pith’s certificate, puts it in Applications and opens it (<a href="install.sh">read the script</a>). With the installer, macOS asks you to trust Pith once. Either way, it then starts at login and updates itself.</p>
+        <p>Paste one line in Terminal. It downloads Pith, checks that it’s signed with Pith’s certificate, puts it in Applications and opens it, without a question from macOS (<a href="install.sh">read the script</a>). Pith then starts at login and updates itself.</p>
       </div>
-      <h3 class="or">With the installer</h3>
+      <div class="terminal wide">
+        <div class="command">
+          <code id="command-setup">curl -fsSL https://pith.edoardobertoli.xyz/install.sh | sh</code>
+          <button type="button" class="copy" data-copy="command-setup" aria-label="Copy the command"><kbd>⌘</kbd><kbd>C</kbd><span>Copy</span></button>
+        </div>
+      </div>
+      <h3 class="or">Or with the installer</h3>
+      <p class="or-note">Pith isn’t notarized by Apple, so the installer takes two more steps: macOS stops Pith the first time, and you trust it once.</p>
       <ol class="steps">
         <li>
           <h3>Download</h3>
           <p>Get the installer and open it once it has downloaded.</p>
-          <a class="button small" href="Pith.dmg" download>
+          <a class="button small secondary" href="Pith.dmg" download>
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12"/></svg>
             Pith.dmg
           </a>
@@ -807,11 +827,14 @@ footer .source-link:hover { color: var(--label); }
       <div class="caps" aria-hidden="true"><kbd data-code="MetaLeft MetaRight">⌘</kbd><kbd data-code="KeyP">P</kbd></div>
       <h2 id="close-title">One keystroke away.</h2>
       <div class="get">
-        <a class="button" href="Pith.dmg" download>
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12"/></svg>
-          Download for Mac
-        </a>
+        <div class="terminal">
+          <div class="command">
+            <code id="command-close">curl -fsSL https://pith.edoardobertoli.xyz/install.sh | sh</code>
+            <button type="button" class="copy primary" data-copy="command-close" aria-label="Copy the command"><kbd>⌘</kbd><kbd>C</kbd><span>Copy</span></button>
+          </div>
+        </div>
         <p class="note">Free · macOS 26 Tahoe or later · Apple Silicon<span class="version" hidden></span></p>
+        <p class="alt">Or <a href="Pith.dmg" download><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3.5v9M6 9l4 4 4-4M4 16.5h12"/></svg>download Pith.dmg</a></p>
       </div>
     </div>
   </section>

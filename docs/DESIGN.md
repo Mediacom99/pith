@@ -205,18 +205,23 @@ components:
   key-secondary:
     textColor: "{colors.quiet-light}"
     typography: "{typography.key-secondary}"
-  web-download:
+  web-action-button:
     backgroundColor: "{colors.web-action-light}"
     textColor: "{colors.web-on-action-light}"
     typography: "{typography.web-button}"
     rounded: "{rounded.web-button}"
     padding: "15px 22px 15px 20px"
-  web-download-hover:
+  web-action-button-hover:
     backgroundColor: "{colors.web-action-hover-light}"
     textColor: "{colors.web-on-action-light}"
-  web-download-small:
+  web-action-button-small:
     backgroundColor: "{colors.web-action-light}"
     textColor: "{colors.web-on-action-light}"
+    rounded: "{rounded.web-key-cap}"
+    padding: "9px 14px 9px 12px"
+  web-secondary-button-small:
+    backgroundColor: "{colors.web-key-light}"
+    textColor: "{colors.label-light}"
     rounded: "{rounded.web-key-cap}"
     padding: "9px 14px 9px 12px"
   web-key-cap:
