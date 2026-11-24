@@ -69,7 +69,8 @@ final class IconStore {
 
     init(typesKept: Int = 256) {
         self.typesKept = typesKept
-        appearanceObservation = NSApp.observe(\.effectiveAppearance) { [weak self] _, _ in
+        // NSApplication.shared, not NSApp: a test can build the store before anything has made the app.
+        appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance) { [weak self] _, _ in
             Task { @MainActor in self?.restyle() }
         }
         // Which center AppKit posts it on isn't documented: listen on both.
@@ -225,7 +226,7 @@ final class IconStore {
         return [Int(Layout.iconSize * scale), Int(Layout.tileIconSize * scale)]
     }
     private static var appearance: NSAppearance.Name {
-        NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) ?? .aqua
+        NSApplication.shared.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) ?? .aqua
     }
 
     /// Keeps icons for `urls` only and renders the missing ones (and the symbols, the first time).
@@ -384,7 +385,7 @@ nonisolated struct IconSource {
     func icon() -> NSImage {
         if key == "folder" { return NSWorkspace.shared.icon(for: .folder) }
         if key.hasPrefix("path:") { return NSWorkspace.shared.icon(forFile: String(key.dropFirst(5))) }
-        let ext = String(key.dropFirst(4))
-        return NSWorkspace.shared.icon(for: UTType(filenameExtension: ext) ?? .data)
+        let fileExtension = String(key.dropFirst(4))
+        return NSWorkspace.shared.icon(for: UTType(filenameExtension: fileExtension) ?? .data)
     }
 }

@@ -23,29 +23,25 @@ Status: **done** (core library; the app uses it from step 2).
 
 ## 2. Search across apps and files
 
-Status: **in review**.
+Status: **done**.
 - Each keystroke searches the apps synchronously and the files on the file engine's queue, then shows one list.
   Apps get a +24 head start (decision 19), and the history boosts both.
 - The settings `folders`, `ignore` and `max_depth` (from step 4) set what's indexed; changing them rebuilds the
   index.
-- File rows show the name and, under it, the full folder path, with icons per type (folder, per extension, an app's
-  own) rendered on first sight off the main thread.
+- File rows show the name and its folder after it, with icons per type (folder, per extension, an app's own) rendered
+  on first sight off the main thread.
 - Queries match word by word, in any order. For files, earlier words can match folders in the path (decision 23).
   Two or three words take 0.2–0.4 ms on the home folder.
 - `recent` lists files and folders too; deleted ones are dropped from the history when it loads.
-- Opening a file uses its default app (`[open_with]` comes in step 5), and a folder opens in Finder.
-- ⌘K on a file offers Open and Reveal for now. Leaving ⌘K restores the results and selection without searching
-  again.
+- Opening a file uses its `[open_with]` app or its default app (step 5), and a folder opens in Finder.
+- Leaving ⌘K restores the results and selection without searching again.
 - The table never rebuilds its cells: results reconfigure the cells on screen, and an empty list only hides them.
-  That took per-keystroke work from 3.8 ms to 1.5 ms (apps + 35.6k files, offscreen), and showing the panel from
-  1.7 ms to 0.3 ms.
 
 Covered by UI tests: merged results with folder detail, apps first on equal matches, files in `recent`, file actions.
-Waiting for Edoardo's run.
 
 ## 3. Live updates
 
-Status: **in review**.
+Status: **done**.
 - The engine owns an FSEvents stream with per-file events on its roots, delivered straight onto its queue, with the
   ignore list's paths (`~/Library`) excluded at the source.
 - An event under a folder that isn't indexed (hidden, ignored, too deep) is dropped with a hash lookup and no
@@ -60,7 +56,7 @@ Status: **in review**.
 
 ## 4. Config
 
-Status: **in review**.
+Status: **done**.
 - `folders`, `ignore`, `max_depth`, `[actions] terminal` and `[open_with]` are parsed, documented in the template
   and tested.
 - App names resolve by name (as listed, or the file name, any case), bundle id or path, on a worker, once the index
@@ -70,7 +66,7 @@ Status: **in review**.
 
 ## 5. File and folder actions (features 12, 14)
 
-Status: **in review**.
+Status: **done**.
 - ⏎ opens a file in its `[open_with]` app: by extension, else the most specific matching type (`public.png` before
   `public.image`), else the default app. A folder opens in Finder.
 - ⌘K on a file: Open, Reveal in Finder, Copy Path, Open With…, Copy File, Move to Trash.
@@ -85,19 +81,22 @@ Status: **in review**.
 
 ## 6. Quick Look (feature 13)
 
-Status: **in review**.
+Status: **done**.
 - ⌘Y, or Space with an empty search field (decision 20), toggles a Quick Look preview of the selected file or
   folder; the preview sits one level above the launcher.
 - The keyboard stays with the launcher: ↑/↓ move through the results and the preview follows; a row that isn't a
-  file closes it. After a click into the preview, ↑/↓ are forwarded back.
+  file closes it. Quick Look's window takes the keyboard as it opens and as its file loads, and the panel takes it
+  straight back while the preview is up.
+- The preview keeps the file it was opened on, and follows only the user's moves (a key, a click, typing): a list
+  refreshed by anything else closes it (`PreviewTarget`).
 - ⎋ closes the preview before anything else. Dismissing the launcher closes it, and focus moving into the preview
-  doesn't dismiss the launcher.
-- Tested: which rows can be previewed. Not tested on screen, since a test would have to show the panel: that's for
-  Edoardo's run.
+  doesn't dismiss the launcher. A click in another app, or another app coming to the front, closes both.
+- Tested: which rows can be previewed, `PreviewTarget`'s rule, and the panel's focus rules with a fake preview
+  (`PanelFocusTests`). The real windows are checked before each release (`docs/RELEASING.md`).
 
 ## 7. Zip (feature 15)
 
-Status: **in review**.
+Status: **done**.
 - ⌘K → Zip on a file or folder runs `ditto -c -k --sequesterRsrc --keepParent` on a worker, so the launcher closes
   right away.
 - Names follow Finder: `report.pdf.zip`, `Folder.zip`, then `… 2.zip`.

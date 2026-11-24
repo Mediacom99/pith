@@ -6,6 +6,8 @@ import Foundation
 ///
 /// Owns its database on a private serial queue: every call runs there, one at a time, off the main thread and off
 /// Swift's cooperative pool. The database opens on the first call.
+///
+/// `@unchecked Sendable`: its mutable state (the open database) is touched only on `queue`.
 public final class ClipboardStore: @unchecked Sendable {
     public struct Failure: Error, CustomStringConvertible {
         public let description: String

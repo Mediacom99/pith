@@ -54,69 +54,67 @@ nonisolated enum Accessibility {
     static let clipboardSettings = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy")
 }
 
-/// What ⌘K offers on a clip (docs/BRIEF-CLIPBOARD.md §6), in the brief's order.
-nonisolated enum ClipAction: CaseIterable, Sendable {
-    case paste, copy, pastePlainText, openLink, reveal, save, pin, unpin, delete
+/// Puts clips back on the clipboard and presses ⌘V: for ⏎, the clip's ⌘K actions and paste next (decision 64). The
+/// pasteboard and the key presses are IPC, so they run on a worker.
+final class ClipPaster {
+    /// Paste next checked Accessibility access at its press: whether it's given.
+    var onAccessChecked: (_ allowed: Bool) -> Void = { _ in }
+    /// A clip that couldn't be read back from the store: what failed, and why.
+    var onFailure: (_ title: String, _ reason: String) -> Void = { _, _ in }
+    /// The paste next in flight: the next one waits for it, so quick presses paste in order.
+    private var pasting: Task<Void, Never>?
 
-    /// The actions for `clip`. Paste needs Accessibility access; without it the plain-text action copies.
-    static func available(for clip: Clip, canPaste: Bool) -> [ClipAction] {
-        var actions: [ClipAction] = canPaste ? [.paste, .copy] : [.copy]
-        switch clip.kind {
-        case .richText: actions += [.pastePlainText, .save]
-        case .text: actions.append(.save)
-        case .link: actions.append(.openLink)
-        case .image: actions.append(.save)
-        case .files: actions.append(.reveal)
-        }
-        return actions + [clip.pinned ? .unpin : .pin, .delete]
-    }
-
-    /// `linkApp`: the app that opens a link, once known ("Open in Safari").
-    func title(canPaste: Bool, linkApp: String?) -> String {
-        switch self {
-        case .paste: "Paste"
-        case .copy: "Copy to Clipboard"
-        case .pastePlainText: canPaste ? "Paste as Plain Text" : "Copy as Plain Text"
-        case .openLink: linkApp.map { "Open in \($0)" } ?? "Open Link"
-        case .reveal: "Reveal in Finder"
-        case .save: "Save as File"
-        case .pin: "Pin"
-        case .unpin: "Unpin"
-        case .delete: "Delete"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .paste: "arrow.down.doc"
-        case .copy: "doc.on.doc"
-        case .pastePlainText: "textformat"
-        case .openLink: "arrow.up.forward.app"
-        case .reveal: "folder"
-        case .save: "square.and.arrow.down"
-        case .pin: "pin"
-        case .unpin: "pin.slash"
-        case .delete: "trash"
+    /// Puts `clip` on the clipboard as `delivery` says, then presses ⌘V for a paste. Plain text is the clip itself,
+    /// so it's marked for the history to skip, and the clip moves to the top as a copy would.
+    func deliver(_ clip: Clip, _ delivery: ClipDelivery, from clipboard: ClipboardHistory) {
+        let store = clipboard.store
+        let vKey = KeyLayout.keyCode(typing: "v") ?? UInt32(kVK_ANSI_V)
+        if delivery == .pasteNext { return pasteInTurn(clip, from: store, key: vKey) }
+        Task {
+            do throws(ClipboardStore.Failure) {
+                if delivery.isPlainText {
+                    let text = try await store.text(of: clip.id)
+                    let plain = [
+                        [Representation(type: NSPasteboard.PasteboardType.string.rawValue, data: Data(text.utf8))]
+                    ]
+                    await runInBackground(qos: .userInitiated) {
+                        Paster.write(plain, source: clip.source, transient: true)
+                        if delivery.presses { Paster.pressCommandV(key: vKey) }
+                    }
+                    await clipboard.moveToTop(clip.id)
+                } else {
+                    let items = try await store.items(of: clip.id)
+                    await runInBackground(qos: .userInitiated) {
+                        Paster.write(items, source: clip.source, transient: false)
+                        if delivery.presses { Paster.pressCommandV(key: vKey) }
+                    }
+                }
+            } catch {
+                onFailure(delivery.presses ? "Couldn't paste the clip" : "Couldn't copy the clip", error.description)
+            }
         }
     }
 
-    /// Deleting a pinned clip waits for a second ⏎, as Force Quit does (decision 28).
-    static let deleteConfirmation = "Press ⏎ again to delete this pinned clip"
-}
-
-/// Where Save as File puts a clip (decision 39): "Clipboard 2026-11-23 at 14.05.png", then "… 2.png" and up when taken.
-nonisolated enum ClipFiles {
-    static func destination(in folder: URL, at date: Date, extension ext: String) -> URL {
-        let format = DateFormatter()
-        format.locale = Locale(identifier: "en_US_POSIX")
-        format.dateFormat = "yyyy-MM-dd 'at' HH.mm"
-        let name = "Clipboard \(format.string(from: date))"
-        var candidate = folder.appending(path: "\(name).\(ext)")
-        var number = 2
-        while FileManager.default.fileExists(atPath: candidate.path) {
-            candidate = folder.appending(path: "\(name) \(number).\(ext)")
-            number += 1
+    /// Paste next's paste (decision 64), after the one before it: its copy is marked for the history to skip, so the
+    /// history keeps the order the run walks down. Accessibility is checked on the worker, at each press, since it can
+    /// be given at any time. The next paste waits a moment, so the app has read the clipboard before it changes again.
+    private func pasteInTurn(_ clip: Clip, from store: ClipboardStore, key vKey: UInt32) {
+        let previous = pasting
+        pasting = Task {
+            await previous?.value
+            do throws(ClipboardStore.Failure) {
+                let items = try await store.items(of: clip.id)
+                let pasted = await runInBackground(qos: .userInitiated) {
+                    guard Accessibility.isAllowed else { return false }
+                    Paster.write(items, source: clip.source, transient: true)
+                    Paster.pressCommandV(key: vKey)
+                    return true
+                }
+                onAccessChecked(pasted)
+                try? await Task.sleep(for: .milliseconds(100))
+            } catch {
+                onFailure("Couldn't paste the clip", error.description)
+            }
         }
-        return candidate
     }
 }

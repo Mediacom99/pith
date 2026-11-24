@@ -40,6 +40,7 @@ public struct FuzzyMatcher {
         let query = self.query
         return scratch.withUnsafeMutableBufferPointer { scratch in
             query.withUnsafeBufferPointer { query in
+                // Never nil: `scratch` holds at least 6 × the text, which is at least as long as the non-empty query.
                 Self.align(query, in: text, bonus: bonus, scratch: scratch.baseAddress!)
             }
         }

@@ -1,38 +1,6 @@
 import AppKit
 import Quartz
 
-/// Panel geometry. Visual decisions, recorded in docs/ARCHITECTURE.md (decision 29).
-enum Layout {
-    static let width: CGFloat = 680
-    static let barHeight: CGFloat = 52
-    static let cornerRadius: CGFloat = 14
-    /// The tile under the bar, which shows what ⏎ acts on: its height, its margin on every side, its corners and icon.
-    static let tileHeight: CGFloat = 92
-    static let tileMargin: CGFloat = 8
-    static let tileRadius: CGFloat = 10
-    static let tileIconSize: CGFloat = 48
-    static let rowHeight: CGFloat = 32
-    static let visibleRows: CGFloat = 8
-    /// Under the last row.
-    static let listBottomInset: CGFloat = 6
-    /// Where the list starts: under the bar, its separator and the tile.
-    static let listTop = barHeight + 1 + tileMargin * 2 + tileHeight
-    static let expandedHeight = listTop + visibleRows * rowHeight + listBottomInset
-    /// In the clipboard the tile is the preview: three rows taller, so five whole rows fit under it and the panel keeps
-    /// its height (docs/BRIEF-CLIPBOARD.md).
-    static let clipboardTileHeight = tileHeight + 3 * rowHeight
-    static let clipboardListTop = listTop + 3 * rowHeight
-    static let iconSize: CGFloat = 20
-    /// The selection's distance from the panel's sides (the tile's margin, so the two line up), and its corners.
-    static let selectionInset: CGFloat = tileMargin
-    static let selectionRadius: CGFloat = 7
-    /// One grid for the bar and the rows: icons start 10 pt inside the selection, and the magnifier is centered on
-    /// the same column. Titles and the query start 10 pt after the icons and stop 10 pt inside the selection.
-    static let iconX: CGFloat = selectionInset + 10
-    static let textX: CGFloat = iconX + iconSize + 10
-    static let textTrailing: CGFloat = selectionInset + 10
-}
-
 /// The launcher window: built and drawn once at launch, then only moved, shown and hidden.
 ///
 /// Non-activating, so the app you were in stays frontmost while you type (FEATURES.md §2). The window is clear only so
@@ -67,20 +35,16 @@ final class LauncherPanel: NSPanel {
             [weak self] notification in
             guard notification.object is QLPreviewPanel else { return }
             MainActor.assumeIsolated {
-                guard let self, self.isVisible, self.launcher.isPreviewing else { return }
+                guard let self, self.isShown(), self.launcher.isPreviewing else { return }
                 self.makeKey()
             }
         }
-        // While Quick Look is up, another app coming to the front (⌘Tab, a click on its icon) closes both.
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
         ) { [weak self] notification in
             let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-            guard app?.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
-            MainActor.assumeIsolated {
-                guard let self, self.launcher.isPreviewing else { return }
-                self.dismiss()
-            }
+            let pid = app?.processIdentifier
+            MainActor.assumeIsolated { self?.appActivated(pid) }
         }
     }
 
@@ -126,7 +90,7 @@ final class LauncherPanel: NSPanel {
 
     /// Opens the launcher if it isn't showing: for opening Pith.app again, the way in when the hotkey doesn't fire.
     func show() {
-        guard !isVisible else { return }
+        guard !isShown() else { return }
         present(.launcher, pressedAt: ProcessInfo.processInfo.systemUptime)
     }
 
@@ -136,7 +100,7 @@ final class LauncherPanel: NSPanel {
     }
 
     private func toggle(_ mode: LauncherViewController.Mode, pressedAt: TimeInterval) {
-        if !isVisible {
+        if !isShown() {
             present(mode, pressedAt: pressedAt)
         } else if launcher.mode == mode {
             dismiss()
@@ -169,8 +133,8 @@ final class LauncherPanel: NSPanel {
     var onDismiss: () -> Void = {}
 
     func dismiss() {
-        guard isVisible else { return }
-        if let previewMonitor { NSEvent.removeMonitor(previewMonitor) }
+        guard isShown() else { return }
+        if let previewMonitor { stopWatchingClicks(previewMonitor) }
         previewMonitor = nil
         launcher.closePreview()
         orderOut(nil)
@@ -202,12 +166,25 @@ final class LauncherPanel: NSPanel {
 
     func previewWillShow() {
         guard previewMonitor == nil else { return }
-        previewMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown])
-        {
-            [weak self] _ in
-            MainActor.assumeIsolated { self?.dismiss() }
+        previewMonitor = watchClicksElsewhere { [weak self] in self?.dismiss() }
+    }
+
+    /// Another app came to the front (⌘Tab, a click on its icon): while Quick Look is up, that closes both. Without
+    /// it, the panel closes as it loses the keyboard.
+    func appActivated(_ pid: pid_t?) {
+        guard pid != ProcessInfo.processInfo.processIdentifier, launcher.isPreviewing else { return }
+        dismiss()
+    }
+
+    /// Whether the panel is on screen. Tests, whose panels never are, swap it.
+    lazy var isShown: () -> Bool = { [unowned self] in self.isVisible }
+    /// Starts watching for a click in another app, and stops. Tests swap both, so they install no global monitor.
+    var watchClicksElsewhere: (_ clicked: @escaping @MainActor () -> Void) -> Any? = { clicked in
+        NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { _ in
+            MainActor.assumeIsolated { clicked() }
         }
     }
+    var stopWatchingClicks: (Any) -> Void = { NSEvent.removeMonitor($0) }
 
     /// The panel's keys (`[keys]`, decision 55) come before the field editor and the editing keys, unless an input
     /// method is composing text: it keeps its keys.

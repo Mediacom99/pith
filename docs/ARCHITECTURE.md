@@ -54,7 +54,7 @@ supersede an earlier one.
 | 45 | 2026-11-23 | The launcher lists only the recording command that applies: Pause Clipboard Recording while recording, Resume Clipboard Recording while paused. | Nothing in the list does nothing. | Edoardo |
 | 46 | 2026-11-23 | Pith isn't notarized, and there's no paid Apple Developer Program: builds go out as zips signed with the local certificate (`make package`, decision 41). Whoever installs one presses Open Anyway in System Settings, Privacy & Security. | Edoardo doesn't want to pay €99 a year. The local certificate still keeps Accessibility access from one build to the next. | Edoardo |
 | 47 | 2026-11-23 | Versions are 0.\<milestone\>.\<patch\>, in `Support/Info.plist`; the build number is when it was built. `make package` tags the commit `v<version>`, and refuses uncommitted changes or a version already tagged on another commit. The Quit Pith tile shows "Pith 0.3.0". | A report from someone trying a build points to the exact code. | Edoardo |
-| 48 | 2026-11-23 | Pith updates itself with Sparkle, from `pith.edoardobertoli.xyz`: an update feed and the builds as static files on Cloudflare, put there by `make publish`. Sparkle's schedule is off; Pith checks after the panel closes, at most once a day. A found update downloads in the background, then the launcher lists Update Pith, whose ⏎ restarts into it; otherwise it installs when Pith quits. Only a copy in an Applications folder updates. The update check is the second network access, after currency rates, and sends nothing about the Mac. | Patches reach whoever tries Pith without a zip by hand and Open Anyway each time. Hotari already runs the same setup (not notarized, Edoardo's domain). Sparkle is the standard, and the code that decides whether a download is really ours is where a mature library beats our own. | Edoardo |
+| 48 | 2026-11-23 | Pith updates itself with Sparkle, from `pith.edoardobertoli.xyz`: an update feed and the builds as static files on Cloudflare, put there by `make publish`. Sparkle's schedule is off; Pith checks after the panel closes, at most once a day. A found update downloads in the background, then the launcher lists Update Pith, whose ⏎ restarts into it; otherwise it installs when Pith quits. Only a copy in an Applications folder updates. The update check is the second network access, after currency rates, and sends nothing about the Mac. | Patches reach whoever tries Pith without a zip by hand and Open Anyway each time. Sparkle is the standard, and the code that decides whether a download is really ours is where a mature library beats our own. | Edoardo |
 | 49 | 2026-11-23 | An update says how it went, as a notification: "Pith updated to 0.3.1" once Pith runs the new build, and "Couldn't update Pith to 0.3.1" with the reason when a found update fails to download, pass its signature check or install. A check that can't reach the site (offline, DNS) stays quiet and is tried again an hour later. No progress bar. | The download is done before Update Pith is listed, and ⏎ to the new build running took under a second (0.3.0 → 0.3.1), so a bar would only flash; what was missing was knowing it worked. A failed check needs nothing from you, and offline it would fire every hour. | Edoardo |
 | 50 | 2026-11-23 | The launcher has a Check for Updates command. It checks right away, whatever the schedule, and a notification says what it found: "Pith 0.3.3 is ready" (Update Pith then restarts into it), "Pith is up to date", or "Couldn't check for updates" with the reason. The next scheduled check is a day after it. It's listed only in a copy that updates itself, and not while an update is ready. | After `make publish`, Edoardo's own copy would otherwise wait up to a day. Most Mac apps have it, and the result has to be said because the panel has closed. Nothing in the list does nothing (decision 45). | Edoardo |
 | 51 | 2026-11-23 | `pith.edoardobertoli.xyz` has a landing page, `site/index.html`, to send to friends or post. It follows the structure of Raycast's landing page (a short claim with Download, a keyboard of key caps with four reasons, alternating feature rows, a personal note, a closing call to action) with Pith's own words, its monochrome Stage look and the real panel snapshots, light and dark. It shows what ships, with the calculator as "coming next", and Edoardo's first-person "why" names Raycast once. The same Worker serves it with the update feed: `make publish` deploys it too, and `make site` deploys only the page. | One link that explains Pith and downloads it, instead of a zip and instructions in a chat. Raycast's page is the structure Edoardo knows; its look and words stay Raycast's. | Edoardo |
@@ -77,6 +77,8 @@ supersede an earlier one.
 | 68 | 2026-11-24 | Only Edoardo merges into `main` and `staging`. A ruleset on both requires a pull request with one approving review, and blocks force pushes and deletions; only the repo's admin (Edoardo) bypasses it. Edoardo is the only collaborator, so anyone else contributes through a pull request from a fork, which he reviews. | The repo is public (decision 65): every change from someone else gets his review before it lands, and the rule still holds if he adds a collaborator later. | Edoardo |
 | 69 | 2026-11-24 | Pith is in beta, and says so. The README has a beta badge and, under its description, "Pith is in beta. I use it every day, but expect rough edges", with where to report. The landing page puts a quiet "Beta" beside the name in the bar, "Free · Beta · …" under the Terminal line in the hero and the close, and a sentence in the setup on what beta means, linking to GitHub issues. The app is unchanged: its Quit Pith tile shows the version, still 0.x. | Usable every day (Edoardo uses it instead of Raycast, the bug check before friends is done, updates install themselves), but few Macs have run it and the calculator and the clipboard's editor are still to come. Alpha would say it may break settings or history between versions, which nothing planned does. | Edoardo |
 | 70 | 2026-11-24 | Lua scripting is planned for later (FEATURES §12): users add their own commands, ⌘K actions, hotkeys and clipboard hooks in `~/.config/pith/init.lua`, through a small internal API, while the core stays simple, fast and minimal. Not scheduled; designed when it starts, after milestone 3. There's still no extension store: "no extensions" becomes "no extension store" in FEATURES, PRODUCT.md and AGENTS.md. | Edoardo wants Pith minimal, with features added by whoever wants them rather than built into the core for everyone. Lua is small and made to embed (Neovim, WezTerm, mpv, Hammerspoon). What it costs, settled at design time: a time limit so scripts can't slow typing, scripts running with Pith's permissions, and Lua as a second dependency. | Edoardo |
+| 71 | 2026-11-24 | Quick Look stays on ⌘Y, and Space on an empty field (decision 20): there's no ⌘K → Quick Look action. FEATURES and the README say so. | The spec listed one that was never built, and ⌘Y already previews from any row. | Edoardo |
+| 72 | 2026-11-24 | Pith's memory after use stays over the 50 MB target for now, rather than cost ⌘P's one-frame show or change Quick Look: the tile's icons stay rendered at launch, and Quick Look stays the system's shared panel, whose memory lives in Pith. Measured: 43 MB at launch, 53 MB after searching and pasting, 63 MB after a first Quick Look, up to 90 MB after scrolling a long PDF in it (`docs/MILESTONE-3.md` step 13). | Rendering icons on demand would save about 5 MB but could show a result's big icon a frame late; a preview window of Pith's own would free Quick Look's memory but look and behave differently. Giving freed memory back, the change without a cost, didn't measurably help. | Edoardo |
 
 ## Principles
 
@@ -113,13 +115,15 @@ Sources/
     PasteRun.swift         paste next's run: the history newest first, ended by a pause or a new copy (decision 64)
     AppScanner.swift       walks the app folders (+ Finder) → [Item] with resolved-path ids
     DirectoryWatcher.swift FSEvents → folders or per-file events with flags, with source-level exclusions
-    Config.swift           config.toml settings, defaults, problems with line numbers, the commented template
+    Config.swift           config.toml settings, their defaults, the commented template
+    ConfigParser.swift     config.toml → settings, with a problem and its line for each wrong or unknown one
     TOMLReader.swift       a small strict TOML reader (the subset the config needs)
     Shortcut.swift         "cmd+shift+p", "ctrl+k", "up" → key code + modifiers; global or typing; symbols, key caps
     KeyBindings.swift      `[keys]`: each panel key's shortcuts, with first-wins conflicts and their problems
   Launcher/                the AppKit app, main actor by default
     main.swift             NSApplication with the accessory policy
-    AppDelegate.swift      wiring: panel, config → hotkey/empty state/login item, commands, index (re)builds; Log
+    AppDelegate.swift      wiring: panel, config → hotkey/empty state/login item, commands, index (re)builds
+    Log.swift              the os log, and the latency lines `make logs` streams
     Background.swift       runInBackground: blocking work on a GCD worker, awaited from the main actor
     ConfigStore.swift      ~/.config/pith/config.toml: create, read and parse on a worker, reload on change, open
     HistoryStore.swift     the History, loaded and saved as JSON on workers
@@ -127,22 +131,37 @@ Sources/
     LoginItem.swift        SMAppService registration, for a copy in an Applications folder only
     HotKeyCenter.swift     global hotkeys via Carbon RegisterEventHotKey; GlobalHotkeys, the configured ones by name
     KeyLayout.swift        the key that types a letter in the keyboard layout in use, for the hotkeys and the paste's ⌘V
+    Layout.swift           the panel's geometry (decision 29)
     LauncherPanel.swift    the NSPanel: show/hide, collapse/expand, key events to the panel's keys, the search field's editor
-    LauncherViewController.swift  rows, merged app + file search, empty state, ⌘K sublists, the keys' lookup, opening
-    Actions.swift          ⌘K actions per kind, the SF Symbols rows use, AppResolver (config app names, Open With…)
+    LauncherViewController.swift  its state, the rows for each state (merged app + file search, empty state, ⌘K
+                           sublists), the selection; one extension per concern beside it:
+      +Tile.swift          what the tile shows for an item, a problem or a command
+      +Table.swift         a row's cell, and the table's data source and delegate
+      +Actions.swift       ⌘K sublists and going back; opening an item and running its actions
+      +Clipboard.swift     the clipboard's rows and tile, a clip's actions, paste next
+      +Keys.swift          the panel's keys (decision 55), and typing in the field
+      +QuickLook.swift     the preview: what it shows, and its keys
+    Row.swift              a row of the list, and the ⌘K sublists
+    PreviewTarget.swift    what Quick Look shows when the selection changes
+    Actions.swift          ⌘K actions for items and clips, Save as File's names, the SF Symbols rows use
+    AppResolver.swift      app names in config.toml → bundles; the app `[open_with]` sets; Open With…'s apps
     IconStore.swift        app, symbol and file-type icons as exact-size bitmaps rendered off the main thread; apps
                            by bundle id (a clip's source), looked up on a worker
-    ResultViews.swift      one-line cell (name, folder, "running", ↩), the tile (StageView) and its keys, bitmap IconView,
-                           row view (the quiet selection)
+    ResultCell.swift       one-line cell (name, folder, "running", ↩), bitmap IconView, row view (the quiet selection),
+                           overlay scrollers
+    TileView.swift         the tile, its keys, and the clipboard's previews on it
+    DateWords.swift        "opened today at 14:05", "copied yesterday", a clip's age
     Palette.swift          the few colors the system doesn't have: quiet gray, fills, edge, red and orange
-    Notifier.swift         notifications for a finished Zip and failed actions, reveal on click
+    Notifier.swift         notifications for a finished Zip, a saved clip, failed actions and updates; reveal on click
     ClipboardRecorder.swift  the pasteboard's change count on a timer (off while paused); each new copy read,
                            classified and stored
     ClipboardHistory.swift the ClipboardIndex, loaded at launch and updated by each recorded copy; prunes to
                            `[clipboard]`'s limits
     ClipboardPresentation.swift  a clip's words in its row and on the tile: titles, ages, sizes, notices
     ClipImages.swift       copied images' thumbnails as bitmaps, read on a worker, the newest ready ahead of time
-    Paste.swift            a clip back on the pasteboard, ⌘V posted, Accessibility, the clip's ⌘K actions, save names
+    FileFacts.swift        whether a clip's files are still there, and their size, read on a worker
+    LinkApps.swift         the app each link scheme opens in (`[open_links]`, else the default)
+    Paste.swift            a clip back on the pasteboard and ⌘V posted (ClipPaster), Accessibility
     Updater.swift          Sparkle, checked after the panel closes at most once a day; a ready update's install,
                            and how it went
 Support/Info.plist         bundle metadata (bundle ID, LSUIElement, Sparkle's feed and key), copied in by `make app`
@@ -191,8 +210,9 @@ images' thumbnails are already decoded. Either hotkey closes the panel in its ow
 lists open apps in most-recently-used order, including apps outside the indexed folders, then every other indexed
 app alphabetically. As with ⌘Tab, the first one is the app you were in and the second is selected. `none` lists nothing.
 
-**Typing.** Each keystroke runs `SearchIndex.search` synchronously on the main thread (microseconds). The match score
-is boosted by the history: frecency, counting opens weighted by age (Firefox-style buckets), turns into up to +48
+**Typing.** Each keystroke runs `SearchIndex.search` over the apps synchronously on the main thread (microseconds), and
+the file search on the file engine's queue; both land in one ranked list (decision 19), and a newer keystroke drops an
+older search's files. The match score is boosted by the history: frecency, counting opens weighted by age (Firefox-style buckets), turns into up to +48
 points on a log scale. The table reloads only when the rows changed, and its rows show bitmaps that are already
 rendered. The panel is just the search bar while there's nothing to list, so it resizes only on that change. The
 search field has its own field editor with inline predictions, Writing Tools, autocompletion, spell and grammar
@@ -208,13 +228,14 @@ text keeps every key. A ⏎ or ⎋ that isn't a panel key does nothing rather th
 and ⇧⌘Z are routed by hand after the lookup, because an agent app has no main menu to do it. The tile's keys, the
 action rows' shortcuts and the selected row's ↩ show the first key of each setting.
 
-**⌘K.** On an app row, ⌘K replaces the list with its actions: Open and Reveal in Finder, plus Quit and Force Quit if
-it's running. The search field filters them, ⏎ runs one, and ⎋ or ⌘K goes back to the search and selection you had.
+**⌘K.** ⌘K replaces the list with the selected row's actions: an app's, a file's or folder's, or a clip's (FEATURES
+§4, §5.4). The search field filters them, ⏎ or ⌘Q…⌘U runs one, and ⎋ or ⌘K goes back to the search and selection you
+had.
 Force Quit waits for a second ⏎ (decision 28); ⎋, typing or moving the selection cancels it. Quitting goes through
 `quitApp`, which tests swap out so they never quit a real app.
 
 **Opening.** ⏎ or a double click records the item in the history, hides the panel, then launches the app (or brings
-it to the front) or runs the command. Losing focus also hides the panel. Every hide empties the field.
+it to the front), opens the file or folder (a file in its `[open_with]` app) or runs the command. Losing focus also hides the panel. Every hide empties the field.
 
 ### Threads
 
@@ -294,9 +315,7 @@ they were last run on 2026-11-24 (step 8), the on-screen and footprint rows on t
 | FSEvents → file searchable | about 0.5–1 s (0.5 s coalescing) | tests |
 | ⌘P → panel drawn, on screen | Stage build, clear window with round corners: 23 ms, almost all "update" (one sample); milestone 2 build: ~27 ms | `make logs` |
 | Keystroke → results drawn, on screen (apps + 35.6k files) | Stage build: typically 7–12 ms: delivery 2–3, update 4.7–6, draw 0–2; a few at 19–22 ms with 8–13 ms of delivery. Milestone 2 build: 7–10 ms | `make logs` |
-| Footprint 25 s after launch, untouched | Stage build 39 MB, the milestone 2 build 30 MB, measured the same way. 5.9 MB of the Stage build is the tile's 96 px icons: 123 bitmaps of 36 KB, each in its own 48 KB block | `make stats`, `footprint` |
-| Idle (milestone 2 build) | 24 MB footprint, 0% CPU, 6 threads | `make stats` |
-| Installed 0.3.10, an hour after a clean install, launcher, clipboard, Quick Look and notifications used | 62 MB footprint (34 MB heap, 8 MB CoreAnimation, 7 MB icon bitmaps), steady for 30 minutes; 0% CPU, 5 threads, about 7 idle wakeups a minute | `make stats`, `footprint`, `top` |
+| Installed 0.3.11 by use, 2026-11-24 (relaunched, then one use at a time, 20 s apart) | 43 MB at launch, untouched: 22.5 MB heap, 5.8 MB icon bitmaps. 53 MB after ⌘P and typing, the clipboard, a paste and paste next: +3.5 MB of heap the first time text is searched and drawn, and ~5 MB of the panel's drawing surfaces, kept between shows so ⌘P draws in one frame. +10 MB at the first Quick Look, 6 MB of it heap for Quick Look's own panel, which lives as long as Pith. Scrolling a long PDF in Quick Look peaks at 114–121 MB and leaves 85–90 MB: 30–37 MB of freed heap scattered through pages still in use, which macOS doesn't take back, even when asked (`malloc_zone_pressure_relief`). A screenshot copy peaks 6 MB higher for a moment. Idle: 0 % CPU, 5 threads, about 7 wakeups a minute | `footprint` every 2 s, `heap`, `vmmap` |
 
 ## Visual decisions
 
@@ -344,15 +363,15 @@ One third-party dependency: Sparkle, for updates.
 | Shared state for stale searches | `Atomic` (Synchronization, toolchain) | One relaxed integer, so no lock. |
 | Zip | `/usr/bin/ditto` via `Process` (system) | What Finder's Compress uses (FEATURES §4.4): same format, resource forks kept. |
 | Quick Look | `QLPreviewPanel` (Quartz, system) | The system preview; the launcher acts as its controller. |
-| Notifications | UserNotifications (system) | For a finished Zip and failed actions (decisions 21, 32). |
+| Notifications | UserNotifications (system) | For a finished Zip, a saved clip, failed actions and updates (decisions 21, 32, 39, 49). |
 | Clipboard storage | SQLite through the system `SQLite3` module, behind a small wrapper (`SQLiteDatabase`) | Thousands of entries written one at a time, each copy an atomic insert. The history lives in memory for search, so the database only loads and saves. GRDB, the `FEATURES.md` candidate, is excellent but would be the first third-party dependency for a handful of queries. |
 | Clipboard thumbnails | ImageIO `CGImageSourceCreateThumbnailAtIndex` (system) | Decodes straight to the exact pixel size without loading the full image. |
 | Clipboard duplicates | SHA-256 from CryptoKit (system) | A copy of content already in the history must find it, and a collision would move the wrong clip, so a 64-bit hash isn't enough. |
 | Watching the clipboard | `NSPasteboard.changeCount` on a GCD timer with leeway | macOS has no notification for a new copy, so this is the only way; leeway lets the system coalesce the wakeups. |
 | Paste | `CGEvent` ⌘V posted to the annotated session tap (CoreGraphics, system), after the pasteboard is written, on a worker, on the key that types V in the layout in use | How every clipboard manager pastes; it needs Accessibility access (`AXIsProcessTrusted`, checked on a worker at launch and each time the clipboard opens). |
 | Keyboard layout | Text Input Sources and `UCKeyTranslate` (Carbon, system), on the main thread: the key that types a letter with ⌘ held, in the layout in use or the last one with letters | A hotkey or ⌘V named by its letter lands where the layout puts it (Dvorak, Colemak), as menus do; hotkeys are registered again when the layout changes. |
-| Updates | [Sparkle](https://sparkle-project.org) 2.10.1, pinned, from its Swift package; `make app` embeds its framework and signs it with the app (decision 48) | The standard updater for Mac apps outside the App Store, since 2006: EdDSA-signed feeds, a check that the update is signed like the app, install and relaunch. Hotari uses the same version. An updater of our own would mean owning the code that decides whether a download is ours. Its schedule is off, so it adds no timer; it starts on the first check, after the panel closes. |
-| The icon as an asset catalog | `actool` (Xcode), run by `make icon` on the icon's sizes, no Xcode project; the compiled `Assets.car` is committed | A macOS 26 app names its icon in an asset catalog (`CFBundleIconName`) besides the `.icns`, as Hotari does. Added while chasing the blank notification icon on Edoardo's Mac, which is still open (`docs/MILESTONE-3.md` step 11). The catalog holds the same single image as the `.icns` (decision 54), not an Icon Composer file. |
+| Updates | [Sparkle](https://sparkle-project.org) 2.10.1, pinned, from its Swift package; `make app` embeds its framework and signs it with the app (decision 48) | The standard updater for Mac apps outside the App Store, since 2006: EdDSA-signed feeds, a check that the update is signed like the app, install and relaunch. An updater of our own would mean owning the code that decides whether a download is ours. Its schedule is off, so it adds no timer; it starts on the first check, after the panel closes. |
+| The icon as an asset catalog | `actool` (Xcode), run by `make icon` on the icon's sizes, no Xcode project; the compiled `Assets.car` is committed | A macOS 26 app names its icon in an asset catalog (`CFBundleIconName`) besides the `.icns`. Added while chasing a blank notification icon, which turned out to be macOS's icon cache (`docs/MILESTONE-3.md` step 11). The catalog holds the same single image as the `.icns` (decision 54), not an Icon Composer file. |
 | Installer disk image | [dmgbuild](https://github.com/dmgbuild/dmgbuild) 1.6.5 with ds_store 1.3.1 and mac_alias 2.2.2, pinned by hash in `Support/dmgbuild-requirements.txt`, in a venv under `.build` (decision 56) | Writes the window's layout (icon places, background, hidden bars) straight into the image's `.DS_Store` with the image mounted hidden, so no Finder window opens on the Mac building it. create-dmg lays the window out by scripting Finder, which puts windows on screen; `hdiutil` alone makes an image with no layout. A build tool, not shipped in the app. |
 | Hosting the updates and the landing page | Cloudflare static assets on `pith.edoardobertoli.xyz`, deployed with wrangler 4.166.0, pinned, its telemetry off (`npx`, `Support/wrangler.toml`) | The domain is already on Cloudflare; static files need no server, and the zips stay out of git. One deploy carries the page, its snapshots, the feed and the builds (decision 51). |
 | Tests | Swift Testing (toolchain) | The current standard over XCTest. |

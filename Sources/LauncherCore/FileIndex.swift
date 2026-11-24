@@ -214,67 +214,14 @@ public struct FileIndex: Sendable {
         let total = flags.count
         let chunks = min(max(1, total / 4096), Self.cores)
         var tops = [[Candidate]](repeating: [], count: chunks)
-
-        keys.bytes.withUnsafeBufferPointer { bytes in
-            keys.bonus.withUnsafeBufferPointer { bonus in
-                keys.starts.withUnsafeBufferPointer { starts in
-                    keys.masks.withUnsafeBufferPointer { masks in
-                        flags.withUnsafeBufferPointer { flags in
-                            boosts.withUnsafeBufferPointer { boosts in
-                                parents.withUnsafeBufferPointer { parents in
-                                    above.withUnsafeBufferPointer { above in
-                                        tops.withUnsafeMutableBufferPointer { tops in
-                                            // Each chunk reads shared, unchanging buffers and writes only its own slot.
-                                            nonisolated(unsafe) let bytes = bytes
-                                            nonisolated(unsafe) let bonus = bonus
-                                            nonisolated(unsafe) let starts = starts
-                                            nonisolated(unsafe) let masks = masks
-                                            nonisolated(unsafe) let flags = flags
-                                            nonisolated(unsafe) let boosts = boosts
-                                            nonisolated(unsafe) let parents = parents
-                                            nonisolated(unsafe) let above = above
-                                            nonisolated(unsafe) let tops = tops
-                                            let skip = Self.removed | Self.root
-                                            DispatchQueue.concurrentPerform(iterations: chunks) { chunk in
-                                                var last = FuzzyMatcher(query: lastWord)
-                                                var others = pathWords.map(FuzzyMatcher.init(query:))
-                                                var top = TopMatches(limit: limit)
-                                                entries: for index
-                                                    in (chunk * total / chunks)..<((chunk + 1) * total / chunks)
-                                                where flags[index] & skip == 0 {
-                                                    let start = Int(starts[index])
-                                                    let end = Int(starts[index + 1])
-                                                    let text = UnsafeBufferPointer(rebasing: bytes[start..<end])
-                                                    let textBonus = UnsafeBufferPointer(rebasing: bonus[start..<end])
-                                                    guard
-                                                        var score = last.score(
-                                                            text: text, bonus: textBonus, mask: masks[index])
-                                                    else { continue }
-                                                    let parent = Int(parents[index])
-                                                    for word in others.indices {
-                                                        let inName = others[word].score(
-                                                            text: text, bonus: textBonus, mask: masks[index])
-                                                        let inPath =
-                                                            parent >= 0 ? above[word * total + parent] : Self.none
-                                                        let best = max(
-                                                            inName ?? Self.none,
-                                                            inPath == Self.none ? Self.none : inPath / 2)
-                                                        guard best != Self.none else { continue entries }
-                                                        score += best
-                                                    }
-                                                    top.insert(
-                                                        Candidate(
-                                                            score: score + boosts[index], length: end - start,
-                                                            index: index))
-                                                }
-                                                tops[chunk] = top.items
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+        withBuffers(above: above) { buffers in
+            tops.withUnsafeMutableBufferPointer { tops in
+                // Each chunk reads the shared, unchanging buffers and writes only its own slot.
+                nonisolated(unsafe) let tops = tops
+                DispatchQueue.concurrentPerform(iterations: chunks) { chunk in
+                    tops[chunk] = Self.bestMatches(
+                        in: (chunk * total / chunks)..<((chunk + 1) * total / chunks), of: buffers,
+                        lastWord: lastWord, pathWords: pathWords, limit: limit)
                 }
             }
         }
@@ -284,6 +231,73 @@ public struct FileIndex: Sendable {
         return merged.items.map {
             FileHit(path: path(of: Int32($0.index)), isFolder: flags[$0.index] & Self.folder != 0, score: $0.score)
         }
+    }
+
+    /// The index's flat arrays, pinned as buffers for one search. `@unchecked Sendable`: the search's chunks read
+    /// them at once, and nothing writes to them while `withBuffers` holds them.
+    private struct Buffers: @unchecked Sendable {
+        let bytes: UnsafeBufferPointer<UInt8>
+        let bonus: UnsafeBufferPointer<UInt8>
+        let starts: UnsafeBufferPointer<UInt32>
+        let masks: UnsafeBufferPointer<UInt64>
+        let flags: UnsafeBufferPointer<UInt8>
+        let boosts: UnsafeBufferPointer<Int32>
+        let parents: UnsafeBufferPointer<Int32>
+        /// `scoresAbove`'s scores for the query's earlier words.
+        let above: UnsafeBufferPointer<Int32>
+    }
+
+    /// Calls `body` with the arrays pinned: the buffers are valid only inside it.
+    private func withBuffers(above: [Int32], _ body: (Buffers) -> Void) {
+        keys.bytes.withUnsafeBufferPointer { bytes in
+            keys.bonus.withUnsafeBufferPointer { bonus in
+                keys.starts.withUnsafeBufferPointer { starts in
+                    keys.masks.withUnsafeBufferPointer { masks in
+                        flags.withUnsafeBufferPointer { flags in
+                            boosts.withUnsafeBufferPointer { boosts in
+                                parents.withUnsafeBufferPointer { parents in
+                                    above.withUnsafeBufferPointer { above in
+                                        body(
+                                            Buffers(
+                                                bytes: bytes, bonus: bonus, starts: starts, masks: masks, flags: flags,
+                                                boosts: boosts, parents: parents, above: above))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// The best `limit` entries in `range`: the last word scored on the name, plus each earlier word's best on the
+    /// name or, at half, on a folder above it. An entry that one of the words doesn't match is left out.
+    private static func bestMatches(
+        in range: Range<Int>, of buffers: Buffers, lastWord: String, pathWords: [String], limit: Int
+    ) -> [Candidate] {
+        var last = FuzzyMatcher(query: lastWord)
+        var others = pathWords.map(FuzzyMatcher.init(query:))
+        var top = TopMatches(limit: limit)
+        let total = buffers.flags.count
+        let skip = removed | root
+        entries: for index in range where buffers.flags[index] & skip == 0 {
+            let start = Int(buffers.starts[index])
+            let end = Int(buffers.starts[index + 1])
+            let text = UnsafeBufferPointer(rebasing: buffers.bytes[start..<end])
+            let textBonus = UnsafeBufferPointer(rebasing: buffers.bonus[start..<end])
+            guard var score = last.score(text: text, bonus: textBonus, mask: buffers.masks[index]) else { continue }
+            let parent = Int(buffers.parents[index])
+            for word in others.indices {
+                let inName = others[word].score(text: text, bonus: textBonus, mask: buffers.masks[index])
+                let inPath = parent >= 0 ? buffers.above[word * total + parent] : none
+                let best = max(inName ?? none, inPath == none ? none : inPath / 2)
+                guard best != none else { continue entries }
+                score += best
+            }
+            top.insert(Candidate(score: score + buffers.boosts[index], length: end - start, index: index))
+        }
+        return top.items
     }
 
     private static let none = Int32.min
