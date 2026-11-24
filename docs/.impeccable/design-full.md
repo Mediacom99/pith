@@ -390,7 +390,7 @@ What ⏎ acts on, always visible when there are results.
   - Search: `magnifyingglass`, 16 pt, quiet gray.
 
 ### Planned surfaces
-The calculator isn't built, and the clipboard is being built by milestone 3 (its values are in the Visual decisions table; this document takes them in at its step 8). Both extend the tile: in the clipboard the tile grows to 188 pt and becomes the preview (`docs/BRIEF-CLIPBOARD.md`); for the calculator it shows the answer that ⏎ will copy. They use the same fills, type and keys.
+The calculator isn't built. The clipboard is (milestone 3): its values are in the Visual decisions table, and this document takes them in at milestone 3's step 9, the design review. Both extend the tile: in the clipboard the tile grows to 188 pt and becomes the preview (`docs/BRIEF-CLIPBOARD.md`); for the calculator it shows the answer that ⏎ will copy. They use the same fills, type and keys.
 
 ## Do's and Don'ts
 

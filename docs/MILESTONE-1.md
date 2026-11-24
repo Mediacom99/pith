@@ -10,8 +10,8 @@ Status values: **done**, **in review** (built and tested, waiting for Edoardo), 
 
 Status: **done**. ⌘P toggles a pre-built, non-activating, opaque panel on the screen under the mouse. Fuzzy search
 covers `/Applications`, `/System/Applications` and `~/Applications`, with icons pre-rendered off the main thread. The
-panel is only the search bar when there's nothing to list. Measured on screen: 24 MB idle, 0% CPU, 6 threads. The
-latency work continues in step 9.
+panel is only the search bar when there's nothing to list. The latency work is step 9; today's numbers are in
+`docs/ARCHITECTURE.md` (Measured).
 
 ## 2. Launcher commands and Finder (features 9, 17)
 
@@ -34,11 +34,10 @@ Waiting for Edoardo's run.
 
 ## 4. Running apps (feature 7)
 
-Status: **in review**. Running apps show "running" after their name (a Dock-style dot under the icon before the
-Stage design, decision 29). The source of truth is `NSWorkspace.runningApplications`: it's re-read on every launch or
-quit notification and before every show, so a missed notification can't leave a stale indicator. Activation notifications set the order. Ids match the index (tested
-against the real running apps). On Edoardo's first run, dots stayed after an app quit; fixed, waiting for his next
-run.
+Status: **in review**. Running apps show "running" after their name. The source of truth is
+`NSWorkspace.runningApplications`: it's re-read on every launch or quit notification and before every show, so a
+missed notification can't leave a stale indicator. Activation notifications set the order. Ids match the index
+(tested against the real running apps). Waiting for Edoardo's run.
 
 ## 5. Learned ranking and the empty state (feature 6, decisions 11–13)
 
@@ -69,9 +68,8 @@ launcher's icons within a moment.
 ## 8. Launch at login (feature 18, decision 14)
 
 Status: **in review**. `SMAppService.mainApp` registers or unregisters on a worker when `launch_at_login` changes,
-and only for a copy in `/Applications` or `~/Applications`. `make install` copies the app to `~/Applications` and
-launches it; `make stop` stops either copy. Not run yet: the first `make install` registers the login item, and macOS
-shows its "login item added" notification.
+and only for a copy in `/Applications` or `~/Applications`. `make install` copies the app to `/Applications` and
+launches it; `make stop` stops either copy. Waiting for Edoardo's check that the installed copy starts at login.
 
 ## 9. Performance pass
 

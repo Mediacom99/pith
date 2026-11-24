@@ -38,8 +38,9 @@ For macOS 26 Tahoe or later on Apple Silicon. Or download [Pith.dmg](https://pit
 > [report what you find](https://github.com/Mediacom99/pith/issues).
 
 [Why](#why) · [Features](#features) · [Install](#install) · [Keys](#keys) · [Configuration](#configuration) ·
-[Privacy and permissions](#privacy-and-permissions) · [FAQ](#faq) · [Uninstall](#uninstall) ·
-[Feedback](#feedback) · [Build from source](#build-from-source) · [License](#license)
+[Privacy and permissions](#privacy-and-permissions) · [Updates](#updates) · [FAQ](#faq) · [Uninstall](#uninstall) ·
+[Performance](#performance) · [Roadmap](#roadmap) · [Feedback](#feedback) · [Build from source](#build-from-source) ·
+[License](#license)
 
 ## Why
 
@@ -81,8 +82,8 @@ justify a subscription.
 
 - **Apps, files and folders** in one list. Every word you type must match, in any order, so `acme deploy` finds
   `deploy.sh` in a folder called Acme. What you open often comes first.
-- **Actions on ⌘K:** Open With…, Reveal in Finder, Copy Path, Copy File, Quick Look, Zip, Move to Trash, Open in
-  Terminal; Quit and Force Quit for a running app (Force Quit asks for a second ⏎).
+- **Actions on ⌘K:** Open With…, Reveal in Finder, Copy Path, Copy File, Zip, Move to Trash, Open in Terminal; Quit
+  and Force Quit for a running app (Force Quit asks for a second ⏎). ⌘Y, or Space on an empty field, is Quick Look.
 - **Files stay current:** they're indexed in memory and updated as they change on disk.
 - **Before you type,** it lists what you opened last, the apps that are open, or nothing at all: your choice.
 - **No Dock or menu bar icon.** Pith's own commands are in the launcher: Clipboard History, Check for Updates, Open

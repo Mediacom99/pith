@@ -208,8 +208,9 @@ images' thumbnails are already decoded. Either hotkey closes the panel in its ow
 lists open apps in most-recently-used order, including apps outside the indexed folders, then every other indexed
 app alphabetically. As with ⌘Tab, the first one is the app you were in and the second is selected. `none` lists nothing.
 
-**Typing.** Each keystroke runs `SearchIndex.search` synchronously on the main thread (microseconds). The match score
-is boosted by the history: frecency, counting opens weighted by age (Firefox-style buckets), turns into up to +48
+**Typing.** Each keystroke runs `SearchIndex.search` over the apps synchronously on the main thread (microseconds), and
+the file search on the file engine's queue; both land in one ranked list (decision 19), and a newer keystroke drops an
+older search's files. The match score is boosted by the history: frecency, counting opens weighted by age (Firefox-style buckets), turns into up to +48
 points on a log scale. The table reloads only when the rows changed, and its rows show bitmaps that are already
 rendered. The panel is just the search bar while there's nothing to list, so it resizes only on that change. The
 search field has its own field editor with inline predictions, Writing Tools, autocompletion, spell and grammar
@@ -225,13 +226,14 @@ text keeps every key. A ⏎ or ⎋ that isn't a panel key does nothing rather th
 and ⇧⌘Z are routed by hand after the lookup, because an agent app has no main menu to do it. The tile's keys, the
 action rows' shortcuts and the selected row's ↩ show the first key of each setting.
 
-**⌘K.** On an app row, ⌘K replaces the list with its actions: Open and Reveal in Finder, plus Quit and Force Quit if
-it's running. The search field filters them, ⏎ runs one, and ⎋ or ⌘K goes back to the search and selection you had.
+**⌘K.** ⌘K replaces the list with the selected row's actions: an app's, a file's or folder's, or a clip's (FEATURES
+§4, §5.4). The search field filters them, ⏎ or ⌘Q…⌘U runs one, and ⎋ or ⌘K goes back to the search and selection you
+had.
 Force Quit waits for a second ⏎ (decision 28); ⎋, typing or moving the selection cancels it. Quitting goes through
 `quitApp`, which tests swap out so they never quit a real app.
 
 **Opening.** ⏎ or a double click records the item in the history, hides the panel, then launches the app (or brings
-it to the front) or runs the command. Losing focus also hides the panel. Every hide empties the field.
+it to the front), opens the file or folder (a file in its `[open_with]` app) or runs the command. Losing focus also hides the panel. Every hide empties the field.
 
 ### Threads
 
@@ -361,7 +363,7 @@ One third-party dependency: Sparkle, for updates.
 | Shared state for stale searches | `Atomic` (Synchronization, toolchain) | One relaxed integer, so no lock. |
 | Zip | `/usr/bin/ditto` via `Process` (system) | What Finder's Compress uses (FEATURES §4.4): same format, resource forks kept. |
 | Quick Look | `QLPreviewPanel` (Quartz, system) | The system preview; the launcher acts as its controller. |
-| Notifications | UserNotifications (system) | For a finished Zip and failed actions (decisions 21, 32). |
+| Notifications | UserNotifications (system) | For a finished Zip, a saved clip, failed actions and updates (decisions 21, 32, 39, 49). |
 | Clipboard storage | SQLite through the system `SQLite3` module, behind a small wrapper (`SQLiteDatabase`) | Thousands of entries written one at a time, each copy an atomic insert. The history lives in memory for search, so the database only loads and saves. GRDB, the `FEATURES.md` candidate, is excellent but would be the first third-party dependency for a handful of queries. |
 | Clipboard thumbnails | ImageIO `CGImageSourceCreateThumbnailAtIndex` (system) | Decodes straight to the exact pixel size without loading the full image. |
 | Clipboard duplicates | SHA-256 from CryptoKit (system) | A copy of content already in the history must find it, and a collision would move the wrong clip, so a 64-bit hash isn't enough. |
@@ -369,7 +371,7 @@ One third-party dependency: Sparkle, for updates.
 | Paste | `CGEvent` ⌘V posted to the annotated session tap (CoreGraphics, system), after the pasteboard is written, on a worker, on the key that types V in the layout in use | How every clipboard manager pastes; it needs Accessibility access (`AXIsProcessTrusted`, checked on a worker at launch and each time the clipboard opens). |
 | Keyboard layout | Text Input Sources and `UCKeyTranslate` (Carbon, system), on the main thread: the key that types a letter with ⌘ held, in the layout in use or the last one with letters | A hotkey or ⌘V named by its letter lands where the layout puts it (Dvorak, Colemak), as menus do; hotkeys are registered again when the layout changes. |
 | Updates | [Sparkle](https://sparkle-project.org) 2.10.1, pinned, from its Swift package; `make app` embeds its framework and signs it with the app (decision 48) | The standard updater for Mac apps outside the App Store, since 2006: EdDSA-signed feeds, a check that the update is signed like the app, install and relaunch. Hotari uses the same version. An updater of our own would mean owning the code that decides whether a download is ours. Its schedule is off, so it adds no timer; it starts on the first check, after the panel closes. |
-| The icon as an asset catalog | `actool` (Xcode), run by `make icon` on the icon's sizes, no Xcode project; the compiled `Assets.car` is committed | A macOS 26 app names its icon in an asset catalog (`CFBundleIconName`) besides the `.icns`, as Hotari does. Added while chasing the blank notification icon on Edoardo's Mac, which is still open (`docs/MILESTONE-3.md` step 11). The catalog holds the same single image as the `.icns` (decision 54), not an Icon Composer file. |
+| The icon as an asset catalog | `actool` (Xcode), run by `make icon` on the icon's sizes, no Xcode project; the compiled `Assets.car` is committed | A macOS 26 app names its icon in an asset catalog (`CFBundleIconName`) besides the `.icns`, as Hotari does. Added while chasing a blank notification icon, which turned out to be macOS's icon cache (`docs/MILESTONE-3.md` step 11). The catalog holds the same single image as the `.icns` (decision 54), not an Icon Composer file. |
 | Installer disk image | [dmgbuild](https://github.com/dmgbuild/dmgbuild) 1.6.5 with ds_store 1.3.1 and mac_alias 2.2.2, pinned by hash in `Support/dmgbuild-requirements.txt`, in a venv under `.build` (decision 56) | Writes the window's layout (icon places, background, hidden bars) straight into the image's `.DS_Store` with the image mounted hidden, so no Finder window opens on the Mac building it. create-dmg lays the window out by scripting Finder, which puts windows on screen; `hdiutil` alone makes an image with no layout. A build tool, not shipped in the app. |
 | Hosting the updates and the landing page | Cloudflare static assets on `pith.edoardobertoli.xyz`, deployed with wrangler 4.166.0, pinned, its telemetry off (`npx`, `Support/wrangler.toml`) | The domain is already on Cloudflare; static files need no server, and the zips stay out of git. One deploy carries the page, its snapshots, the feed and the builds (decision 51). |
 | Tests | Swift Testing (toolchain) | The current standard over XCTest. |

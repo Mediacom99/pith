@@ -34,19 +34,19 @@ disagree, this section wins:
 - **Now: Edoardo.** He drives his Mac from the keyboard and calls the launcher with ⌘P in the middle of other work:
   to open or switch to an app, find a file or folder, or act on one. His habits come from Raycast on the Mac (the ⌘K
   action panel) and from rofi and dmenu on Linux (instant, text-first lists).
-- **Later: other keyboard-driven Mac users.** A public release is undecided. Nothing may block one, but first run and
-  setups other than Edoardo's aren't designed for yet.
+- **Also: other keyboard-driven Mac users.** Pith is public, in beta (decisions 65, 69): a few friends use it, and
+  anyone can install it with one line in Terminal or the disk image (decisions 56, 67).
 
 ## Product Purpose
 
-One hotkey to open anything (apps, files, folders, the launcher's own commands), and later to browse and paste the
-clipboard history and to calculate, without touching the mouse. Success: it is on screen within one frame of ⌘P, the
+One hotkey to open anything (apps, files, folders, the launcher's own commands), another to browse and paste the
+clipboard history, and later a calculator, without touching the mouse. Success: it is on screen within one frame of ⌘P, the
 results follow each keystroke in under 5 ms, the row you want is usually the first, and when it isn't in use it costs
 nothing (~0% CPU, under 50 MB).
 
 ## Positioning
 
-Speed and small size are the product. It's native AppKit and always resident: the window is built at launch and the
+Speed and small size are the product. It's native AppKit and always resident: the panel is built at launch and the
 indexes live in memory, so it opens in one frame. It has Raycast's keyboard actions with the footprint and immediacy of
 rofi and dmenu. It has no AI, extension store, account or telemetry (Lua scripting, the user's own, is planned: decision 70), and touches the network only for an update
 check and currency rates. Settings are a text file, not a settings window.
@@ -63,17 +63,21 @@ check and currency rates. Settings are a text file, not a settings window.
 
 ## Capabilities and Constraints
 
-- **Built (milestones 1–2):**
+- **Built (milestones 1–3):**
   - One ranked list of apps, files and folders, with fuzzy matching word by word and a learned ranking.
   - Empty state: `recent`, `running` or `none`.
   - "running" after the name of a running app.
-  - ⌘K actions for each kind of row, Open with…, Quick Look, and Zip with a notification.
-  - Launcher commands: Open Config, Reload Config, Quit.
+  - ⌘K actions for each kind of row, Open With…, Quick Look, and Zip with a notification.
+  - The clipboard (§5): opened with ⌘⇧V, the `c ` prefix or Clipboard History; newest first with the tile as its
+    preview, pinned clips found by typing, search, paste into the previous app, and paste next (⌃⌥V).
+  - Launcher commands: Clipboard History, Pause or Resume Clipboard Recording, Clear Clipboard History, Check for
+    Updates, Update Pith, Open Config, Reload Config, Quit Pith.
   - Config problems shown as rows.
+  - Updates, and a notification for each (decisions 48–50).
 - **Planned (`FEATURES.md`):**
   - The calculator: an inline top row for math, units, currency and programmer expressions (§6).
-  - The clipboard manager (§5): opened with ⌘⇧V or the `c ` prefix. A list with a preview pane, newest first, pinned
-    items found by typing, search and paste into the previous app; an in-panel text editor after milestone 3.
+  - The clipboard's text editor and Edit Image (decisions 36, 40).
+  - Lua scripting of the user's own, later (§12, decision 70).
   - The design covers these before they're built (decision 26).
 - **Constraints:**
   - The `FEATURES.md` §1 performance targets are requirements.
@@ -82,9 +86,9 @@ check and currency rates. Settings are a text file, not a settings window.
   - A visual change is measured against these targets, not assumed to be free.
 - **Out of scope:** themes and a settings window (`FEATURES.md` §9). Behavior is configurable, but the look isn't
   themable.
-- **Terms:** panel, search bar, rows, empty state, ⌘K actions, commands, config problems, clipboard mode.
-- **Distribution:** a landing page and a zip at `pith.edoardobertoli.xyz`, not notarized, that updates itself
-  (decisions 46, 48, 51).
+- **Terms:** panel, search bar, tile, rows, empty state, ⌘K actions, commands, config problems, clipboard mode, clips.
+- **Distribution:** a landing page at `pith.edoardobertoli.xyz` with a one-line Terminal install and a disk image,
+  not notarized, that updates itself (decisions 46, 48, 51, 56, 67).
 - **Undecided:** for the clipboard, an ignore-app list.
 
 ## Brand Commitments
@@ -94,8 +98,8 @@ short and literal ("Config problem, line 3: …", "Filter actions", "Open in Pre
 
 ## Evidence on Hand
 
-- `docs/snapshots/`: the panel's current states (search bar, recent, search, ⌘K actions, config problem), in light
-  and dark.
+- `docs/snapshots/`: the panel's current states (search bar, recent, search, ⌘K actions, config problem, the
+  clipboard's), in light and dark.
 - `docs/ARCHITECTURE.md` (Measured): the latency, memory and idle numbers.
 - There are no users besides Edoardo and a few friends yet, and no testimonials. Don't invent any. The website and the app icon exist (decisions 51, 54).
 

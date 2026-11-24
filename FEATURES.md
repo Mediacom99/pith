@@ -8,7 +8,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 ## 1. Principles
 
-- **Fast above all.** Always resident, window pre-built, indexes in memory. Nothing touches disk or network while you type.
+- **Fast above all.** Always resident, panel pre-built, indexes in memory. Nothing touches disk or network while you type.
 - **Keyboard only.** Everything reachable without the mouse.
 - **Small scope.** Launcher, clipboard, calculator. Nothing else.
 - **Mac only.** macOS 26 Tahoe+, Apple Silicon.
@@ -17,14 +17,14 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 | Metric | Target |
 |---|---|
-| Hotkey → window visible | ≤ 1 frame (~16 ms) |
+| Hotkey → panel visible | ≤ 1 frame (~16 ms) |
 | Keystroke → results updated | < 5 ms |
 | Idle CPU | ~0% |
 | Idle RAM | < 50 MB |
 
 ---
 
-## 2. Window
+## 2. The panel
 
 - Floating, non-activating panel, **centered on the active screen, fixed size**.
 - Light/dark follows the system.
@@ -38,28 +38,16 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 ## 3. Keyboard
 
-Every key below is a default: `[hotkeys]` and `[keys]` in the config change them (§8, decision 55). The text editing
-keys of the search field (`⌘X`, `⌘C`, `⌘V`, `⌘A`, `⌘Z`, `⇧⌘Z`) are fixed, and no hotkey can take them from every app.
+Every key is a default that `[hotkeys]` and `[keys]` in the config change (§8, decision 55); the README's
+[Keys](README.md#keys) and [Configuration](README.md#configuration) list them. The text editing keys of the search
+field (`⌘X`, `⌘C`, `⌘V`, `⌘A`, `⌘Z`, `⇧⌘Z`) are fixed, and no hotkey can take them from every app.
 
-### Global hotkeys
-
-| Key | Setting | Action |
-|---|---|---|
-| `⌘P` | `hotkeys.launcher` | Open launcher (always global, no per-app pass-through) |
-| `⌘⇧V` | `hotkeys.clipboard` | Open directly in clipboard mode; `""` turns it off |
-| `⌃⌥V` | `hotkeys.paste_next` | Paste next: paste the last clip copied, then the one before at each press (§5.4, decision 64); `""` turns it off |
-
-### Inside the window
-
-| Key | Setting | Action |
-|---|---|---|
-| `↑` / `↓`, `Ctrl+K` / `Ctrl+J` | `keys.up`, `keys.down` | Move selection up / down |
-| `Enter` | `keys.open` | Primary action on selected item |
-| `⌘K` | `keys.actions` | Open actions panel for selected item |
-| `⌘Q`, `⌘W`, `⌘E`, `⌘R`, `⌘T`, `⌘Y`, `⌘U` | `keys.run_actions` | In the actions panel: run its 1st to 7th action (decision 43) |
-| `Esc` | `keys.back` | Back / close |
-| `⌘Y`, `Space` | `keys.preview` | Quick Look (§4.2) |
-| `⌫` | `keys.to_launcher` | From the clipboard back to the launcher (§5.3) |
+- **Global hotkeys** (`[hotkeys]`): `launcher` opens the launcher (⌘P, always global, no per-app pass-through),
+  `clipboard` opens the panel straight in the clipboard (⌘⇧V), and `paste_next` pastes down the history without
+  opening anything (⌃⌥V, §5.4, decision 64). `""` turns the last two off.
+- **Inside the panel** (`[keys]`): `up`, `down`, `open` (⏎: the primary action on the selected row), `actions` (⌘K),
+  `back` (⎋: back one level, or close), `preview` (Quick Look, §4.2), `run_actions` (in an actions list, the 1st to
+  7th action, decision 43) and `to_launcher` (⌫: from the clipboard back to the launcher, §5.3).
 
 A key without ⌘, ⌥ or ⌃ that types (a letter, Space, ⌫) works only while the search field is empty.
 
@@ -97,10 +85,10 @@ A key without ⌘, ⌥ or ⌃ that types (a letter, Space, ⌫) works only while
 |---|---|
 | `Enter` | Open with the app set for its type in `[open_with]`, else the default app |
 | `⌘K` → Reveal in Finder | |
-| `⌘K` → Copy path | Full POSIX path to clipboard |
-| `⌘K` → Open with… | Pick an app |
-| `⌘K` → Quick Look | Preview without opening (also `Space` / `⌘Y`) |
-| `⌘K` → Copy file | Puts the file itself on the clipboard (paste in Finder, Slack, …) |
+| `⌘K` → Copy Path | Full POSIX path to clipboard |
+| `⌘K` → Open With… | Pick an app |
+| `⌘Y`, or `Space` with an empty field | Quick Look: preview without opening (decision 20) |
+| `⌘K` → Copy File | Puts the file itself on the clipboard (paste in Finder, Slack, …) |
 | `⌘K` → Zip | See §4.4 |
 | `⌘K` → Move to Trash | |
 
@@ -109,16 +97,16 @@ A key without ⌘, ⌥ or ⌃ that types (a letter, Space, ⌫) works only while
 | Key | Action |
 |---|---|
 | `Enter` | Open in Finder |
-| `⌘K` → Copy path | |
-| `⌘K` → Open in terminal | Terminal app is configurable (Terminal, iTerm2, Ghostty, Warp, …) |
+| `⌘K` → Copy Path | |
+| `⌘K` → Open in Terminal | Terminal app is configurable (Terminal, iTerm2, Ghostty, Warp, …) |
 | `⌘K` → Zip | See §4.4 |
-| `⌘K` → Copy folder / Move to Trash | Same as files |
+| `⌘K` → Copy Folder / Move to Trash | Same as files |
 
 ### 4.4 Zip
 
 - Uses macOS's own tool: `ditto -c -k --sequesterRsrc --keepParent` (same as Finder's *Compress*).
 - Output next to the source as `name.zip` (`name 2.zip` if it exists).
-- Runs in the background; window can close. Notification / indicator on completion.
+- Runs in the background; the panel closes at once. A notification on completion.
 - If `ditto` proves too slow on large folders, evaluate alternatives later.
 
 ---
@@ -139,30 +127,30 @@ A key without ⌘, ⌥ or ⌃ that types (a letter, Space, ⌫) works only while
 Both limits apply; whichever triggers first wins:
 
 - **Size cap** in GB (2 GB by default, decision 37) — oldest dropped first.
-- **Max age** in days (30 by default) — older items deleted.
-- **Pinned items are never dropped**, and don't count toward the size cap (decision 62).
+- **Max age** in days (30 by default) — older clips deleted.
+- **Pinned clips are never dropped**, and don't count toward the size cap (decision 62).
 
 ### 5.3 Browsing
 
 - Opened via `⌘⇧V` or the `c ` prefix.
-- List with preview pane (text, image, file info, URL).
-- Newest first. Pinned items are found by typing: pinned matches come first (decision 33).
+- A list under the tile, which previews the selected clip (a text, an image, file info, a link).
+- Newest first. Pinned clips are found by typing: pinned matches come first (decision 33).
 - **Search** over text content and file names.
 
 ### 5.4 Actions
 
 | Key | Action |
 |---|---|
-| `Enter` | **Paste into previous app** (window closes, item pasted at cursor; needs Accessibility permission) |
+| `Enter` | **Paste into previous app** (the panel closes, the clip is pasted at the cursor; needs Accessibility permission) |
 | `⌃⌥V` (paste next, any app) | Pastes the last clip copied, then at each press the one before it, down the history, without opening the panel. A 10 s pause or a new copy starts again from the newest; past the oldest, a press does nothing. Its pastes don't reorder the history (decisions 63, 64) |
-| `⌘K` → Copy to clipboard | Moves item to the top of history and onto the clipboard, so a normal `⌘V` pastes it |
-| `⌘K` → Paste as plain text | Strip formatting |
+| `⌘K` → Copy to Clipboard | Moves the clip to the top of the history and onto the clipboard, so a normal `⌘V` pastes it |
+| `⌘K` → Paste as Plain Text | Strip formatting |
 | `⌘K` → Pin / Unpin | |
 | `⌘K` → Delete | |
-| `⌘K` → Edit text | *After milestone 3 (decision 36).* In-panel editor; saving creates a new entry at the top and puts it on the clipboard (original kept) |
-| `⌘K` → Edit image | *After milestone 3 (decision 40).* Opens in Preview; when saved, the edited image comes back as a new entry at the top |
-| `⌘K` → Save as file | Images / text to a file in Downloads, then a notification (decision 39) |
-| `⌘K` → Open URL | For copied links, with the app set for the scheme in `[open_links]`, else the default |
+| `⌘K` → Edit Text | *After milestone 3 (decision 36).* In-panel editor; saving creates a new clip at the top and puts it on the clipboard (original kept) |
+| `⌘K` → Edit Image | *After milestone 3 (decision 40).* Opens in Preview; when saved, the edited image comes back as a new clip at the top |
+| `⌘K` → Save as File | Images / text to a file in Downloads, then a notification (decision 39) |
+| `⌘K` → Open Link | For copied links ("Open in Safari"), with the app set for the scheme in `[open_links]`, else the default |
 | `⌘K` → Reveal in Finder | For copied files |
 
 ---
@@ -200,50 +188,12 @@ Single file, no settings window: `~/.config/pith/config.toml`. Reloaded automati
 nothing but shows up first in the launcher: a wrong value keeps its setting as it was, and a file that doesn't parse
 keeps them all (decision 59).
 
-```toml
-[hotkeys]
-launcher   = "cmd+p"
-clipboard  = "cmd+shift+v"  # "" turns it off
-paste_next = "ctrl+alt+v"   # the last clip copied, then the one before at each press; "" turns it off
-
-[keys]                      # one key, or a list of them; [] turns one off (not open or back)
-up          = ["up", "ctrl+k"]
-down        = ["down", "ctrl+j"]
-open        = "return"
-actions     = "cmd+k"
-back        = "escape"
-preview     = ["cmd+y", "space"]
-run_actions = ["cmd+q", "cmd+w", "cmd+e", "cmd+r", "cmd+t", "cmd+y", "cmd+u"]
-to_launcher = "backspace"
-
-[launcher]
-empty_state = "recent"   # recent | running | none
-clipboard_alias = "c"    # "c" lists Clipboard History first; "c " opens the clipboard
-launch_at_login = true
-folders = ["~"]          # the home folder (decision 22); also searched inside an ignored one
-ignore  = [".*", "~/Library", "node_modules", ".build", "*.photoslibrary"]
-max_depth = 6
-
-[actions]
-terminal = "Ghostty"   # Terminal | iTerm | Ghostty | Warp | …
-
-# Which app opens what, for files and links opened from the launcher (macOS defaults are untouched).
-[open_with]            # file extension or type → app (name, bundle id or path)
-md  = "Visual Studio Code"
-pdf = "Preview"
-"public.image" = "Pixelmator Pro"
-
-[open_links]           # URL scheme → app
-https  = "Safari"
-mailto = "Mail"
-
-[clipboard]
-max_size_gb = 2
-max_age_days = 30
-
-# [calculator]           # with the calculator (§6), a later milestone: not read yet
-# currency_refresh_hours = 24
-```
+Every setting, its default and what it does is in the README's [Configuration](README.md#configuration), and in
+the commented template Pith writes on its first launch (`Config.template`). The tables: `[hotkeys]`, `[keys]` (§3,
+decision 55), `[launcher]` (the empty state, `clipboard_alias`, launch at login, and the file index's `folders`,
+`ignore` and `max_depth`, decision 22), `[clipboard]` (the limits, §5.2), `[actions]` (the terminal app), `[open_with]`
+(file extension or type → app, decision 15) and `[open_links]` (URL scheme → app, decision 16). App names resolve by
+name, bundle id or path; macOS's defaults are untouched. `[calculator]` comes with §6.
 
 ---
 
@@ -255,13 +205,14 @@ AI of any kind · an extension store · snippets · quicklinks · window managem
 
 ## 10. Tech notes
 
-- Swift Package, AppKit (`NSPanel` + `NSTableView`, view reuse). SwiftUI not used in the hot path.
+- Swift Package, AppKit (`NSPanel` + `NSTableView`, view reuse). No SwiftUI.
 - `LSUIElement` (no Dock icon), `SMAppService` for launch at login.
 - Global hotkeys: Carbon `RegisterEventHotKey`, on the key that types their letter in the keyboard layout in use.
 - Storage: SQLite (the system library). Config: TOML (our own reader).
 - Updates: Sparkle, the one dependency, from `pith.edoardobertoli.xyz` (decision 48).
 - Paste: `CGEvent` ⌘V into the previously active app → requires **Accessibility** permission.
-- Icons loaded lazily, cached in `NSCache`.
+- Icons rendered off the main thread at their exact pixel size: the apps' at launch, a file type's the first time it
+  shows.
 - Always build/profile in Release.
 
 ---
@@ -273,14 +224,11 @@ AI of any kind · an extension store · snippets · quicklinks · window managem
 - [ ] Clipboard privacy: concealed copies are skipped (decision 35) and recording pauses from the launcher (decision 44); an ignore-app list?
 - [x] Every keybind configurable in `config.toml`: a `[keys]` table, and `[launcher] clipboard_alias` (decision 55)
 - [x] Paste down the history by repeating a key: paste next on ⌃⌥V, from the last clip copied (decisions 63, 64)
-- [ ] A first install and updates that follow macOS's conventions, with as few privacy prompts as possible (Edoardo,
-  2026-11-23, after the keybinds). Without the paid Apple Developer Program (decision 46) Pith can't be notarized, so
-  the first open always needs Open Anyway; everything else is open. The Desktop, Documents and Downloads prompts now
-  say why, and don't hold back the rest of the files while they wait (decision 60). Still to check, then propose: the
-  other prompts a new user gets and when (Accessibility on the first paste, clipboard access, notifications, the login
-  item), asking each one only when its feature first needs it with a line saying why, and whether a Homebrew cask in a tap of Edoardo's is worth adding beside the zip. And no zip to
-  download (Edoardo, 2026-11-23): the first install is an installer, the window that opens with Pith and an arrow to
-  drag it into Applications (a disk image, decision 56), and one line in Terminal skips the dialog (decision 57).
+- [ ] The other permission prompts a new user gets (Accessibility on the first paste, clipboard access,
+  notifications, the login item): each asked only when its feature first needs it, with a line saying why. Done: the
+  first install with one line in Terminal or a disk image (decisions 56, 57, 67), and the folder prompts, which say
+  why and don't hold back the rest of the files (decision 60). Without the paid Apple Developer Program (decision 46)
+  the disk image's first open needs Open Anyway; a Homebrew cask wouldn't avoid it.
 - [x] Default size cap / max age: 2 GB, 30 days (decision 37)
 
 ---
