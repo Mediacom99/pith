@@ -4,7 +4,7 @@
 
 Pith is a minimal, keyboard-only macOS launcher with a clipboard manager and calculator, for people who drive their Mac from the keyboard. It's always resident and opens in one frame. No AI, extensions, account or telemetry.
 
-Stack: Swift 6.4, AppKit, a Swift Package (no Xcode project), macOS 26+ on Apple Silicon. No third-party dependencies so far.
+Stack: Swift 6.4, AppKit, a Swift Package (no Xcode project), macOS 26+ on Apple Silicon. One third-party dependency: Sparkle, for updates (decision 48).
 
 Read these before doing anything:
 - `FEATURES.md`: the product spec, covering what the app does and the performance targets.
@@ -39,7 +39,17 @@ Read these before doing anything:
   - Impeccable can't run the app: `make snapshots` draws the panel's states, light and dark, into `docs/snapshots/` without putting anything on screen. Regenerate and commit them with every visual change.
   - Never use claude.ai Artifacts: anything visual is a local HTML file, opened in the browser.
 - **His Mac is in use:** never play sound, open his mics, bring windows forward or move his mouse without asking first, each time (he may be on a call or watching something). Headless checks (builds, tests) are fine anytime. `make run` and `make install` are not headless: they launch the app, which takes ⌘P from every app, so ask first.
-- **Edoardo's daily copy:** he uses the installed app (`~/Applications/Pith.app`, starts at login) in place of Raycast; it was installed from `design/impeccable-setup` with the rename to Pith (decision 30). Keep it current: whenever a change that affects the app lands on `staging`, tell him and offer to reinstall it with `make install`. When he stops using it (back to another launcher, or a real release replaces it), remind him and run `make uninstall`.
+- **Edoardo's daily copy:** he uses Pith in place of Raycast. On 2026-11-23 it was removed so he could install 0.3.5
+  from `Pith.dmg` as a new user would (decision 56): his config, clipboard history and Sparkle state are in
+  `~/pith-backup-2026-11-23`, and its privacy permissions were reset (`tccutil reset All dev.edoardo.pith`). He
+  reinstalled it in `/Applications`, where the installer and the Terminal install put it, and where `make install`
+  now puts a branch build to try, until the next update replaces it. On the evening of 2026-11-23 it was removed
+  completely and reinstalled with the Terminal line (0.3.6, fresh config and history), and it's on 0.3.10 since. It's
+  signed with the local certificate (decision 41) so its Accessibility access survives updates, and it updates itself (decisions
+  48–50). A change reaches it, and whoever else has Pith, as a release: raise the version in `Support/Info.plist`,
+  commit, `make publish`, then Check for Updates in the launcher. Publish from the branch he uses
+  (`clipboard/milestone-3`, ahead of `staging`). When he stops using it (back to another launcher), remind him and
+  remove it.
 - **Secrets** never go in a repo.
 - **Edoardo's work stays out:** never mention his employer, clients or work projects anywhere: code, tests, docs, commit messages, or chat examples. Don't copy real file or folder names from his Mac into the repo either; tests and docs use made-up examples (`Acme`, `Quarterly_Budget_Review.pdf`).
 - **Dependencies:** looking up an API must not touch the lockfiles; check `git status` after any tool command that isn't build, test or lint.
@@ -63,7 +73,9 @@ It's a small app, so it has to be excellent: fast, and light on memory, threads 
   - Never block Swift's cooperative pool: no blocking calls inside `Task.detached` or other async code.
   - Spread independent CPU work over the cores with `DispatchQueue.concurrentPerform`, never one thread per item.
   - When newer work supersedes an in-flight job (a newer index, a newer query), drop the old result instead of applying it.
-- **Idle means idle:** no timers, polling or busy-waiting. React to events (hotkey, FSEvents, notifications).
+- **Idle means idle:** no timers, polling or busy-waiting. React to events (hotkey, FSEvents, notifications). The one
+  exception is the clipboard's change-count timer, because macOS has no notification for a copy (`docs/MILESTONE-3.md`
+  step 2).
 - **Prepare ahead of time:** windows are built at launch, search keys at index time, and icons are rendered once at their exact pixel size. Showing something means displaying what's already prepared.
 - **Hot paths** (per keystroke × per item) don't allocate, block or log above debug level. Reuse buffers, and skip work whose result didn't change: no table reload when the matches are the same.
 - **Memory:** keep what's displayed at display size (icon bitmaps at exact pixels, never full-size images). Keep only what the index needs, and prune caches when the index changes.
@@ -78,6 +90,18 @@ It's a small app, so it has to be excellent: fast, and light on memory, threads 
 
 Everything goes through the `Makefile`; `make` lists the targets. Add a target there instead of documenting a raw command here. `make lint test` passes before every commit.
 
+Traps:
+- Pith's log: `/usr/bin/log show --predicate 'subsystem == "dev.edoardo.pith"' --info` (zsh's `log` is a builtin), outside the sandbox.
+- A new subdomain can stay unresolvable on Edoardo's Mac from a cached failed lookup: `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`, which he runs himself (it needs his password).
+- `make site` replaces everything the Worker serves, so it needs the feed and builds a `make publish` from this checkout left in `.build/site`.
+- DESIGN.md: *move* the edited full text over `docs/DESIGN.md` before `impeccable design-compact --write`; it refuses while `docs/.impeccable/design-full.md` exists.
+- Page captures: `impeccable shot` for phone widths (headless Chrome won't go below about 500 px); `impeccable motion-capture` takes waits up to 2000 ms, arrow keys but not Page Down or Home, and no playback over 10 s.
+- A scrolled page can't be captured: `impeccable shot` resets the scroll, and headless Chrome draws a blank frame after a scripted scroll. Measure instead: inject a script that scrolls, writes `getBoundingClientRect()` values into a `data-` attribute, and read it with Chrome's `--headless=new --dump-dom`.
+- A banner with a blank icon while the app has one is macOS's icon cache, kept from before the icon existed (step
+  11): `sudo rm -rf /Library/Caches/com.apple.iconservices.store; sudo killall iconservicesd; killall
+  iconservicesagent NotificationCenter usernoted`, which Edoardo runs himself (it needs his password). No restart.
+- macOS's notification system (`usernoted`) keeps an app's record, by bundle id, until no copy of the app is left, then drops it when it restarts. `tccutil reset All dev.edoardo.pith` works only while LaunchServices still knows a copy. `sfltool dumpbtm` hangs waiting for a password. `make app` copies get registered with LaunchServices too (`lsregister -u .build/Pith.app` drops one).
+
 ## Layout
 
 - `Sources/LauncherCore/`: pure logic, such as scanning, the in-memory index, fuzzy matching and FSEvents. It never imports AppKit.
@@ -86,7 +110,14 @@ Everything goes through the `Makefile`; `make` lists the targets. Add a target t
 - `Tests/LauncherTests/`: AppKit layout tests, the UI benchmark and the panel snapshots, in real panels that are never put on screen.
 - Suites named `…Benchmark` run only through `make bench`, and `…Snapshots` only through `make snapshots`.
 - `docs/snapshots/`: the panel's states as PNGs, written by `make snapshots`.
-- `Support/Info.plist`: bundle metadata (bundle ID, `LSUIElement`), copied into the `.app` by `make app`.
+- `Support/Info.plist`: bundle metadata (bundle ID, `LSUIElement`, Sparkle's feed and key), copied into the `.app` by
+  `make app`.
+- `Support/AppIcon.svg`: the app icon's source; `make icon` redraws the committed `Support/AppIcon.icns` and
+  `Support/Assets.car` (the same icon as an asset catalog) from it.
+- `Support/wrangler.toml`: `pith.edoardobertoli.xyz` on Cloudflare, where `make publish` puts the update feed and the
+  builds.
+- `site/`: the landing page on `pith.edoardobertoli.xyz` (decision 51). `make page` assembles it in `.build/site` with
+  its snapshots, `make site` deploys it with the published feed; it's design work, so it goes through impeccable.
 
 ## Conventions
 

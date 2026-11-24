@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import LauncherCore
 import TestSupport
 import Testing
@@ -32,8 +33,33 @@ func type(_ text: String, in panel: LauncherPanel) async {
     panel.layoutIfNeeded()
 }
 
-func press(_ command: Selector, in panel: LauncherPanel) {
-    _ = panel.launcher.control(panel.launcher.searchField, textView: NSTextView(), doCommandBy: command)
+/// Presses `key` ("down", "return", "cmd+k"), as the keyboard would: through the panel's keys (decision 55). True
+/// when the panel took it; false when it would go on to the search field.
+@discardableResult
+func press(_ key: String, in panel: LauncherPanel, held: Bool = false) -> Bool {
+    let shortcut = Shortcut(key)!
+    var flags: NSEvent.ModifierFlags = []
+    for (carbon, flag) in [(cmdKey, NSEvent.ModifierFlags.command), (shiftKey, .shift), (optionKey, .option)]
+        + [(controlKey, NSEvent.ModifierFlags.control)]
+    where shortcut.modifiers & UInt32(carbon) != 0 {
+        flags.insert(flag)
+    }
+    let characters =
+        switch shortcut.key {
+        case "return": "\r"
+        case "escape": "\u{1b}"
+        case "backspace": "\u{7f}"
+        case "space": " "
+        case "tab": "\t"
+        case "up": String(UnicodeScalar(UInt16(NSUpArrowFunctionKey))!)
+        case "down": String(UnicodeScalar(UInt16(NSDownArrowFunctionKey))!)
+        default: shortcut.key
+        }
+    let event = NSEvent.keyEvent(
+        with: .keyDown, location: .zero, modifierFlags: flags, timestamp: 0, windowNumber: panel.windowNumber,
+        context: nil, characters: characters, charactersIgnoringModifiers: characters, isARepeat: held,
+        keyCode: UInt16(shortcut.keyCode))!
+    return panel.handleKey(event)
 }
 
 /// Made-up apps, so none of them is running on the machine that runs the tests.
@@ -47,6 +73,9 @@ private func names(_ rows: [Row], for item: Item? = nil) -> [String] {
         case .item(let item): item.name
         case .action(let action): item.map(action.title(for:)) ?? "\(action)"
         case .problem(let message): message
+        case .clip(let clip): ClipText.title(of: clip).text
+        case .notice(let notice): LauncherViewController.noticeTitle(notice)
+        case .clipAction(let action): action.title(canPaste: false, linkApp: nil)
         }
     }
 }
@@ -102,7 +131,7 @@ struct LauncherPanelTests {
         #expect(transparentRows().isEmpty, "a broader query")
 
         panel.launcher.toggleActions()
-        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        press("escape", in: panel)
         panel.layoutIfNeeded()
         #expect(transparentRows().isEmpty, "⎋ from two actions back to four results")
     }
@@ -130,7 +159,7 @@ struct LauncherPanelTests {
         #expect(stage.content.primary == "Open")
         #expect(stage.content.secondary == StageView.Key(words: "Actions", caps: ["⌘", "K"]))
 
-        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        press("down", in: panel)
         let second = names(panel)[1]
         #expect(stage.content.name == second)
 
@@ -138,7 +167,7 @@ struct LauncherPanelTests {
         #expect(stage.content.name == second, "⌘K keeps the item on the tile")
         #expect(stage.content.primary == "Open")
         #expect(stage.content.secondary == StageView.Key(words: "Back", caps: ["esc"]))
-        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        press("down", in: panel)
         #expect(stage.content.primary == "Reveal in Finder", "the selected action is what ⏎ does")
 
         await type("gqqq", in: panel)
@@ -157,8 +186,8 @@ struct LauncherPanelTests {
         }
         await type("g", in: panel)
         #expect(marked() == [0])
-        press(#selector(NSResponder.moveDown(_:)), in: panel)
-        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        press("down", in: panel)
+        press("down", in: panel)
         #expect(marked() == [2])
     }
 
@@ -248,14 +277,227 @@ struct LauncherPanelTests {
 
     @Test func commandsAreSearchable() async {
         let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))
+        panel.launcher.version = "0.3.0"
         await type("quit", in: panel)
         #expect(panel.launcher.rows.first == .item(Item(command: .quit)))
+        #expect(panel.launcher.stage.content.kind == "Pith 0.3.0", "the version, for whoever tries a build")
+    }
+
+    @Test func cOrClipboardPutsClipboardHistoryFirstAndReturnOpensIt() async {
+        let calendar = Item(name: "Calendar", appAt: URL(filePath: "/nonexistent/Calendar.app"))
+        let panel = makePanel(items: apps + [calendar] + Command.allCases.map(Item.init(command:)))
+        panel.launcher.clipboardHotkey = "⇧⌘V"
+        for query in ["c", "clipboard"] {
+            await type(query, in: panel)
+            #expect(panel.launcher.rows.first == .item(Item(command: .clipboard)), "\(query)")
+        }
+        #expect(panel.launcher.stage.content.primary == "Open")
+        #expect(panel.launcher.stage.content.kind == "Also ⇧⌘V, from any app")
+
+        press("return", in: panel)
+        #expect(panel.launcher.mode == .clipboard, "it opens in place")
+        #expect(panel.launcher.searchField.stringValue.isEmpty)
+    }
+
+    /// A click selects a row, and the tile follows it; a click below the rows keeps the selection.
+    @Test func theTileFollowsAClick() async {
+        let panel = makePanel(items: apps)
+        await type("g", in: panel)
+        #expect(panel.launcher.stage.content.name == names(panel.launcher.rows)[0])
+        let table = panel.launcher.tableView
+        table.selectRowIndexes(IndexSet(integer: 1), byExtendingSelection: false)
+        #expect(panel.launcher.stage.content.name == names(panel.launcher.rows)[1])
+        let kept = panel.launcher.tableView(table, selectionIndexesForProposedSelection: IndexSet())
+        #expect(kept == IndexSet(integer: 1))
+        press("up", in: panel, held: true)
+        #expect(table.selectedRow == 0, "↑ and ↓ repeat when held")
+    }
+
+    /// The keypad's Enter (and fn+Return) does what Return does.
+    @Test func keypadEnterIsReturn() async {
+        let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))
+        var run: [Command] = []
+        panel.launcher.runCommand = { run.append($0) }
+        await type("quit pith", in: panel)
+        let enter = NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: .numericPad, timestamp: 0,
+            windowNumber: panel.windowNumber, context: nil, characters: "\u{3}", charactersIgnoringModifiers: "\u{3}",
+            isARepeat: false, keyCode: UInt16(kVK_ANSI_KeypadEnter))!
+        #expect(panel.handleKey(enter))
+        #expect(run == [.quit])
+    }
+
+    @Test func clearClipboardHistoryWaitsForASecondReturn() async {
+        let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))
+        var run: [Command] = []
+        panel.launcher.runCommand = { run.append($0) }
+        await type("clear clip", in: panel)
+        #expect(panel.launcher.rows.first == .item(Item(command: .clearClipboard)))
+        #expect(panel.launcher.stage.content.kind == "Pinned items stay")
+        func title() -> String? {
+            (panel.launcher.tableView.view(atColumn: 0, row: 0, makeIfNecessary: false) as? ResultCell)?
+                .textField?.stringValue
+        }
+
+        press("return", in: panel)
+        #expect(run.isEmpty)
+        #expect(title() == "Press ⏎ again to clear the clipboard history")
+        #expect(panel.launcher.stage.content.isDanger)
+        #expect(panel.launcher.stage.content.secondary?.words == "Cancel")
+
+        press("escape", in: panel)
+        #expect(!panel.launcher.confirming && title() == "Clear Clipboard History", "⎋ cancels it")
+        #expect(!panel.launcher.stage.content.isDanger)
+
+        press("return", in: panel)
+        await type("clear clip ", in: panel)
+        #expect(!panel.launcher.confirming, "typing cancels it, even when the rows stay the same")
+        press("return", in: panel)
+        #expect(run.isEmpty)
+
+        press("return", in: panel)
+        #expect(run == [.clearClipboard])
+    }
+
+    @Test func onlyTheRecordingCommandThatAppliesIsListed() async {
+        let panel = makePanel(
+            items: apps + Command.allCases.map(Item.init(command:)),
+            opened: ["command:pause-clipboard", "command:resume-clipboard"], emptyState: .recent)
+        await type("recording", in: panel)
+        #expect(names(panel) == ["Pause Clipboard Recording"], "recording")
+
+        panel.launcher.hiddenCommands = [.pauseClipboard]
+        await type("recordin", in: panel)
+        #expect(names(panel) == ["Resume Clipboard Recording"], "paused")
+        await type("", in: panel)
+        #expect(names(panel) == ["Resume Clipboard Recording"], "the recent list leaves it out too")
+    }
+
+    @Test func aReadyUpdateIsListedFirstAndReturnRestarts() async {
+        let panel = makePanel(
+            items: apps + Command.allCases.map(Item.init(command:)), opened: [apps[0].id, "command:install-update"],
+            emptyState: .recent)
+        var run: [Command] = []
+        panel.launcher.runCommand = { run.append($0) }
+        await type("update pith", in: panel)
+        #expect(panel.launcher.rows.isEmpty, "nothing to install yet")
+
+        panel.launcher.readyUpdate = "0.3.1"
+        await type("", in: panel)
+        #expect(names(panel) == ["Update Pith", "Gizmo"], "first, and not again as a recent item")
+        #expect(panel.launcher.tableView.selectedRow == 1, "⏎ still opens what it did")
+        press("up", in: panel)
+        #expect(panel.launcher.stage.content.place == "Pith 0.3.1 is ready")
+        #expect(panel.launcher.stage.content.primary == "Restart")
+        press("return", in: panel)
+        #expect(run == [.installUpdate])
+    }
+
+    @Test func updatesAreCheckedOnceADayAndAnHourAfterAFailure() {
+        let start = Date(timeIntervalSince1970: 1_790_000_000)
+        let hour: TimeInterval = 3_600
+        var schedule = UpdateSchedule()
+        // Hours after `start` that a check is attempted at, and whether it's due; a failure at hour 24.
+        var due: [Bool] = []
+        for (hours, failed) in [(0.0, false), (23, false), (24, true), (24.98, false), (25, false), (26, false)] {
+            due.append(schedule.take(at: start + hours * hour))
+            if failed { schedule.failed(at: start + hours * hour) }
+        }
+        #expect(due == [true, false, true, false, true, false], "first chance, a day later, an hour after a failure")
+    }
+
+    @Test func checkForUpdatesIsListedOnlyWhenItCanDoSomething() async {
+        let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))
+        var run: [Command] = []
+        panel.launcher.runCommand = { run.append($0) }
+        panel.launcher.version = "0.3.2"
+        await type("check for updates", in: panel)
+        #expect(panel.launcher.rows.isEmpty, "a copy that doesn't update itself, like make run's")
+
+        panel.launcher.checksForUpdates = true
+        await type("check for updates", in: panel)
+        #expect(names(panel) == ["Check for Updates"])
+        #expect(panel.launcher.stage.content.kind == "Pith 0.3.2")
+        #expect(panel.launcher.stage.content.primary == "Check")
+        press("return", in: panel)
+        #expect(run == [.checkForUpdates])
+
+        panel.launcher.readyUpdate = "0.3.3"
+        await type("check for updates", in: panel)
+        #expect(panel.launcher.rows.isEmpty, "Update Pith is listed instead")
+    }
+
+    @Test func aCheckThatWasAskedForPutsTheNextADayLater() {
+        let start = Date(timeIntervalSince1970: 1_790_000_000)
+        let hour: TimeInterval = 3_600
+        var schedule = UpdateSchedule()
+        let first = schedule.take(at: start)
+        schedule.takeNow(at: start + 5 * hour)
+        let dayAfterTheFirst = schedule.take(at: start + 24 * hour)
+        let dayAfterTheAsked = schedule.take(at: start + 29 * hour)
+        #expect(first)
+        #expect(!dayAfterTheFirst, "not due a day after the scheduled check")
+        #expect(dayAfterTheAsked, "a day after the one asked for")
+    }
+
+    @Test func eachUpdateNotificationSaysWhatHappened() {
+        let said = [
+            UpdateResult.updated(to: "0.3.2"), .failed(to: "0.3.3", reason: "The update is improperly signed."),
+            .ready("0.3.3"), .upToDate("0.3.2"),
+            .checkFailed(reason: "A server with the specified hostname could not be found."),
+        ].map { [$0.title, $0.body] }
+        #expect(
+            said == [
+                ["Pith updated to 0.3.2", ""],
+                ["Couldn't update Pith to 0.3.3", "The update is improperly signed."],
+                ["Pith 0.3.3 is ready", "Update Pith in the launcher restarts into it."],
+                ["Pith is up to date", "0.3.2 is the newest version."],
+                ["Couldn't check for updates", "A server with the specified hostname could not be found."],
+            ])
+    }
+
+    @Test func theLaunchAfterAnUpdateSaysHowItWent() {
+        var ready = PendingUpdate(build: "202611231214", version: "0.3.1")
+        #expect(ready.result(runningBuild: "202611231214", runningVersion: "0.3.1") == .updated(to: "0.3.1"))
+        #expect(
+            ready.result(runningBuild: "202611231210", runningVersion: "0.3.0") == nil,
+            "not installed on quit: the next check finds it again")
+        ready.requested = true
+        #expect(
+            ready.result(runningBuild: "202611231210", runningVersion: "0.3.0")
+                == .failed(to: "0.3.1", reason: "Pith is still 0.3.0, and tries again on its next check."))
+    }
+
+    @Test func onlyAFoundUpdateThatFailsIsReported() {
+        func sparkle(_ code: Int) -> NSError { NSError(domain: "SUSparkleErrorDomain", code: code) }
+        #expect(!Updater.isUpdateProblem(sparkle(1002)), "the feed couldn't be read: offline, DNS")
+        #expect(!Updater.isUpdateProblem(sparkle(1001)), "no update")
+        #expect(Updater.isUpdateProblem(sparkle(2001)), "its download")
+        #expect(Updater.isUpdateProblem(sparkle(3001)), "its signature")
+        #expect(Updater.isUpdateProblem(sparkle(4005)), "its install")
+        #expect(!Updater.isUpdateProblem(sparkle(4007)), "canceled")
+        #expect(!Updater.isUpdateProblem(NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet)))
+    }
+
+    @Test func sparklesOwnScheduleIsOffAndUpdatesDownloadOnTheirOwn() throws {
+        // The Info.plist the app is built with: Pith asks for checks itself, with no timer (decision 48).
+        let file = URL(filePath: #filePath).deletingLastPathComponent().appending(path: "../../Support/Info.plist")
+        let plist = try #require(NSDictionary(contentsOf: file) as? [String: Any])
+        #expect(plist["SUFeedURL"] as? String == "https://pith.edoardobertoli.xyz/appcast.xml")
+        #expect(plist["SUEnableAutomaticChecks"] as? Bool == false)
+        #expect(plist["SUAllowsAutomaticUpdates"] as? Bool == true, "else turning the schedule off stops downloads too")
+        #expect(plist["SUAutomaticallyUpdate"] as? Bool == true)
+        // The bundle names its icon, and make app copies it from Support (decision 54).
+        #expect(plist["CFBundleIconFile"] as? String == "AppIcon")
+        #expect(
+            FileManager.default.fileExists(
+                atPath: file.deletingLastPathComponent().appending(path: "AppIcon.icns").path))
     }
 
     @Test func commandKListsActionsAndEscapeGoesBack() async {
         let panel = makePanel(items: apps)
         await type("g", in: panel)
-        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        press("down", in: panel)
         let results = panel.launcher.rows
         let selected = panel.launcher.tableView.selectedRow
 
@@ -267,7 +509,7 @@ struct LauncherPanelTests {
         await type("rev", in: panel)
         #expect(names(panel) == ["Reveal in Finder"])
 
-        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        press("escape", in: panel)
         #expect(panel.launcher.searchField.stringValue == "g")
         #expect(panel.launcher.rows == results)
         #expect(panel.launcher.tableView.selectedRow == selected)
@@ -283,29 +525,29 @@ struct LauncherPanelTests {
         panel.launcher.toggleActions()
         try #require(panel.launcher.rows.last == .action(.forceQuit), "Finder isn't running")
         let last = panel.launcher.rows.count - 1
-        for _ in 0..<last { press(#selector(NSResponder.moveDown(_:)), in: panel) }
+        for _ in 0..<last { press("down", in: panel) }
         func title() -> String? {
             (panel.launcher.tableView.view(atColumn: 0, row: last, makeIfNecessary: false) as? ResultCell)?
                 .textField?.stringValue
         }
 
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press("return", in: panel)
         #expect(quits.isEmpty)
         #expect(title() == "Press ⏎ again to force quit Finder")
         #expect(panel.launcher.stage.content.isDanger)
         #expect(panel.launcher.stage.content.secondary?.words == "Cancel")
 
-        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        press("escape", in: panel)
         #expect(panel.launcher.sublist != nil, "⎋ cancels the confirmation, not the actions")
         #expect(title() == "Force Quit")
 
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
-        press(#selector(NSResponder.moveUp(_:)), in: panel)
-        press(#selector(NSResponder.moveDown(_:)), in: panel)
-        #expect(!panel.launcher.confirmingForceQuit, "moving the selection cancels it too")
+        press("return", in: panel)
+        press("up", in: panel)
+        press("down", in: panel)
+        #expect(!panel.launcher.confirming, "moving the selection cancels it too")
 
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press("return", in: panel)
+        press("return", in: panel)
         #expect(quits == [true])
     }
 
@@ -395,9 +637,9 @@ struct LauncherPanelTests {
         panel.launcher.prepareToShow()
         panel.launcher.toggleActions()
         try #require(panel.launcher.rows.last == .action(.trash))
-        for _ in 1..<panel.launcher.rows.count { press(#selector(NSResponder.moveDown(_:)), in: panel) }
+        for _ in 1..<panel.launcher.rows.count { press("down", in: panel) }
 
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press("return", in: panel)
         #expect(await eventually { !failures.isEmpty })
         #expect(failures == ["Couldn't move Quarterly_Budget_Review.pdf to the Trash"])
         panel.launcher.reset()
@@ -420,6 +662,33 @@ struct LauncherPanelTests {
             ])
     }
 
+    /// Open With…'s apps arrive from a worker: closing the panel meanwhile drops them, and a second ⏎ doesn't add a
+    /// second level.
+    @Test func openWithsAppsLandOnlyWhereTheyWereAskedFor() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFile("letter.txt")
+        let files = FileSearchEngine()
+        await files.rebuild(FileRules(roots: [folder.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        let panel = makePanel(items: [], files: files)
+        await type("letter", in: panel)
+        panel.launcher.toggleActions()
+        await type("with", in: panel)
+        press("return", in: panel)
+        panel.launcher.reset()
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(panel.launcher.sublist == nil, "closed before the apps came")
+
+        await type("letter", in: panel)
+        panel.launcher.toggleActions()
+        await type("with", in: panel)
+        press("return", in: panel)
+        press("return", in: panel)
+        #expect(await eventually { if case .openWith? = panel.launcher.sublist { true } else { false } })
+        try await Task.sleep(for: .milliseconds(300))
+        press("escape", in: panel)
+        #expect(names(panel) == ["Open With…"], "one ⎋ back to the actions")
+    }
+
     @Test func openWithListsAppsAndEscapeStepsBack() async throws {
         let folder = try TemporaryDirectory()
         try folder.makeFile("letter.txt")
@@ -430,7 +699,7 @@ struct LauncherPanelTests {
         panel.launcher.toggleActions()
         await type("with", in: panel)
         #expect(names(panel) == ["Open With…"])
-        press(#selector(NSResponder.insertNewline(_:)), in: panel)
+        press("return", in: panel)
 
         #expect(await eventually { if case .openWith? = panel.launcher.sublist { true } else { false } })
         #expect(names(panel).contains("TextEdit"), "\(names(panel))")
@@ -438,10 +707,10 @@ struct LauncherPanelTests {
         #expect(panel.launcher.stage.content.name == "letter.txt", "the file stays on the tile")
         #expect(panel.launcher.stage.content.primary.hasPrefix("Open in "))
 
-        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        press("escape", in: panel)
         #expect(names(panel) == ["Open With…"], "back to the actions, still filtered")
         #expect(panel.launcher.searchField.stringValue == "with")
-        press(#selector(NSResponder.cancelOperation(_:)), in: panel)
+        press("escape", in: panel)
         #expect(panel.launcher.sublist == nil)
         #expect(panel.launcher.searchField.stringValue == "letter")
     }
@@ -455,7 +724,7 @@ struct LauncherPanelTests {
 
         await type("gizmo", in: panel)
         #expect(panel.launcher.previewURL == nil, "the app Gizmo is selected")
-        press(#selector(NSResponder.moveDown(_:)), in: panel)
+        press("down", in: panel)
         #expect(panel.launcher.previewURL?.lastPathComponent == "Gizmo manual.pdf")
         panel.launcher.toggleActions()
         #expect(panel.launcher.previewURL == nil, "not from the actions list")
@@ -489,5 +758,82 @@ extension RunningAppsTests {
         #expect(Set(running.order) == open)
         #expect(running.order.allSatisfy { running.application($0)?.isTerminated == false })
         #expect(!running.sync(), "nothing changed, so nothing to report")
+    }
+}
+
+/// The keys from `[keys]` (decision 55), pressed as the keyboard would.
+struct PanelKeysTests {
+    private func bindings(_ text: String) -> KeyBindings {
+        let (config, problems) = Config.parse(text)
+        #expect(problems.isEmpty)
+        return config.keys
+    }
+
+    @Test func reboundKeysReplaceTheDefaults() async {
+        let panel = makePanel(items: apps)
+        panel.launcher.keys = bindings("[keys]\ndown = \"ctrl+n\"\nopen = \"cmd+return\"")
+        await type("g", in: panel)
+        #expect(!press("down", in: panel), "↓ goes on to the field")
+        #expect(panel.launcher.tableView.selectedRow == 0)
+        #expect(press("ctrl+n", in: panel))
+        #expect(panel.launcher.tableView.selectedRow == 1)
+        #expect(press("ctrl+k", in: panel), "up keeps its defaults")
+        #expect(panel.launcher.tableView.selectedRow == 0)
+    }
+
+    @Test func aKeyThatTypesActsOnlyOnAnEmptyField() async {
+        let panel = makePanel(items: apps, emptyState: .running)
+        panel.launcher.keys = bindings("[keys]\ndown = [\"down\", \"j\"]")
+        panel.launcher.prepareToShow()
+        let selected = panel.launcher.tableView.selectedRow
+        #expect(press("j", in: panel))
+        #expect(panel.launcher.tableView.selectedRow == selected + 1)
+        await type("g", in: panel)
+        #expect(!press("j", in: panel), "with a query, j is a letter")
+        #expect(!press("space", in: panel), "and Space a space, with no file to preview")
+    }
+
+    @Test func theTileAndRowsShowTheKeysAsConfigured() async {
+        let panel = makePanel(items: apps)
+        panel.launcher.keys = bindings(
+            "[keys]\nopen = \"cmd+return\"\nactions = \"cmd+.\"\nback = \"ctrl+g\"\nrun_actions = [\"ctrl+1\"]")
+        let stage = panel.launcher.stage
+        await type("g", in: panel)
+        #expect(stage.openCaps == ["⌘", "↩"])
+        #expect(stage.content.secondary == StageView.Key(words: "Actions", caps: ["⌘", "."]))
+        func cells() -> [ResultCell] {
+            var cells: [ResultCell] = []
+            panel.launcher.tableView.enumerateAvailableRowViews { view, _ in
+                if let cell = view.view(atColumn: 0) as? ResultCell { cells.append(cell) }
+            }
+            return cells
+        }
+        #expect(cells().first?.openKey == "⌘↩", "the selected row ends in open's key")
+
+        #expect(press("cmd+.", in: panel))
+        #expect(stage.content.secondary == StageView.Key(words: "Back", caps: ["⌃", "G"]))
+        #expect(cells().map(\.trailingTag) == ["⌃1", ""], "Open and Reveal: only the actions with a key show one")
+        #expect(press("ctrl+g", in: panel))
+        #expect(panel.launcher.sublist == nil)
+    }
+
+    @Test func turnedOffActionsShowNoKey() async {
+        let panel = makePanel(items: apps)
+        panel.launcher.keys = bindings("[keys]\nactions = []")
+        await type("g", in: panel)
+        #expect(panel.launcher.stage.content.secondary == nil)
+        #expect(!press("cmd+k", in: panel))
+        #expect(panel.launcher.sublist == nil)
+    }
+
+    @Test func theClipboardAliasIsConfigurable() async {
+        let panel = makePanel(items: apps + [Item(command: .clipboard)])
+        panel.launcher.clipboardAlias = "v"
+        await type("v", in: panel)
+        #expect(names(panel).first == "Clipboard History")
+        await type("c ", in: panel)
+        #expect(panel.launcher.mode == .launcher, "c is just a letter now")
+        await type("v ", in: panel)
+        #expect(panel.launcher.mode == .clipboard)
     }
 }

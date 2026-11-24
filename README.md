@@ -3,12 +3,12 @@
 **A keyboard-only launcher for macOS that opens in one keystroke and stays out of the way.**
 
 Press ⌘P from any app, type a few letters, press ⏎. Apps, files and folders in one ranked list, with the actions you
-need on ⌘K. Native AppKit, always resident, no dependencies, no account, no telemetry.
+need on ⌘K. Native AppKit, always resident, no account, no telemetry.
 
 ![macOS 26+](https://img.shields.io/badge/macOS-26%2B-000?logo=apple&logoColor=white)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-only-000)
 ![Swift 6.4](https://img.shields.io/badge/Swift-6.4-F05138?logo=swift&logoColor=white)
-![Dependencies: 0](https://img.shields.io/badge/dependencies-0-2ea44f)
+![Dependencies: 1](https://img.shields.io/badge/dependencies-1%20%28Sparkle%29-2ea44f)
 
 <p align="center">
   <picture>
@@ -30,8 +30,9 @@ justify a subscription.
 
 - **Instant.** Built at launch, indexes in memory: ⌘P only shows what's ready.
 - **Keyboard only.** The row you want is usually the first.
-- **Small.** Native AppKit and Swift, zero dependencies, ~0 % CPU when idle.
-- **Private.** No account, no telemetry, no AI, no network (the planned calculator will fetch currency rates).
+- **Small.** Native AppKit and Swift, one dependency (Sparkle, for updates), ~0 % CPU when idle.
+- **Private.** No account, no telemetry, no AI. The network is only for a daily update check, and currency rates for
+  the planned calculator.
 - **Native.** It follows the system's appearance and is configured with a text file.
 
 ## Features
@@ -96,39 +97,113 @@ bar icon.
 | Key | What it does |
 |---|---|
 | ⌘P | Open or close the launcher, from any app |
+| ⌘⇧V, or Clipboard History in the launcher (type `c`) | Open the clipboard history; ⌫ on its empty field goes back to the launcher |
+| ⌃⌥V | Paste next: paste the last clip copied, then at each press the one before it, from any app |
 | ↑ ↓ or ⌃K ⌃J | Move the selection |
-| ⏎ | Open the selected item, or run the selected action |
+| ⏎ | Open the selected item, run the selected action, or paste the selected clip into the app you were in |
 | ⌘K | Show the selected item's actions, or go back to the search |
+| ⌘Q ⌘W ⌘E ⌘R ⌘T ⌘Y ⌘U | In ⌘K, run the 1st to 7th action (each row shows its letter) |
 | ⎋ | Back one level, or close |
 | ⌘Y, or Space with an empty field | Quick Look the selected file |
 
+These are the defaults: every one of them can be changed in the config, under `[hotkeys]` and `[keys]`.
+
 ## Install
 
-Requirements: macOS 26 Tahoe or later, Apple Silicon, and Xcode with Swift 6.4.
+In Terminal (macOS 26 Tahoe or later, Apple Silicon):
+
+```sh
+curl -fsSL https://pith.edoardobertoli.xyz/install.sh | sh
+```
+
+It downloads Pith, checks that it's signed with Pith's certificate, puts it in Applications and opens it. A file curl
+downloads isn't marked as coming from the internet, so macOS doesn't stop Pith the first time (decision 57).
+
+Or download [Pith.dmg](https://pith.edoardobertoli.xyz/Pith.dmg) and open it. In
+the window that opens, drag Pith onto Applications. Pith isn't notarized, so macOS stops it the first time you open it:
+press Done, then in System Settings, Privacy & Security, press Open Anyway and confirm. Then press ⌘P. The first paste
+from the clipboard history asks for Accessibility, which pasting needs. Pith starts at login and updates itself from
+then on.
+
+### From source
+
+Requirements: the same Mac, and Xcode with Swift 6.4.
 
 ```sh
 git clone https://github.com/Mediacom99/pith.git
 cd pith
-make install    # builds, copies to ~/Applications and launches
+make install    # builds, copies to /Applications and launches
 ```
 
 Then press ⌘P. The launcher takes ⌘P from every app, including Print; you can change the hotkey in the config.
 `make uninstall` quits it and removes it.
 
+The clipboard pastes into the app you were in, which needs Accessibility access (System Settings, Privacy & Security).
+Run `make certificate` once before `make install`: it creates a local signing certificate (macOS asks for your
+password), so the access you give survives reinstalls.
+
+### Releases
+
+Pith updates itself with [Sparkle](https://sparkle-project.org) from `pith.edoardobertoli.xyz`.
+- **Once:**
+  - `make update-key` creates the key that signs updates, in your keychain, and puts its public half in
+    `Support/Info.plist`. Commit that.
+  - `npx wrangler login` connects to the Cloudflare account that has the domain.
+- **Each release:**
+  1. Raise the version in `Support/Info.plist`: 0.\<milestone\>.\<patch\>.
+  2. Commit.
+  3. Run `make publish`. It builds and signs the app, zips it for the feed, makes the installer, tags the commit
+     `v<version>`, and puts the zip, the installer and the signed update feed online.
+- **What people get:**
+  - A first install comes from `https://pith.edoardobertoli.xyz/Pith.dmg`, the installer: a window to drag Pith into
+    Applications from, which says how to get past the first open.
+  - After that, Pith checks at most once a day and downloads an update in the background. Update Pith in the
+    launcher restarts into it; otherwise it installs when Pith quits.
+  - Check for Updates in the launcher checks right away, without waiting for the day.
+  - A notification says when it has updated, or why it couldn't.
+  - Settings, history and Accessibility access carry over.
+  - The Quit Pith tile shows the version, so a report can say which build it's about.
+
+Pith isn't notarized, so the first install is blocked once, and they press Open Anyway in System Settings, Privacy &
+Security. Their Mac needs macOS 26 and Apple Silicon. `make package` alone makes the zip and the installer without
+publishing them.
+
+The site's front page is `site/index.html`, the landing page to send people to. `make publish` deploys it with each
+release; to change only the page, `make page` assembles it in `.build/site` to look at, and `make site` deploys it.
+
 ## Configuration
 
 Settings live in `~/.config/pith/config.toml`. It's created with commented defaults on first launch, and saved
-changes apply right away. A mistake shows up as a row at the top of the launcher, and ⏎ on it opens the file.
+changes apply right away. A mistake shows up as a row at the top of the launcher, and ⏎ on it opens the file; until
+it's fixed, the settings it touches stay as they were.
 
 ```toml
 [hotkeys]
 launcher = "cmd+p"
+clipboard = "cmd+shift+v"   # "" turns it off
+paste_next = "ctrl+alt+v"   # the last clip copied, then the one before at each press; "" turns it off
+
+[keys]                      # the keys inside Pith: one, or a list; [] turns one off
+up = ["up", "ctrl+k"]
+down = ["down", "ctrl+j"]
+open = "return"
+actions = "cmd+k"
+back = "escape"
+preview = ["cmd+y", "space"]
+run_actions = ["cmd+q", "cmd+w", "cmd+e", "cmd+r", "cmd+t", "cmd+y", "cmd+u"]
+to_launcher = "backspace"   # from the clipboard back to the launcher
 
 [launcher]
 empty_state = "recent"      # "recent", "running" or "none"
-folders = ["~"]
+clipboard_alias = "c"       # "c" lists Clipboard History first; "c " opens the clipboard
+launch_at_login = true
+folders = ["~"]             # a folder here is searched even inside one ignore skips: "~/Dropbox", "~/.config"
 ignore = [".*", "~/Library", "node_modules", ".build", "*.photoslibrary"]
 max_depth = 6
+
+[clipboard]
+max_size_gb = 2             # whichever is reached first drops the oldest items; pinned ones stay and don't count
+max_age_days = 30
 
 [actions]
 terminal = "Ghostty"        # used by "Open in Terminal"
@@ -136,6 +211,9 @@ terminal = "Ghostty"        # used by "Open in Terminal"
 [open_with]
 md  = "Visual Studio Code"  # extension or type → app
 pdf = "Preview"
+
+[open_links]
+https = "Firefox"           # URL scheme → app, for links from the clipboard (https covers http)
 ```
 
 ## Performance
@@ -160,8 +238,9 @@ How it gets there:
 
 - [x] Launcher: apps, files, folders, ⌘K actions, Quick Look, Zip
 - [x] Stage, the visual design: the tile, compact rows, light and dark
-- [ ] Clipboard manager: history with previews, pinned items, search, paste into the previous app, an in-panel text
-      editor (⌘⇧V)
+- [x] Updates: Pith updates itself from `pith.edoardobertoli.xyz`, with Check for Updates in the launcher
+- [ ] Clipboard manager (⌘⇧V, in progress): history with previews, pinned items, search, paste into the previous app
+- [ ] The clipboard's text editor and Edit Image (after the clipboard, decisions 36 and 40)
 - [ ] Calculator: math, units, currency and programmer expressions, inline as the top result
 - [ ] On-screen latency down to the targets
 

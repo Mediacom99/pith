@@ -17,6 +17,10 @@ enum Layout {
     /// Where the list starts: under the bar, its separator and the tile.
     static let listTop = barHeight + 1 + tileMargin * 2 + tileHeight
     static let expandedHeight = listTop + visibleRows * rowHeight + listBottomInset
+    /// In the clipboard the tile is the preview: three rows taller, so five whole rows fit under it and the panel keeps
+    /// its height (docs/BRIEF-CLIPBOARD.md).
+    static let clipboardTileHeight = tileHeight + 3 * rowHeight
+    static let clipboardListTop = listTop + 3 * rowHeight
     static let iconSize: CGFloat = 20
     /// The selection's distance from the panel's sides (the tile's margin, so the two line up), and its corners.
     static let selectionInset: CGFloat = tileMargin
@@ -56,6 +60,17 @@ final class LauncherPanel: NSPanel {
         contentViewController = launcher
         setContentSize(NSSize(width: Layout.width, height: Layout.barHeight))
         displayIfNeeded()
+        // While Quick Look is up, another app coming to the front (⌘Tab, a click on its icon) closes both.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] notification in
+            let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            guard app?.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
+            MainActor.assumeIsolated {
+                guard let self, self.launcher.isPreviewing else { return }
+                self.dismiss()
+            }
+        }
     }
 
     @available(*, unavailable)
@@ -92,20 +107,38 @@ final class LauncherPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
-    /// `pressedAt` is the hotkey's timestamp, in seconds since boot, for the latency log.
+    /// The launcher's hotkey (⌘P): opens the launcher, closes it, or switches to it from the clipboard. `pressedAt` is
+    /// the hotkey's timestamp, in seconds since boot, for the latency log.
     func toggle(pressedAt: TimeInterval) {
-        if isVisible {
+        toggle(.launcher, pressedAt: pressedAt)
+    }
+
+    /// Opens the launcher if it isn't showing: for opening Pith.app again, the way in when the hotkey doesn't fire.
+    func show() {
+        guard !isVisible else { return }
+        present(.launcher, pressedAt: ProcessInfo.processInfo.systemUptime)
+    }
+
+    /// The clipboard's hotkey (⌘⇧V, decision 34): the same, for the clipboard.
+    func toggleClipboard(pressedAt: TimeInterval) {
+        toggle(.clipboard, pressedAt: pressedAt)
+    }
+
+    private func toggle(_ mode: LauncherViewController.Mode, pressedAt: TimeInterval) {
+        if !isVisible {
+            present(mode, pressedAt: pressedAt)
+        } else if launcher.mode == mode {
             dismiss()
         } else {
-            present(pressedAt: pressedAt)
+            launcher.switchMode(to: mode)
         }
     }
 
     /// Puts the panel on the screen under the mouse pointer and gives it the keyboard, without activating the app.
     /// The expanded panel would be centered; the search bar is its top edge and stays there.
-    private func present(pressedAt: TimeInterval) {
+    private func present(_ mode: LauncherViewController.Mode, pressedAt: TimeInterval) {
         let handled = ProcessInfo.processInfo.systemUptime
-        launcher.prepareToShow()
+        launcher.prepareToShow(mode)
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
         guard let area = screen?.visibleFrame else { return }
@@ -115,15 +148,23 @@ final class LauncherPanel: NSPanel {
         launcher.focusSearchField()
         let updated = ProcessInfo.processInfo.systemUptime
         displayIfNeeded()
-        Log.latency("⌘P → panel drawn", event: pressedAt, handled: handled, updated: updated)
+        Log.latency(
+            mode == .clipboard ? "⌘⇧V → panel drawn" : "⌘P → panel drawn", event: pressedAt, handled: handled,
+            updated: updated)
     }
 
     /// Hides the panel (and its Quick Look preview) and empties it for next time.
+    /// Called after the panel closes, for work that mustn't hold up ⌘P: the daily update check.
+    var onDismiss: () -> Void = {}
+
     func dismiss() {
         guard isVisible else { return }
+        if let previewMonitor { NSEvent.removeMonitor(previewMonitor) }
+        previewMonitor = nil
         launcher.closePreview()
         orderOut(nil)
         launcher.reset()
+        onDismiss()
     }
 
     /// Grows to show results, or shrinks back to the search bar, keeping the top edge in place.
@@ -135,61 +176,54 @@ final class LauncherPanel: NSPanel {
         invalidateShadow()
     }
 
-    /// Clicking elsewhere, or opening an app, closes the launcher; clicking into its Quick Look preview doesn't.
+    /// Clicking elsewhere, or opening an app, closes the launcher. With Quick Look up the preview can take the
+    /// keyboard, so losing it says nothing then: `previewWillShow` watches for a click in another app instead.
     override func resignKey() {
         super.resignKey()
         if launcher.isPreviewing { return }
         dismiss()
     }
 
-    /// ⌃K and ⌃J move the selection like ↑ and ↓: send them down the same path. Space with an empty search field
-    /// previews the selected file (decision 20).
+    /// Watches for a click in another app while Quick Look is up, which closes both; gone when the panel closes. A
+    /// global monitor sees only other apps' events, so a click on the launcher or the preview doesn't count.
+    private var previewMonitor: Any?
+
+    func previewWillShow() {
+        guard previewMonitor == nil else { return }
+        previewMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown])
+        {
+            [weak self] _ in
+            MainActor.assumeIsolated { self?.dismiss() }
+        }
+    }
+
+    /// The panel's keys (`[keys]`, decision 55) come before the field editor and the editing keys, unless an input
+    /// method is composing text: it keeps its keys.
+    func handleKey(_ event: NSEvent) -> Bool {
+        if (firstResponder as? NSTextView)?.hasMarkedText() == true { return false }
+        return launcher.handleKey(event)
+    }
+
     override func sendEvent(_ event: NSEvent) {
-        if event.type == .keyDown, event.characters == " ",
-            event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty,
-            launcher.searchField.stringValue.isEmpty, launcher.previewURL != nil,
-            (firstResponder as? NSTextView)?.hasMarkedText() != true
-        {
-            launcher.togglePreview()
-            return
-        }
-        if event.type == .keyDown,
-            event.modifierFlags.intersection([.command, .option, .control, .shift]) == .control,
-            let editor = firstResponder as? NSTextView, !editor.hasMarkedText()
-        {
-            switch event.charactersIgnoringModifiers {
-            case "k":
-                editor.doCommand(by: #selector(moveUp(_:)))
-                return
-            case "j":
-                editor.doCommand(by: #selector(moveDown(_:)))
-                return
-            default:
-                break
-            }
-        }
+        if event.type == .keyDown, handleKey(event) { return }
         super.sendEvent(event)
     }
 
-    /// An agent app has no main menu, which is what normally delivers the editing shortcuts.
+    /// An agent app has no main menu, which is what normally delivers the editing shortcuts. ⌘Q never quits Pith.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if isKeyWindow, handleKey(event) { return true }
         let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
-        if modifiers == .command, event.charactersIgnoringModifiers == "k" {
-            launcher.toggleActions()
-            return true
-        }
-        if modifiers == .command, event.charactersIgnoringModifiers == "y" {
-            launcher.togglePreview()
-            return true
-        }
+        // What the key types with ⌘ alone, as the panel's keys are matched: a Russian or Greek layout still finds ⌘V.
+        let character = (event.characters(byApplyingModifiers: .command) ?? event.charactersIgnoringModifiers ?? "")
+            .lowercased()
         let action: Selector? =
-            switch (modifiers, event.charactersIgnoringModifiers ?? "") {
+            switch (modifiers, character) {
             case (.command, "x"): #selector(NSText.cut(_:))
             case (.command, "c"): #selector(NSText.copy(_:))
             case (.command, "v"): #selector(NSText.paste(_:))
             case (.command, "a"): #selector(NSText.selectAll(_:))
             case (.command, "z"): Selector(("undo:"))
-            case ([.command, .shift], "Z"): Selector(("redo:"))
+            case ([.command, .shift], "z"): Selector(("redo:"))
             default: nil
             }
         if let action, NSApp.sendAction(action, to: nil, from: self) { return true }

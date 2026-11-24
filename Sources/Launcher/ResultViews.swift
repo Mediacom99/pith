@@ -1,9 +1,9 @@
 import AppKit
 
-/// One row, on one line: icon, name, and for files and folders their folder after the name, in the quiet color;
-/// "running" after a running app, and ↩ at the end of the selected row. Laid out with fixed frames and reused by the
-/// table as rows change. The name and folder are measured when they change, so the folder can follow the name; both
-/// are cut in the middle when they don't fit.
+/// One row, on one line: icon, name, and for files and folders their folder after the name, in the quiet color; at the
+/// end a tag ("running" after a running app, a clip's age, a pin before it) and ↩ on the selected row. Laid out with
+/// fixed frames and reused by the table as rows change. The name and folder are measured when they change, so the
+/// folder can follow the name; both are cut in the middle when they don't fit, except a clip's text, cut at the end.
 final class ResultCell: NSTableCellView {
     static let identifier = NSUserInterfaceItemIdentifier("ResultCell")
 
@@ -18,7 +18,15 @@ final class ResultCell: NSTableCellView {
 
     let icon = IconView()
     private let detailLabel = ResultCell.label(font: detailFont, color: Palette.quiet)
-    private let tagLabel = ResultCell.label("running", font: tagFont, color: Palette.quiet)
+    private let tagLabel = ResultCell.label(font: tagFont, color: Palette.quiet)
+    private let pin: NSImageView = {
+        let pin = NSImageView()
+        pin.image = NSImage(systemSymbolName: "pin.fill", accessibilityDescription: "Pinned")
+        pin.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 10, weight: .regular)
+        pin.contentTintColor = Palette.quiet
+        pin.frame.size = pin.image?.size ?? .zero
+        return pin
+    }()
     private let mark = ResultCell.label("↩", font: markFont, color: Palette.key)
     private var titleWidth: CGFloat = 0
     private var detailWidth: CGFloat = 0
@@ -44,8 +52,42 @@ final class ResultCell: NSTableCellView {
         }
     }
 
-    var isRunning = false {
-        didSet { if isRunning != oldValue { needsLayout = true } }
+    /// At the end of the row: "running", or a clip's age. Empty for none.
+    var trailingTag: String {
+        get { tagLabel.stringValue }
+        set {
+            guard newValue != tagLabel.stringValue else { return }
+            tagLabel.stringValue = newValue
+            needsLayout = true
+        }
+    }
+
+    /// A pinned clip: the pin before its age.
+    var isPinned = false {
+        didSet { if isPinned != oldValue { needsLayout = true } }
+    }
+
+    /// A clip's text is cut at its end, where names are cut in the middle.
+    var cutsAtTheEnd = false {
+        didSet {
+            if cutsAtTheEnd != oldValue {
+                textField?.lineBreakMode = cutsAtTheEnd ? .byTruncatingTail : .byTruncatingMiddle
+            }
+        }
+    }
+
+    /// The title in the quiet color: text that is only spaces and line breaks, described instead of shown.
+    var isQuietTitle = false {
+        didSet { if isQuietTitle != oldValue { updateTitleColor() } }
+    }
+
+    /// What the selected row ends in: `open`'s key, ↩ by default (decision 55).
+    var openKey = "↩" {
+        didSet {
+            guard openKey != oldValue else { return }
+            mark.stringValue = openKey
+            needsLayout = true
+        }
     }
 
     /// Set by the row view: the selected row ends in ↩.
@@ -57,10 +99,14 @@ final class ResultCell: NSTableCellView {
     var isDanger = false {
         didSet {
             guard isDanger != oldValue else { return }
-            textField?.textColor = isDanger ? Palette.danger : .labelColor
+            updateTitleColor()
             mark.textColor = isDanger ? Palette.danger : Palette.key
             superview?.needsDisplay = true
         }
+    }
+
+    private func updateTitleColor() {
+        textField?.textColor = isDanger ? Palette.danger : isQuietTitle ? Palette.quiet : .labelColor
     }
 
     init() {
@@ -71,8 +117,9 @@ final class ResultCell: NSTableCellView {
         icon.frame = NSRect(
             x: Layout.iconX, y: ((Layout.rowHeight - Layout.iconSize) / 2).rounded(), width: Layout.iconSize,
             height: Layout.iconSize)
-        for view in [icon, title, detailLabel, tagLabel, mark] { addSubview(view) }
+        for view in [icon, title, detailLabel, tagLabel, pin, mark] { addSubview(view) }
         tagLabel.isHidden = true
+        pin.isHidden = true
         mark.isHidden = true
         textField = title
     }
@@ -89,7 +136,7 @@ final class ResultCell: NSTableCellView {
         return label
     }
 
-    /// The name, then the folder, then from the right ↩ and "running", every label on the name's baseline.
+    /// The name, then the folder, then from the right ↩, the tag and the pin, every label on the name's baseline.
     override func layout() {
         super.layout()
         guard let title = textField else { return }
@@ -109,13 +156,23 @@ final class ResultCell: NSTableCellView {
             place(mark, x: trailing, width: width, font: Self.markFont)
             trailing -= Self.gap * 2
         }
-        tagLabel.isHidden = !isRunning
-        if isRunning {
-            let width = tagLabel.cell?.cellSize.width ?? 0
+        tagLabel.isHidden = trailingTag.isEmpty
+        if !trailingTag.isEmpty {
+            let width = ceil(tagLabel.cell?.cellSize.width ?? 0)
             trailing -= width
             place(tagLabel, x: trailing, width: width, font: Self.tagFont)
-            trailing -= Self.gap * 2
+            trailing -= isPinned ? 4 : Self.gap
         }
+        pin.isHidden = !isPinned
+        if isPinned {
+            // Centered on the tag's x-height, which reads as on its line (the cell isn't flipped: up is +y).
+            let size = pin.frame.size
+            trailing -= size.width
+            let middle = baseline + Self.tagFont.xHeight / 2
+            pin.frame.origin = NSPoint(x: trailing, y: (middle - size.height / 2).rounded())
+            trailing -= Self.gap
+        }
+        if !trailingTag.isEmpty || isPinned { trailing -= Self.gap }
 
         let available = max(0, trailing - Layout.textX)
         detailLabel.isHidden = detail.isEmpty
@@ -132,10 +189,14 @@ final class ResultCell: NSTableCellView {
     }
 }
 
-/// Shows a ready-made bitmap as its layer's contents: no drawing, no scaling.
+/// Shows a ready-made bitmap as its layer's contents: no drawing, no scaling. Rounded for a copied image's thumbnail.
 final class IconView: NSView {
     var image: CGImage? {
         didSet { if image !== oldValue { needsDisplay = true } }
+    }
+
+    var cornerRadius: CGFloat = 0 {
+        didSet { if cornerRadius != oldValue { needsDisplay = true } }
     }
 
     override init(frame: NSRect) {
@@ -151,6 +212,9 @@ final class IconView: NSView {
 
     override func updateLayer() {
         layer?.contents = image
+        layer?.cornerRadius = cornerRadius
+        layer?.cornerCurve = .continuous
+        layer?.masksToBounds = cornerRadius > 0
     }
 }
 
@@ -196,11 +260,23 @@ final class ResultRowView: NSTableRowView {
 
 /// The tile under the search bar: what ⏎ acts on, large (its icon, name, where it is and what it is), and the keys
 /// for ⏎ and ⌘K (decision 29). Fixed frames; it changes with the selection, and only when what it shows does.
+///
+/// In the clipboard it's three rows taller and becomes the preview (docs/BRIEF-CLIPBOARD.md): a text as it will paste,
+/// an image in its box, a link or files as an item. Everything there hangs from the top, keys included, so nothing
+/// moves as the selection goes from one kind to another.
 final class StageView: NSView {
     /// A key the tile shows: what it does, and its key caps.
     struct Key: Equatable {
         var words: String
         var caps: [String]
+    }
+
+    /// What the clipboard previews in place of the icon and name.
+    enum Preview: Equatable {
+        /// A text's first lines, as they'll paste. `isBlank`: only whitespace, described instead.
+        case text(String, isBlank: Bool)
+        /// An image in a box of this size in points; nil while it loads.
+        case image(CGImage?, size: CGSize)
     }
 
     struct Content: Equatable {
@@ -210,38 +286,65 @@ final class StageView: NSView {
         var place = ""
         /// What it is, and when it was last opened.
         var kind = ""
-        /// What ⏎ does.
+        /// What ⏎ does. Empty for no keys.
         var primary: String
         /// Force Quit waiting for its second ⏎: the primary key in red.
         var isDanger = false
         /// The other key: ⌘K for actions, ⎋ inside them.
         var secondary: Key?
+        var preview: Preview? = nil
+        /// How many lines `place` may wrap over (a link's URL); past them it's cut in the middle.
+        var placeLines = 1
     }
 
     private static let padding: CGFloat = 16
     private static let iconGap: CGFloat = 14
     private static let keysGap: CGFloat = 16
     private static let lineGap: CGFloat = 1
+    /// Between a text preview and the line about it.
+    private static let previewGap: CGFloat = 8
+    private static let placeFont = NSFont.systemFont(ofSize: 12)
 
     var content = Content(name: "", primary: "") {
         didSet { if content != oldValue { show(content) } }
     }
 
+    /// The primary key's caps: `open`'s key, ↩ by default (decision 55).
+    var openCaps = ["↩"] {
+        didSet { if openCaps != oldValue { show(content) } }
+    }
+
     let icon = IconView()
     private let nameLabel = StageView.label(font: .systemFont(ofSize: 19, weight: .semibold), color: .labelColor)
-    private let placeLabel = StageView.label(font: .systemFont(ofSize: 12), color: Palette.quiet)
+    private let placeLabel = StageView.label(font: placeFont, color: Palette.quiet)
+    /// The place label's height on one line, as its cell measures it.
+    private lazy var placeLineHeight = placeLabel.frame.height
     private let kindLabel = StageView.label(font: .systemFont(ofSize: 12), color: Palette.quiet)
     let keys = KeysView()
+    /// The clipboard's previews.
+    let previewText: NSTextField = {
+        let label = NSTextField(wrappingLabelWithString: "")
+        label.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        label.textColor = .labelColor
+        label.maximumNumberOfLines = ClipText.previewLines
+        label.lineBreakMode = .byWordWrapping
+        label.cell?.truncatesLastVisibleLine = true
+        label.isSelectable = false
+        return label
+    }()
+    let previewImage = IconView()
+    private let checker = CheckerView()
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         // Its fill and corners are layer properties: the compositor draws them, so the tile never repaints.
         wantsLayer = true
         layerContentsRedrawPolicy = .onSetNeedsDisplay
-        icon.frame = NSRect(
-            x: Self.padding, y: ((frame.height - Layout.tileIconSize) / 2).rounded(), width: Layout.tileIconSize,
-            height: Layout.tileIconSize)
-        for view in [icon, nameLabel, placeLabel, kindLabel, keys] { addSubview(view) }
+        previewImage.cornerRadius = 6
+        for view in [icon, nameLabel, placeLabel, kindLabel, keys, previewText, checker, previewImage] {
+            addSubview(view)
+        }
+        _ = placeLineHeight
     }
 
     @available(*, unavailable)
@@ -263,28 +366,137 @@ final class StageView: NSView {
         nameLabel.stringValue = content.name
         placeLabel.stringValue = content.place
         kindLabel.stringValue = content.kind
-        keys.keys = [Key(words: content.primary, caps: ["↩"])] + (content.secondary.map { [$0] } ?? [])
+        keys.keys =
+            content.primary.isEmpty
+            ? [] : [Key(words: content.primary, caps: openCaps)] + (content.secondary.map { [$0] } ?? [])
         keys.isDanger = content.isDanger
+        switch content.preview {
+        case .text(let text, let isBlank)?:
+            previewText.stringValue = isBlank ? "Spaces and line breaks" : text
+            previewText.textColor = isBlank ? Palette.quiet : .labelColor
+            previewText.font = isBlank ? Self.placeFont : .monospacedSystemFont(ofSize: 12, weight: .regular)
+            previewImage.image = nil
+        case .image(let image, _)?:
+            previewImage.image = image
+        case nil:
+            previewImage.image = nil
+        }
         needsLayout = true
     }
 
-    /// The keys on the right, the text block between them and the icon, centered on the tile's height.
+    /// The keys on the right, the text block between them and the icon: centered on the tile's height, or from the
+    /// top in the clipboard's taller tile.
     override func layout() {
         super.layout()
+        let tall = bounds.height > Layout.tileHeight
         let keysSize = keys.fittingSize
         keys.frame = NSRect(
-            x: bounds.width - Self.padding - keysSize.width, y: ((bounds.height - keysSize.height) / 2).rounded(),
-            width: keysSize.width, height: keysSize.height)
-        let x = Self.padding + Layout.tileIconSize + Self.iconGap
-        let width = max(0, keys.frame.minX - Self.keysGap - x)
-        let lines = [nameLabel, placeLabel, kindLabel].filter { !$0.stringValue.isEmpty }
+            x: bounds.width - Self.padding - keysSize.width,
+            y: tall ? Self.padding : ((bounds.height - keysSize.height) / 2).rounded(), width: keysSize.width,
+            height: keysSize.height)
+        let right = keys.keys.isEmpty ? bounds.width - Self.padding : keys.frame.minX - Self.keysGap
+
+        var isText = false
+        var visual: CGSize? = nil
+        switch content.preview {
+        case .text?: isText = true
+        case .image(_, let size)?: visual = size
+        case nil: break
+        }
+        previewText.isHidden = !isText
+        previewImage.isHidden = visual == nil
+        checker.isHidden = visual == nil
+        icon.isHidden = isText || visual != nil
+
+        if isText {
+            nameLabel.isHidden = true
+            placeLabel.isHidden = true
+            kindLabel.isHidden = content.kind.isEmpty
+            let width = max(0, right - Self.padding)
+            let kindHeight = kindLabel.frame.height
+            kindLabel.frame = NSRect(
+                x: Self.padding, y: bounds.height - Self.padding - kindHeight, width: width, height: kindHeight)
+            previewText.frame = NSRect(
+                x: Self.padding, y: Self.padding, width: width,
+                height: max(0, kindLabel.frame.minY - Self.previewGap - Self.padding))
+            return
+        }
+
+        let x: CGFloat
+        if let visual {
+            let box = NSRect(origin: NSPoint(x: Self.padding, y: Self.padding), size: visual)
+            previewImage.frame = box
+            checker.frame = box
+            x = box.maxX + Self.iconGap
+        } else {
+            icon.frame = NSRect(
+                x: Self.padding, y: tall ? Self.padding : ((bounds.height - Layout.tileIconSize) / 2).rounded(),
+                width: Layout.tileIconSize, height: Layout.tileIconSize)
+            x = Self.padding + Layout.tileIconSize + Self.iconGap
+        }
+        let width = max(0, right - x)
+        nameLabel.isHidden = false
         placeLabel.isHidden = content.place.isEmpty
         kindLabel.isHidden = content.kind.isEmpty
+        fitPlace(width: width)
+        let lines = [nameLabel, placeLabel, kindLabel].filter { !$0.isHidden }
         let total = lines.map(\.frame.height).reduce(0, +) + Self.lineGap * CGFloat(max(0, lines.count - 1))
-        var y = ((bounds.height - total) / 2).rounded()
+        var y = tall ? Self.padding : ((bounds.height - total) / 2).rounded()
         for line in lines {
             line.frame = NSRect(x: x, y: y, width: width, height: line.frame.height)
             y += line.frame.height + Self.lineGap
+        }
+    }
+
+    /// One line cut in the middle, or for a link's URL up to `placeLines` wrapped lines, cut in the middle past them.
+    private func fitPlace(width: CGFloat) {
+        let lines = content.placeLines
+        placeLabel.maximumNumberOfLines = lines
+        placeLabel.lineBreakMode = lines > 1 ? .byCharWrapping : .byTruncatingMiddle
+        guard lines > 1, width > 0 else {
+            placeLabel.stringValue = content.place
+            placeLabel.frame.size.height = placeLineHeight
+            return
+        }
+        let text = content.place
+        func height(_ string: String) -> CGFloat {
+            let style = NSMutableParagraphStyle()
+            style.lineBreakMode = .byCharWrapping
+            return ceil(
+                NSAttributedString(string: string, attributes: [.font: Self.placeFont, .paragraphStyle: style])
+                    .boundingRect(
+                        with: NSSize(width: width, height: .greatestFiniteMagnitude),
+                        options: [.usesLineFragmentOrigin]
+                    ).height)
+        }
+        let limit = height("X") * CGFloat(lines) + 1
+        var fitted = text
+        if height(text) > limit {
+            // The most characters that fit, half from each end.
+            var low = 0
+            var high = text.count
+            while low < high {
+                let keep = (low + high + 1) / 2
+                if height(Self.middle(of: text, keeping: keep)) <= limit { low = keep } else { high = keep - 1 }
+            }
+            fitted = Self.middle(of: text, keeping: low)
+        }
+        placeLabel.stringValue = fitted
+        placeLabel.frame.size.height = min(height(fitted), limit)
+    }
+
+    /// `text` with its middle replaced by "…", keeping `count` characters.
+    private static func middle(of text: String, keeping count: Int) -> String {
+        guard count < text.count else { return text }
+        return text.prefix((count + 1) / 2) + "…" + text.suffix(count / 2)
+    }
+
+    /// Everything it shows is loaded: the icon, or the image being previewed. For snapshots.
+    var isReady: Bool {
+        switch content.preview {
+        case .text?: true
+        case .image?: previewImage.image != nil
+        case nil: icon.image != nil
         }
     }
 
@@ -299,6 +511,37 @@ final class StageView: NSView {
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         needsDisplay = true
+    }
+}
+
+/// Behind a copied image: a faint checkerboard of the tile's and the selection's fills, which shows through where the
+/// image is transparent and is hidden where it isn't.
+final class CheckerView: NSView {
+    private static let square: CGFloat = 6
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.cornerRadius = 6
+        layer?.cornerCurve = .continuous
+        layer?.masksToBounds = true
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    override func draw(_ dirtyRect: NSRect) {
+        Palette.selection.setFill()
+        let columns = Int(ceil(bounds.width / Self.square))
+        let rows = Int(ceil(bounds.height / Self.square))
+        for row in 0..<rows {
+            for column in 0..<columns where (row + column) % 2 == 0 {
+                NSRect(
+                    x: CGFloat(column) * Self.square, y: CGFloat(row) * Self.square, width: Self.square,
+                    height: Self.square
+                ).fill(using: .sourceOver)
+            }
+        }
     }
 }
 

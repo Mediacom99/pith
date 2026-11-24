@@ -11,3 +11,5 @@
 !/.impeccable/critique/
 /.impeccable/critique/*
 !/.impeccable/critique/ignore.md
+/.wrangler/
+Support/.wrangler/

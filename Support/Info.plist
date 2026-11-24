@@ -14,8 +14,12 @@
 	<string>Pith</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>0.3.10</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LSApplicationCategoryType</key>
@@ -26,5 +30,25 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<!-- What macOS's prompts say under "“Pith” would like to access files in your … folder" (decision 60). -->
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Pith searches your Desktop, so its files show up as you type. Nothing leaves your Mac.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Pith searches your Documents, so its files show up as you type. Nothing leaves your Mac.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Pith searches your Downloads, so its files show up as you type. Nothing leaves your Mac.</string>
+	<!-- Updates (decision 48): Sparkle's own schedule is off, since Pith asks after the panel closes, at most once a
+	     day. Found updates download in the background and install on Update Pith or at quit. The key is set by
+	     `make update-key`; until then, updates are off. -->
+	<key>SUFeedURL</key>
+	<string>https://pith.edoardobertoli.xyz/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>eYAos7Zf96ZLAgLRB6GhYvIdHDtUeYccfLlGSGK6SLw=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<key>SUAllowsAutomaticUpdates</key>
+	<true/>
+	<key>SUAutomaticallyUpdate</key>
+	<true/>
 </dict>
 </plist>

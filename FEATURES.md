@@ -30,28 +30,38 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 - Light/dark follows the system.
 - `Esc` closes (or goes back one level when inside a sub-view such as actions or the editor).
 - Closes automatically when it loses focus.
-- **No Dock icon, no menu bar icon.** App-level commands live in the launcher (see §7).
+- **No Dock icon, no menu bar icon.** App-level commands live in the launcher (see §7). Opening Pith.app while it runs
+  opens the launcher, the way in when its hotkey doesn't fire.
 - Launches at login.
 
 ---
 
 ## 3. Keyboard
 
+Every key below is a default: `[hotkeys]` and `[keys]` in the config change them (§8, decision 55). The text editing
+keys of the search field (`⌘X`, `⌘C`, `⌘V`, `⌘A`, `⌘Z`, `⇧⌘Z`) are fixed, and no hotkey can take them from every app.
+
 ### Global hotkeys
 
-| Key | Action |
-|---|---|
-| `⌘P` | Open launcher (always global, no per-app pass-through) |
-| `⌘⇧V` *(default, configurable)* | Open directly in clipboard mode |
+| Key | Setting | Action |
+|---|---|---|
+| `⌘P` | `hotkeys.launcher` | Open launcher (always global, no per-app pass-through) |
+| `⌘⇧V` | `hotkeys.clipboard` | Open directly in clipboard mode; `""` turns it off |
+| `⌃⌥V` | `hotkeys.paste_next` | Paste next: paste the last clip copied, then the one before at each press (§5.4, decision 64); `""` turns it off |
 
 ### Inside the window
 
-| Key | Action |
-|---|---|
-| `↑` / `↓`, `Ctrl+K` / `Ctrl+J` | Move selection up / down |
-| `Enter` | Primary action on selected item |
-| `⌘K` | Open actions panel for selected item |
-| `Esc` | Back / close |
+| Key | Setting | Action |
+|---|---|---|
+| `↑` / `↓`, `Ctrl+K` / `Ctrl+J` | `keys.up`, `keys.down` | Move selection up / down |
+| `Enter` | `keys.open` | Primary action on selected item |
+| `⌘K` | `keys.actions` | Open actions panel for selected item |
+| `⌘Q`, `⌘W`, `⌘E`, `⌘R`, `⌘T`, `⌘Y`, `⌘U` | `keys.run_actions` | In the actions panel: run its 1st to 7th action (decision 43) |
+| `Esc` | `keys.back` | Back / close |
+| `⌘Y`, `Space` | `keys.preview` | Quick Look (§4.2) |
+| `⌫` | `keys.to_launcher` | From the clipboard back to the launcher (§5.3) |
+
+A key without ⌘, ⌥ or ⌃ that types (a letter, Space, ⌫) works only while the search field is empty.
 
 ---
 
@@ -62,7 +72,7 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 - **Matching:** fuzzy, word by word: every word must match, in any order. For files, earlier words may also match a folder in the path, so `acme/deploy` or `acme deploy` find `deploy.sh` under `Acme`.
 - **Ranking:** match quality, boosted by frequency + recency of what you pick. Learns over time.
 - **Calculator results** appear inline as the top row when the query parses as an expression (§6).
-- **Prefix `c `** switches to clipboard mode.
+- **Prefix `c `** switches to clipboard mode, and the **Clipboard History** command (first for `c`, decision 42) opens it.
 
 ### 4.1 Applications
 
@@ -78,8 +88,9 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 
 ### 4.2 Files
 
-- Indexed from a **configured list of folders** only (e.g. `~/Desktop`, `~/Documents`, `~/dev`).
-- Skips noise: `.git`, `node_modules`, `.build`, caches, hidden files (configurable ignore patterns).
+- Indexed from the **configured folders**: the home folder by default (decision 22), or a list (`~/Documents`, `~/dev`).
+- Skips noise: `.git`, `node_modules`, `.build`, caches, hidden files (configurable ignore patterns). A configured
+  folder is searched even inside one the patterns skip (Dropbox in `~/Library/CloudStorage`, `~/.config`).
 - Kept fresh via FSEvents; index lives in memory.
 
 | Key | Action |
@@ -117,8 +128,9 @@ A minimal, keyboard-only macOS launcher + clipboard manager. Native Swift + AppK
 ### 5.1 Recording
 
 - Polls the system pasteboard (`changeCount`) in the background.
-- Records **everything**: plain text, rich text, images, files, URLs.
-- **Skips concealed copies**, which password managers mark (decision 35), and transient or auto-generated ones (decision 38). Everything else is recorded. *(Revisit: ignore-app list, pause hotkey.)*
+- Records **everything**: plain text, rich text, images, files, URLs. A copy with text or files keeps only those, not the
+  app's picture of them; one with neither is an image (decision 61).
+- **Skips concealed copies**, which password managers mark (decision 35), and transient or auto-generated ones (decision 38). Everything else is recorded. Recording pauses from the launcher (decision 44). *(Revisit: ignore-app list.)*
 - Stored locally in SQLite; images stored as files with thumbnails.
 - Screenshots: set macOS to save screenshots to the clipboard (`⌘⇧5` → Options → Save to → Clipboard, or use `⌘⌃⇧4`). They then land in history automatically. **No code needed.**
 
@@ -128,7 +140,7 @@ Both limits apply; whichever triggers first wins:
 
 - **Size cap** in GB (2 GB by default, decision 37) — oldest dropped first.
 - **Max age** in days (30 by default) — older items deleted.
-- **Pinned items are never dropped.**
+- **Pinned items are never dropped**, and don't count toward the size cap (decision 62).
 
 ### 5.3 Browsing
 
@@ -142,6 +154,7 @@ Both limits apply; whichever triggers first wins:
 | Key | Action |
 |---|---|
 | `Enter` | **Paste into previous app** (window closes, item pasted at cursor; needs Accessibility permission) |
+| `⌃⌥V` (paste next, any app) | Pastes the last clip copied, then at each press the one before it, down the history, without opening the panel. A 10 s pause or a new copy starts again from the newest; past the oldest, a press does nothing. Its pastes don't reorder the history (decisions 63, 64) |
 | `⌘K` → Copy to clipboard | Moves item to the top of history and onto the clipboard, so a normal `⌘V` pastes it |
 | `⌘K` → Paste as plain text | Strip formatting |
 | `⌘K` → Pin / Unpin | |
@@ -160,7 +173,7 @@ Typed directly in the launcher; result shows as the top row. `Enter` **copies th
 
 - **Math:** `+ - * / ^ %`, parentheses, `sqrt`, `sin`/`cos`/`tan`, `log`/`ln`, `pi`, `e`.
 - **Units:** length, mass, volume, temperature, data size, time, speed — e.g. `5 km in mi`, `200 MB in GB`, `30 c in f`.
-- **Currency:** e.g. `100 usd in eur`. Rates fetched once a day from a free source (e.g. ECB via frankfurter.app), cached on disk, last rates used offline. **This is the app's only network access.**
+- **Currency:** e.g. `100 usd in eur`. Rates fetched once a day from a free source (e.g. ECB via frankfurter.app), cached on disk, last rates used offline. **This and the daily update check (decision 48) are the app's only network access.**
 - **Programmer:** hex / binary / octal / decimal, bit ops — e.g. `0xff in bin`, `1 << 8`, `0b1010 & 0b0110`.
 
 ---
@@ -169,28 +182,46 @@ Typed directly in the launcher; result shows as the top row. `Enter` **copies th
 
 Since there is no menu bar icon, these are searchable commands:
 
+- **Clipboard History** — opens the clipboard in the panel; `c` alone lists it first (decision 42)
 - **Open config** — opens `config.toml` in the default editor
 - **Reload config** (also automatic on save)
-- **Pause / resume clipboard recording**
-- **Clear clipboard history** (keeps pinned)
+- **Pause / resume clipboard recording**: only the one that applies is listed, and a pause lasts through a relaunch
+  (decisions 44, 45)
+- **Clear clipboard history** (keeps pinned, after a second ⏎)
+- **Check for updates**: checks right away, and a notification says what it found (decision 50)
+- **Update Pith**: listed once an update is downloaded; restarts into it (decisions 48, 49)
 - **Quit Pith**
 
 ---
 
 ## 8. Configuration
 
-Single file, no settings window: `~/.config/pith/config.toml`. Reloaded automatically on save.
+Single file, no settings window: `~/.config/pith/config.toml`. Reloaded automatically on save. A mistake changes
+nothing but shows up first in the launcher: a wrong value keeps its setting as it was, and a file that doesn't parse
+keeps them all (decision 59).
 
 ```toml
 [hotkeys]
-launcher  = "cmd+p"
-clipboard = "cmd+shift+v"
+launcher   = "cmd+p"
+clipboard  = "cmd+shift+v"  # "" turns it off
+paste_next = "ctrl+alt+v"   # the last clip copied, then the one before at each press; "" turns it off
+
+[keys]                      # one key, or a list of them; [] turns one off (not open or back)
+up          = ["up", "ctrl+k"]
+down        = ["down", "ctrl+j"]
+open        = "return"
+actions     = "cmd+k"
+back        = "escape"
+preview     = ["cmd+y", "space"]
+run_actions = ["cmd+q", "cmd+w", "cmd+e", "cmd+r", "cmd+t", "cmd+y", "cmd+u"]
+to_launcher = "backspace"
 
 [launcher]
 empty_state = "recent"   # recent | running | none
+clipboard_alias = "c"    # "c" lists Clipboard History first; "c " opens the clipboard
 launch_at_login = true
-folders = ["~/Desktop", "~/Documents", "~/Downloads", "~/dev"]
-ignore  = [".git", "node_modules", ".build", "*.photoslibrary"]
+folders = ["~"]          # the home folder (decision 22); also searched inside an ignored one
+ignore  = [".*", "~/Library", "node_modules", ".build", "*.photoslibrary"]
 max_depth = 6
 
 [actions]
@@ -210,8 +241,8 @@ mailto = "Mail"
 max_size_gb = 2
 max_age_days = 30
 
-[calculator]
-currency_refresh_hours = 24
+# [calculator]           # with the calculator (§6), a later milestone: not read yet
+# currency_refresh_hours = 24
 ```
 
 ---
@@ -226,8 +257,9 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 
 - Swift Package, AppKit (`NSPanel` + `NSTableView`, view reuse). SwiftUI not used in the hot path.
 - `LSUIElement` (no Dock icon), `SMAppService` for launch at login.
-- Global hotkeys: Carbon `RegisterEventHotKey`.
+- Global hotkeys: Carbon `RegisterEventHotKey`, on the key that types their letter in the keyboard layout in use.
 - Storage: SQLite (the system library). Config: TOML (our own reader).
+- Updates: Sparkle, the one dependency, from `pith.edoardobertoli.xyz` (decision 48).
 - Paste: `CGEvent` ⌘V into the previously active app → requires **Accessibility** permission.
 - Icons loaded lazily, cached in `NSCache`.
 - Always build/profile in Release.
@@ -238,5 +270,15 @@ AI of any kind · extensions / store · snippets · quicklinks · window managem
 
 - [x] **Pick a final name:** Pith (decision 30)
 - [x] Clipboard hotkey: `⌘⇧V` (decision 34)
-- [ ] Clipboard privacy: concealed copies are skipped (decision 35); an ignore-app list? a pause hotkey?
+- [ ] Clipboard privacy: concealed copies are skipped (decision 35) and recording pauses from the launcher (decision 44); an ignore-app list?
+- [x] Every keybind configurable in `config.toml`: a `[keys]` table, and `[launcher] clipboard_alias` (decision 55)
+- [x] Paste down the history by repeating a key: paste next on ⌃⌥V, from the last clip copied (decisions 63, 64)
+- [ ] A first install and updates that follow macOS's conventions, with as few privacy prompts as possible (Edoardo,
+  2026-11-23, after the keybinds). Without the paid Apple Developer Program (decision 46) Pith can't be notarized, so
+  the first open always needs Open Anyway; everything else is open. The Desktop, Documents and Downloads prompts now
+  say why, and don't hold back the rest of the files while they wait (decision 60). Still to check, then propose: the
+  other prompts a new user gets and when (Accessibility on the first paste, clipboard access, notifications, the login
+  item), asking each one only when its feature first needs it with a line saying why, and whether a Homebrew cask in a tap of Edoardo's is worth adding beside the zip. And no zip to
+  download (Edoardo, 2026-11-23): the first install is an installer, the window that opens with Pith and an arrow to
+  drag it into Applications (a disk image, decision 56), and one line in Terminal skips the dialog (decision 57).
 - [x] Default size cap / max age: 2 GB, 30 days (decision 37)

@@ -2,28 +2,48 @@ import AppKit
 import LauncherCore
 
 /// `~/.config/pith/config.toml` (FEATURES.md §8): created with commented defaults when missing, read and parsed
-/// on a worker, and reloaded whenever something in its folder changes.
+/// on a worker, and reloaded whenever it changes. A config.toml that's a symlink (a dotfiles manager's) reloads when
+/// its target changes; an editor's swap file beside it doesn't reload anything.
 final class ConfigStore {
     nonisolated static let file = URL.homeDirectory.appending(path: ".config/pith/config.toml")
 
+    /// `ConfigStore.file`, or a temporary one in tests.
+    let file: URL
     private(set) var config = Config()
-    /// What's wrong in the file, with line numbers. Wrong settings keep their defaults.
+    /// What's wrong in the file, with line numbers. Wrong settings stay as they were (decision 59).
     private(set) var problems: [String] = []
     private var watcher: DirectoryWatcher?
     private var generation = 0
+    /// Whether `config` came from the file yet: until then, a mistake falls back to the defaults.
+    private var hasLoaded = false
+    /// The folders watched, and the names in them that are the file: its own, and its target's if it's a symlink.
+    private var watched: (folders: [String], names: Set<String>)?
+
+    init(file: URL = ConfigStore.file) {
+        self.file = file
+    }
 
     /// Called after every load, with the settings before it.
     var onChange: ((_ previous: Config) -> Void)?
 
     /// Loads the settings, creating the file first if needed, then watches it.
     func start() async {
-        let file = Self.file
+        let file = self.file
         await runInBackground(qos: .userInitiated) { Self.createIfMissing(file) }
-        watcher = DirectoryWatcher(paths: [file.deletingLastPathComponent().path], latency: 0.2, queue: .main) {
-            [weak self] _ in
+        await load()
+    }
+
+    /// Watches the file's folder, and its target's if it's a symlink, for changes to the file itself; again when the
+    /// symlink points somewhere else.
+    private func watch(_ watched: (folders: [String], names: Set<String>)) {
+        guard self.watched?.folders != watched.folders || self.watched?.names != watched.names else { return }
+        self.watched = watched
+        let names = watched.names
+        watcher = DirectoryWatcher(paths: watched.folders, fileEvents: true, latency: 0.2, queue: .main) {
+            [weak self] events in
+            guard events.contains(where: { names.contains(($0.path as NSString).lastPathComponent) }) else { return }
             Task { @MainActor in await self?.load() }
         }
-        await load()
     }
 
     func reload() {
@@ -32,7 +52,7 @@ final class ConfigStore {
 
     /// Opens the file in the default editor for .toml files, or TextEdit when there's none.
     func open() {
-        let file = Self.file
+        let file = self.file
         Task {
             let editor = await runInBackground(qos: .userInitiated) {
                 Self.createIfMissing(file)
@@ -50,23 +70,47 @@ final class ConfigStore {
     private func load() async {
         generation += 1
         let generation = generation
-        let file = Self.file
-        let (config, problems) = await runInBackground(qos: .userInitiated) { Self.read(file) }
+        let file = self.file
+        let current = hasLoaded ? config : nil
+        let (config, problems, watched) = await runInBackground(qos: .userInitiated) {
+            let (config, problems) = Self.read(file, previous: current)
+            return (config, problems, Self.watched(file))
+        }
         // A newer load started meanwhile: its result wins.
         guard generation == self.generation else { return }
+        watch(watched)
         let previous = self.config
         self.config = config
         self.problems = problems
+        hasLoaded = true
         for problem in problems { Log.app.error("config.toml \(problem, privacy: .public)") }
         onChange?(previous)
     }
 
-    private nonisolated static func read(_ file: URL) -> (Config, [String]) {
-        guard let data = try? Data(contentsOf: file) else { return (Config(), []) }
-        guard let text = String(data: data, encoding: .utf8) else {
-            return (Config(), ["config.toml isn't UTF-8 text"])
+    /// The folders to watch for `file`, as FSEvents reports them (symlinks resolved), and the names that are it.
+    nonisolated static func watched(_ file: URL) -> (folders: [String], names: Set<String>) {
+        let target = file.resolvingSymlinksInPath()
+        let folders = [file.deletingLastPathComponent(), target.deletingLastPathComponent()].map {
+            $0.resolvingSymlinksInPath().path
         }
-        return Config.parse(text)
+        return (Array(Set(folders)).sorted(), [file.lastPathComponent, target.lastPathComponent])
+    }
+
+    /// The settings in `file`, given the ones Pith has now (`previous`, nil at launch). A file that's gone, can't be
+    /// read or isn't text changes nothing, as a file that isn't valid TOML doesn't (decision 59).
+    nonisolated static func read(_ file: URL, previous: Config?) -> (Config, [String]) {
+        let data: Data
+        do {
+            data = try Data(contentsOf: file)
+        } catch CocoaError.fileReadNoSuchFile {
+            return Config.unchanged("config.toml is missing", previous: previous)
+        } catch {
+            return Config.unchanged("config.toml can't be read", previous: previous)
+        }
+        guard let text = String(data: data, encoding: .utf8) else {
+            return Config.unchanged("config.toml isn't UTF-8 text", previous: previous)
+        }
+        return Config.parse(text, previous: previous)
     }
 
     private nonisolated static func createIfMissing(_ file: URL) {

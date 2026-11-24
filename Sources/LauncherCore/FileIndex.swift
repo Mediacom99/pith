@@ -206,7 +206,9 @@ public struct FileIndex: Sendable {
     /// folder above it, which counts half: a match in the name says more than one in the path.
     public func search(_ query: String, limit: Int) -> [FileHit] {
         let words = QueryTerms(query).words
-        guard limit > 0, let lastWord = words.last, !flags.isEmpty else { return [] }
+        // No path has that many words, and each word before the last takes a score per entry: a pasted paragraph
+        // finds no file, at once.
+        guard limit > 0, let lastWord = words.last, !flags.isEmpty, words.count <= Self.maxWords else { return [] }
         let pathWords = Array(words.dropLast())
         let above = scoresAbove(pathWords)
         let total = flags.count
@@ -285,6 +287,8 @@ public struct FileIndex: Sendable {
     }
 
     private static let none = Int32.min
+    /// The most words a file search takes.
+    static let maxWords = 16
 
     /// For each word and each folder, the best the word scores on that folder's name or any folder above it, laid
     /// out as `word * count + entry`; `none` where it matches none. One pass in index order, since parents always

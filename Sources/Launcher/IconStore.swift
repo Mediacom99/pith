@@ -43,11 +43,22 @@ final class IconStore {
     /// File and folder icons by type (`IconSource.key`), rendered on first request, and the type's name.
     private var types: [String: Pair] = [:]
     private var typeNames: [String: String] = [:]
+    /// When each type's icon was last asked for, counted in requests: past `typesKept`, the least recent go.
+    private var typeUses: [String: Int] = [:]
+    private var uses = 0
+    /// 256 types at about 43 KB each; a test keeps fewer.
+    let typesKept: Int
     private var requestedTypes: Set<String> = []
     private var renderingTypes: Set<String> = []
     private var wanted: Set<URL> = []
     private var rendering: Set<URL> = []
     private var symbolsRequested = false
+    /// Apps found by bundle id (where a clip was copied), with their names; kept rendered on top of `load`'s.
+    private var bundleApps: [String: URL] = [:]
+    private var bundleNames: [String: String] = [:]
+    private var requestedBundles: Set<String> = []
+    private var resolvedBundles: Set<String> = []
+    private var extraApps: Set<URL> = []
     /// Bumped on every appearance or icon style change; renders started before it are dropped.
     private var style = 0
     private var appearanceObservation: NSKeyValueObservation?
@@ -56,7 +67,8 @@ final class IconStore {
     /// Called on the main thread when new bitmaps are ready.
     var onChange: (() -> Void)?
 
-    init() {
+    init(typesKept: Int = 256) {
+        self.typesKept = typesKept
         appearanceObservation = NSApp.observe(\.effectiveAppearance) { [weak self] _, _ in
             Task { @MainActor in self?.restyle() }
         }
@@ -80,12 +92,93 @@ final class IconStore {
     /// request queues it, and `onChange` reports it ready.
     func icon(forFile url: URL, size: IconSize = .row) -> CGImage? {
         let source = IconSource(url)
+        uses &+= 1
+        typeUses[source.key] = uses
         if let icon = types[source.key] { return icon[size] }
         if !renderingTypes.contains(source.key), requestedTypes.insert(source.key).inserted, requestedTypes.count == 1 {
             // Collects the rows configured in this pass, then renders them in one batch.
             Task { @MainActor in renderRequestedTypes() }
         }
         return nil
+    }
+
+    /// How many types' icons are kept.
+    var typeCount: Int { types.count }
+
+    /// Drops the icons of the types least recently asked for, down to three quarters of `typesKept`, once there are
+    /// more: called as the panel closes, so a search never waits on it. Each odd extension (`backup.2025-11-23`) and
+    /// each app a file search shows would otherwise stay.
+    func trimTypes() {
+        guard types.count > typesKept else { return }
+        let dropped = types.keys.sorted { typeUses[$0, default: 0] < typeUses[$1, default: 0] }
+            .prefix(types.count - typesKept * 3 / 4)
+        for key in dropped {
+            types[key] = nil
+            typeNames[key] = nil
+            typeUses[key] = nil
+        }
+    }
+
+    /// The icon of the app with bundle id `id`, or nil until it's found and rendered (or if it isn't installed): the
+    /// first request looks it up, and `onChange` reports it ready.
+    func icon(forBundleID id: String, size: IconSize = .row) -> CGImage? {
+        guard let url = bundleApps[id] else {
+            request(bundle: id)
+            return nil
+        }
+        return apps[url]?[size]
+    }
+
+    /// Whether the app with bundle id `id` was looked up and isn't installed.
+    func isMissing(bundleID id: String) -> Bool {
+        resolvedBundles.contains(id) && bundleApps[id] == nil && !isResolvingApps
+    }
+
+    /// Lookups still under way, for snapshots to wait on.
+    var isResolvingApps: Bool { !requestedBundles.isEmpty || resolvingBundles > 0 }
+    private var resolvingBundles = 0
+
+    /// The name of the app with bundle id `id`, as Finder shows it, once found.
+    func appName(forBundleID id: String) -> String? {
+        if bundleNames[id] == nil { request(bundle: id) }
+        return bundleNames[id]
+    }
+
+    private func request(bundle id: String) {
+        guard !resolvedBundles.contains(id), requestedBundles.insert(id).inserted, requestedBundles.count == 1 else {
+            return
+        }
+        // Collects the rows configured in this pass, then looks them up in one batch.
+        Task { @MainActor in resolveRequestedBundles() }
+    }
+
+    /// Asks LaunchServices for the apps on a worker, then renders their icons.
+    private func resolveRequestedBundles() {
+        let ids = Array(requestedBundles)
+        requestedBundles = []
+        resolvedBundles.formUnion(ids)
+        resolvingBundles += 1
+        Task {
+            let found = await runInBackground(qos: .userInitiated) {
+                ids.map { id -> (id: String, url: URL?, name: String?) in
+                    guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else {
+                        return (id, nil, nil)
+                    }
+                    let name = FileManager.default.displayName(atPath: url.path)
+                    return (id, url, name.hasSuffix(".app") ? String(name.dropLast(4)) : name)
+                }
+            }
+            for app in found {
+                guard let url = app.url else { continue }
+                bundleApps[app.id] = url
+                bundleNames[app.id] = app.name
+                extraApps.insert(url)
+            }
+            wanted.formUnion(extraApps)
+            render(Array(extraApps.filter { apps[$0] == nil && !rendering.contains($0) }), symbols: [])
+            resolvingBundles -= 1
+            onChange?()
+        }
     }
 
     /// What macOS calls a file's type ("PDF document"), once its icon is rendered.
@@ -137,9 +230,9 @@ final class IconStore {
 
     /// Keeps icons for `urls` only and renders the missing ones (and the symbols, the first time).
     func load(_ urls: Set<URL>) {
-        wanted = urls
-        apps = apps.filter { urls.contains($0.key) }
-        let missing = urls.filter { apps[$0] == nil && !rendering.contains($0) }
+        wanted = urls.union(extraApps)
+        apps = apps.filter { wanted.contains($0.key) }
+        let missing = wanted.filter { apps[$0] == nil && !rendering.contains($0) }
         render(Array(missing), symbols: symbolsRequested ? [] : Symbols.rendered)
         symbolsRequested = true
     }

@@ -1,8 +1,19 @@
 import Foundation
+import Synchronization
 import TestSupport
 import Testing
 
 @testable import LauncherCore
+
+/// Polls `condition` until it holds or `timeout` passes.
+private func eventually(within timeout: Duration = .seconds(5), _ condition: () async -> Bool) async -> Bool {
+    let deadline = ContinuousClock.now + timeout
+    while ContinuousClock.now < deadline {
+        if await condition() { return true }
+        try? await Task.sleep(for: .milliseconds(20))
+    }
+    return await condition()
+}
 
 struct IgnoreRulesTests {
     private let rules = IgnoreRules(
@@ -86,6 +97,104 @@ struct FileScannerTests {
         let index = scan(root.url)
         #expect(index.isFolder(root.url.path + "/Link") == false)
         #expect(!index.contains(root.url.path + "/Link/inside.txt"))
+    }
+
+    /// A folder that was asked for is indexed even inside an ignored one (Dropbox in `~/Library/CloudStorage`) or
+    /// when it's hidden (`~/.config`); the rest of the ignored folder stays out.
+    @Test func aRootIsIndexedEvenWhereTheRulesWouldSkipIt() throws {
+        let home = try TemporaryDirectory()
+        let dropbox = home.url.path + "/Library/CloudStorage/Dropbox"
+        try home.makeFile("Library/CloudStorage/Dropbox/Acme/report.pdf")
+        try home.makeFile("Library/Caches/junk.txt")
+        try home.makeFile(".config/pith/config.toml")
+        try home.makeFile("notes.md")
+        let rules = FileRules(
+            roots: [home.url.path, dropbox, home.url.path + "/.config"],
+            ignore: IgnoreRules([".*", "~/Library"], home: home.url.path), maxDepth: 6)
+        var index = FileIndex()
+        FileScanner.scan(rules, into: &index)
+        #expect(index.contains(dropbox + "/Acme/report.pdf"))
+        #expect(index.contains(home.url.path + "/.config/pith/config.toml"))
+        #expect(index.contains(home.url.path + "/notes.md"))
+        #expect(!index.contains(home.url.path + "/Library/Caches/junk.txt"))
+        #expect(index.count == 5, "each once: Acme, pith and the three files")
+        #expect(rules.excludedPaths.isEmpty, "FSEvents still sees ~/Library, which holds a root")
+        #expect(!rules.ignore(at: dropbox + "/Acme").ignores(name: "Acme", path: dropbox + "/Acme"))
+        #expect(
+            rules.ignore(at: home.url.path + "/Library/Caches").ignores(
+                name: "Caches", path: home.url.path + "/Library/Caches"))
+    }
+
+    /// FSEvents leaves out the ignored paths, then the skipped folders right in a root, most recently changed first:
+    /// never a file, a folder searched, or one that's a root itself.
+    @Test func watchingLeavesOutTheFoldersRootsSkip() throws {
+        let home = try TemporaryDirectory()
+        for folder in [".cache", ".npm", "node_modules", "Documents", "dev", "Library"] { try home.makeFolder(folder) }
+        try home.makeFile(".zsh_history")
+        let path = home.url.path
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date.now - 3600], ofItemAtPath: path + "/.npm")
+        let rules = FileRules(
+            roots: [path, path + "/dev"], ignore: IgnoreRules([".*", "~/Library", "node_modules", "dev"], home: path),
+            maxDepth: 6)
+        let excluded = rules.watchExclusions()
+        #expect(excluded.first == path + "/Library")
+        #expect(Set(excluded) == [path + "/Library", path + "/.cache", path + "/.npm", path + "/node_modules"])
+        let three = rules.watchExclusions(limit: 3)
+        #expect(three.count == 3 && three.first == path + "/Library")
+        #expect(!three.contains(path + "/.npm"), "the least recently changed is left to the events")
+    }
+
+    /// A pasted paragraph finds no file, without a score per word and entry.
+    @Test func aQueryOfManyWordsFindsNoFile() throws {
+        let root = try TemporaryDirectory()
+        try root.makeFile("a b c/notes.md")
+        var index = FileIndex()
+        FileScanner.scan(FileRules(roots: [root.url.path], ignore: IgnoreRules([]), maxDepth: 6), into: &index)
+        #expect(index.search("a notes", limit: 5).count == 1)
+        let paragraph = Array(repeating: "a", count: FileIndex.maxWords) + ["notes"]
+        #expect(index.search(paragraph.joined(separator: " "), limit: 5).isEmpty)
+    }
+
+    /// Overlapping folders, or one given twice, index each file once.
+    @Test func overlappingFoldersIndexEachFileOnce() throws {
+        let home = try TemporaryDirectory()
+        try home.makeFile("dev/Acme/deploy.sh")
+        try home.makeFile("notes.md")
+        let dev = home.url.path + "/dev"
+        var index = FileIndex()
+        FileScanner.scan(
+            FileRules(roots: [home.url.path, dev, dev], ignore: IgnoreRules([]), maxDepth: 6), into: &index)
+        #expect(index.count == 3, "Acme, deploy.sh and notes.md; dev is a root")
+        #expect(index.search("deploy", limit: 5).map(\.path) == [dev + "/Acme/deploy.sh"])
+    }
+
+    /// The protected folders a scan would read, and the rules without them (decision 60).
+    @Test func protectedFoldersAreLeftOutUntilAllowed() throws {
+        let home = "/Users/acme"
+        let rules = FileRules(
+            roots: [home, home + "/Documents/dev"],
+            ignore: IgnoreRules([".*", "~/Library", "~/Downloads"], home: home),
+            maxDepth: 6,
+            protected: ["Desktop", "Documents", "Downloads", "Library/Mobile Documents"].map { home + "/" + $0 })
+        #expect(rules.protectedFolders == [home + "/Desktop", home + "/Documents"], "ignored ones aren't asked about")
+        let deferred = rules.deferring([home + "/Documents"])
+        #expect(deferred.roots == [home], "a root in a folder left out waits for it")
+        #expect(deferred.ignore(at: home + "/Documents").ignores(name: "Documents", path: home + "/Documents"))
+        #expect(deferred.excludedPaths.contains(home + "/Documents"))
+        #expect(rules.deferring([]) == rules)
+    }
+
+    /// Reading a folder: allowed, refused, or not there (nothing to ask about).
+    @Test func canReadAFolder() throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFolder("Locked")
+        let locked = folder.url.path + "/Locked"
+        #expect(FileSearchEngine.canRead(folder.url.path))
+        #expect(FileSearchEngine.canRead(folder.url.path + "/Missing"))
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: locked)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked) }
+        #expect(!FileSearchEngine.canRead(locked))
     }
 
     @Test func rescansASubtreeAtItsDepth() throws {
@@ -249,6 +358,64 @@ struct FileSearchEngineTests {
         #expect(await engine.count == 2)
         let hits = await engine.search("todo", limit: 5, generation: 1)
         #expect(hits?.map(\.path) == [root.url.path + "/Notes/todo.md"])
+    }
+
+    /// A config change during a long first scan: the newer, smaller scan wins even though the old one finishes last.
+    @Test func theNewestRebuildWins() async throws {
+        let big = try TemporaryDirectory()
+        for folder in 0..<40 {
+            for file in 0..<50 { try big.makeFile("Folder \(folder)/old-file-\(file).txt") }
+        }
+        let small = try TemporaryDirectory()
+        try small.makeFile("new-file.txt")
+        let engine = FileSearchEngine()
+        let first = Task {
+            await engine.rebuild(FileRules(roots: [big.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        }
+        while engine.rebuildsAsked < 1 { await Task.yield() }
+        await engine.rebuild(FileRules(roots: [small.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        await first.value
+        #expect(await engine.count == 1)
+        #expect(await engine.search("old-file", limit: 5, generation: 1) == [])
+    }
+
+    /// A protected folder whose prompt is up is left out, the rest is searchable at once, and the folder joins as
+    /// soon as it's allowed (decision 60).
+    @Test func aFolderWaitingOnItsPromptJoinsOnceAllowed() async throws {
+        let home = try TemporaryDirectory()
+        try home.makeFile("Documents/Acme/report.pdf")
+        try home.makeFile("notes.md")
+        let documents = home.url.path + "/Documents"
+        let prompt = DispatchSemaphore(value: 0)
+        let engine = FileSearchEngine(canRead: { folder in
+            if folder == documents { prompt.wait() }
+            return true
+        })
+        await engine.rebuild(
+            FileRules(roots: [home.url.path], ignore: IgnoreRules([]), maxDepth: 6, protected: [documents]))
+        #expect(await engine.search("notes", limit: 5, generation: 1)?.count == 1, "searchable at once")
+        #expect(await engine.search("report", limit: 5, generation: 2) == [])
+
+        prompt.signal()
+        #expect(await eventually { await engine.search("report", limit: 5, generation: 3)?.count == 1 })
+    }
+
+    /// A refused folder is read again as the panel opens, and joins once allowed in System Settings.
+    @Test func aRefusedFolderJoinsOnceAllowedLater() async throws {
+        let home = try TemporaryDirectory()
+        try home.makeFile("Downloads/invoice.pdf")
+        let downloads = home.url.path + "/Downloads"
+        let allowed = Mutex(false)
+        let engine = FileSearchEngine(canRead: { _ in allowed.withLock { $0 } })
+        await engine.rebuild(
+            FileRules(roots: [home.url.path], ignore: IgnoreRules([]), maxDepth: 6, protected: [downloads]))
+        #expect(await engine.search("invoice", limit: 5, generation: 1) == [])
+        engine.recheckRefused()
+        #expect(await engine.search("invoice", limit: 5, generation: 2) == [], "still refused")
+
+        allowed.withLock { $0 = true }
+        engine.recheckRefused()
+        #expect(await eventually { await engine.search("invoice", limit: 5, generation: 3)?.count == 1 })
     }
 
     @Test func staleSearchesSkip() async {

@@ -22,6 +22,30 @@ colors:
   danger-fill-dark: "rgba(255, 69, 58, 0.16)"
   warning-light: "#C93400"
   warning-dark: "#FF9F0A"
+  web-ground-light: "#ECECEC"
+  web-ground-dark: "#141414"
+  web-label-dark: "rgba(255, 255, 255, 0.86)"
+  web-quiet-light: "#616161"
+  web-faint-light: "rgba(0, 0, 0, 0.38)"
+  web-faint-dark: "rgba(255, 255, 255, 0.36)"
+  web-edge-light: "rgba(0, 0, 0, 0.10)"
+  web-edge-dark: "rgba(255, 255, 255, 0.09)"
+  web-fill-light: "rgba(0, 0, 0, 0.07)"
+  web-fill-dark: "rgba(255, 255, 255, 0.10)"
+  web-key-light: "#FFFFFF"
+  web-key-dark: "#2A2A2A"
+  web-key-edge-light: "rgba(0, 0, 0, 0.13)"
+  web-key-edge-dark: "rgba(255, 255, 255, 0.10)"
+  web-ghost-edge-light: "rgba(0, 0, 0, 0.09)"
+  web-ghost-edge-dark: "rgba(255, 255, 255, 0.07)"
+  web-action-light: "#1C1C1C"
+  web-action-dark: "#EDEDED"
+  web-action-hover-light: "#000000"
+  web-action-hover-dark: "#FFFFFF"
+  web-on-action-light: "#FFFFFF"
+  web-on-action-dark: "#141414"
+  web-text-selection-light: "rgba(0, 0, 0, 0.14)"
+  web-text-selection-dark: "rgba(255, 255, 255, 0.22)"
 typography:
   search:
     fontFamily: "SF Pro, -apple-system, system-ui"
@@ -59,11 +83,66 @@ typography:
     fontFamily: "SF Pro, -apple-system, system-ui"
     fontSize: "11pt"
     fontWeight: 500
+  web-display:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "clamp(2.5rem, 1.15rem + 4.4vw, 4.5rem)"
+    fontWeight: 700
+    lineHeight: 1.02
+    letterSpacing: "-0.038em"
+  web-headline:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "clamp(2rem, 1.2rem + 2.7vw, 3.375rem)"
+    fontWeight: 700
+    lineHeight: 1.06
+    letterSpacing: "-0.032em"
+  web-feature-headline:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "clamp(1.875rem, 1.2rem + 2vw, 2.75rem)"
+    fontWeight: 700
+    lineHeight: 1.06
+    letterSpacing: "-0.032em"
+  web-title:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "1.1875rem"
+    fontWeight: 700
+    letterSpacing: "-0.015em"
+  web-lede:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "clamp(1.0625rem, 0.95rem + 0.45vw, 1.3125rem)"
+    fontWeight: 400
+    lineHeight: 1.5
+  web-body:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "1.0625rem"
+    fontWeight: 400
+    lineHeight: 1.55
+  web-note:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "0.875rem"
+    fontWeight: 400
+  web-button:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "1.0625rem"
+    fontWeight: 600
+    lineHeight: 1
+  web-key-cap:
+    fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontSize: "0.8em"
+    fontWeight: 500
+    lineHeight: 1
+  web-code:
+    fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace"
+    fontSize: "0.875rem"
+    fontWeight: 400
+    lineHeight: 1.7
 rounded:
   panel: "14pt"
   tile: "10pt"
   row: "7pt"
   key-cap: "5pt"
+  web-surface: "14px"
+  web-button: "10px"
+  web-key-cap: "7px"
 spacing:
   key-cap-gap: "4pt"
   label-gap: "6pt"
@@ -77,6 +156,10 @@ spacing:
   tile-keys-gap: "16pt"
   icon-x: "18pt"
   text-x: "48pt"
+  web-page: "1120px"
+  web-gutter: "clamp(16px, 4vw, 32px)"
+  web-section: "clamp(88px, 11vw, 152px)"
+  web-bar-height: "60px"
 components:
   panel:
     backgroundColor: "{colors.window-background-light}"
@@ -122,6 +205,44 @@ components:
   key-secondary:
     textColor: "{colors.quiet-light}"
     typography: "{typography.key-secondary}"
+  web-download:
+    backgroundColor: "{colors.web-action-light}"
+    textColor: "{colors.web-on-action-light}"
+    typography: "{typography.web-button}"
+    rounded: "{rounded.web-button}"
+    padding: "15px 22px 15px 20px"
+  web-download-hover:
+    backgroundColor: "{colors.web-action-hover-light}"
+    textColor: "{colors.web-on-action-light}"
+  web-download-small:
+    backgroundColor: "{colors.web-action-light}"
+    textColor: "{colors.web-on-action-light}"
+    rounded: "{rounded.web-key-cap}"
+    padding: "9px 14px 9px 12px"
+  web-key-cap:
+    backgroundColor: "{colors.web-key-light}"
+    textColor: "{colors.label-light}"
+    typography: "{typography.web-key-cap}"
+    rounded: "{rounded.web-key-cap}"
+    padding: "0 0.45em"
+    height: "1.9em"
+  web-key-cap-lit:
+    backgroundColor: "{colors.web-action-light}"
+    textColor: "{colors.web-on-action-light}"
+    rounded: "{rounded.web-key-cap}"
+  web-key-ghost:
+    textColor: "{colors.web-faint-light}"
+  web-demo-button:
+    textColor: "{colors.label-light}"
+    rounded: "{rounded.web-key-cap}"
+    padding: "7px 12px 7px 8px"
+  web-demo-button-pressed:
+    backgroundColor: "{colors.web-fill-light}"
+    textColor: "{colors.label-light}"
+    rounded: "{rounded.web-key-cap}"
+  web-surface:
+    backgroundColor: "{colors.window-background-light}"
+    rounded: "{rounded.web-surface}"
 ---
 
 # Design System: launcher
@@ -264,7 +385,7 @@ What ⏎ acts on, always visible when there are results.
   - Search: `magnifyingglass`, 16 pt, quiet gray.
 
 ### Planned surfaces
-The clipboard browser and the calculator are not built. Both extend the tile: in the clipboard the tile grows to 188 pt and becomes the preview (`docs/BRIEF-CLIPBOARD.md`, built by milestone 3); for the calculator it shows the answer that ⏎ will copy. They use the same fills, type and keys.
+The calculator isn't built, and the clipboard is being built by milestone 3 (its values are in the Visual decisions table; this document takes them in at its step 8). Both extend the tile: in the clipboard the tile grows to 188 pt and becomes the preview (`docs/BRIEF-CLIPBOARD.md`); for the calculator it shows the answer that ⏎ will copy. They use the same fills, type and keys.
 
 ## Do's and Don'ts
 
@@ -285,3 +406,60 @@ The clipboard browser and the calculator are not built. Both extend the tile: in
 - **Don't** add shadows inside the panel.
 - **Don't** set text below 11 pt, or use uppercase labels or letter-spacing for hierarchy.
 - **Don't** hide what ⏎ does in a footer or leave it unsaid.
+
+## Website
+
+Everything above is the app panel and stays its system. This section covers only the landing page at pith.edoardobertoli.xyz (`site/index.html`, its tokens on `:root` and under `prefers-color-scheme: dark`); its `web-` tokens never apply to the panel. The page is Stage carried to the web: the real panel snapshots are the proof, everything around them is macOS window neutrals, and it keeps the panel's no-accent and no-motion discipline.
+
+### Colors
+- **Ground** (`web-ground-light` #ECECEC, `web-ground-dark` #141414): the page background, the sticky bar and the `theme-color`.
+- **Panel surfaces** (`window-background-light` #FFFFFF, `window-background-dark` #1E1E1E): the snapshot frame, the keyboard tray and the code block, the panel's own colors.
+- **Label** (`label-light` 85 % black; `web-label-dark` 86 % white): headings, body, key-cap glyphs.
+- **Quiet** (`web-quiet-light` #616161, `quiet-dark` #A1A1A1): ledes, paragraphs, notes, nav links, code comments and strings. A step darker than the panel's #666666 so it holds 5.2:1 on the #ECECEC ground.
+- **Faint** (`web-faint-light` black 38 %, `web-faint-dark` white 36 %): only the legends of the drawn keyboard's unlit, `aria-hidden` keys and the scrollbar thumb. Deliberately below text contrast: inactive decoration, never something to read.
+- **Edge** (`web-edge-*`, 10 % / 9 %): the bar's bottom border once scrolled, the code block's title rule, list and footer rules.
+- **Fill** (`web-fill-*`, 7 % / 10 %): the hero demo buttons' hover and pressed state.
+- **Action** (`web-action-light` #1C1C1C, `web-action-dark` #EDEDED; hover pure black / pure white; on-action #FFFFFF / #141414): the Download button and the drawn keyboard's lit keys. It is the label color made solid, not a hue.
+- **Text selection** (`web-text-selection-*`, 14 % / 22 %): `::selection`.
+
+**The Label-Is-the-Action Rule.** The page's one filled control is filled with the label color itself (#1C1C1C / #EDEDED). No accent, gradient, glow or brand hue anywhere on the page.
+
+### Typography
+SF Pro through the system stack, as in the app; SF Mono (`ui-monospace`) only for the config file's code block. Display headings are 700 with tight tracking, which is the web's display scale and not a panel rule (the panel still takes no tracking).
+- **Display** (700, `clamp(2.5rem … 4.5rem)`, 1.02, -0.038em): the hero H1 only.
+- **Headline** (700, `clamp(2rem … 3.375rem)`, 1.06, -0.032em): section H2s; feature rows use the smaller `clamp(1.875rem … 2.75rem)`.
+- **Title** (700, 1.1875rem, -0.015em): the four reasons and the install steps.
+- **Lede** (400, `clamp(1.0625rem … 1.3125rem)`, 1.5, quiet): the sentence under the H1, max 35em.
+- **Body** (400, 1.0625rem, 1.55); section intros 1.1875rem; notes 0.875rem, quiet.
+- **Button** (600, 1.0625rem; 0.9375rem in the bar).
+- **Code** (SF Mono 400, 0.875rem, 1.7): keys in 600, comments and strings quiet.
+
+### Layout
+A 1120 px column with a `clamp(16px, 4vw, 32px)` gutter, sections `clamp(88px, 11vw, 152px)` apart. A 60 px sticky bar on the ground: the app icon and wordmark left, nav, small Download right; the nav hides below 760 px. The hero is centered: H1, lede, Download with "Free · macOS 26 or later · Apple Silicon" under it, then the four demo buttons above the snapshot at its real 680 px width. Feature rows alternate 5:7 and 7:5 columns and stack below 900 px; reasons are four columns, two below 900 px, one below 520 px. Under the hero's Download, the one-line Terminal install (decisions 57, 58): a quiet "or paste this in Terminal, with no Open Anyway" over the command on a panel surface, 42 rem at most, mono at 0.875rem, with a key-cap ⌘ C Copy that says Copied for 1.6 s. Setup points to it, then "With the installer", four steps on a subgrid, so their numbers, titles, words and figures line up across the row; two columns below 900 px, one below 600 px; under them, Changing a setting and Updates side by side, above a line of requirements. Below 600 px the drawn keyboard becomes a list of the same keys and meanings.
+
+### Elevation & Depth
+Panel-shaped surfaces (snapshots, the code block, the keyboard tray) carry a system-like window shadow: light `0 0 0 0.5px rgba(0,0,0,.18), 0 24px 60px rgba(0,0,0,.16), 0 6px 18px rgba(0,0,0,.08)`, dark `0 0 0 0.5px rgba(0,0,0,.9), 0 28px 70px rgba(0,0,0,.55), 0 8px 20px rgba(0,0,0,.35)`. Key caps carry a soft offset shadow (light `0 1px 1px rgba(0,0,0,.10), 0 3px 8px rgba(0,0,0,.06)`, dark `0 1px 0 rgba(0,0,0,.55), 0 4px 10px rgba(0,0,0,.35)`); the Download button a soft drop that deepens on hover. Nothing is translucent or blurred.
+
+### Shapes
+Panel-shaped surfaces use the panel's 14 px radius (the keyboard tray scales its corners with the keyboard, 10–18 px). Key caps 7 px with a 1 px edge; the Download button 10 px, 7 px in the bar; drawn keys scale theirs with the key unit (0.14 u).
+
+### Components
+- **Key cap** (signature; `web-key-cap`): #FFFFFF / #2A2A2A fill, 1 px key edge, 7 px corners, soft offset shadow, label glyph at 500. The page's one component language: inline in text and headings, in the wordmark, the hero demo buttons, the install step numbers and the closing ⌘ P.
+- **Settings reference** (the configuration section): the whole `config.toml` in the code surface, beside every setting as its mono name, its default in quiet mono and one line of what it does, grouped under the TOML table names. Pointing at a setting lights its lines in the file with the quiet fill, and pointing at a line lights its setting (160 ms). On desktop the file stays pinned while the list scrolls and, when it's taller than the window, scrolls inside itself as an editor does; lighting a setting brings its first line into the file's view, never moving the page. Below 900 px the file comes first, whole.
+- **Download** (`web-download`): label-colored fill, on-action text, 10 px corners, an arrow-into-tray SVG; hover goes to pure black / white; `:active` drops 1 px. The bar version is smaller with 7 px corners.
+- **Demo buttons** (`web-demo-button`): a key cap plus a quiet word (Launcher, Search, Actions, Clipboard) on no background; hover and pressed (`aria-pressed`) take the 7 % fill and the word turns label. They and the real keys swap the hero snapshot in one frame.
+- **Drawn keyboard**: a panel-colored tray of keys sized from one unit. Unlit keys are ghost outlines (ghost edge, faint legend, `aria-hidden`); Pith's keys are real buttons drawn as key caps. Pressing one lights its group (⌘ P, ⌘ K, ⌘ ⇧ V, arrows, ⏎, esc) in the action color, and the line under the keyboard names what it does.
+- **Code block**: a panel-colored surface, 14 px corners, a quiet title bar with an edge rule, the config file in SF Mono.
+- **Setup figures** (the install steps, decision 56): what each step looks like when you get there, under its words. Download is the small Download (`Pith.dmg`). The installer's window is drawn small, 15 rem at most: a panel-colored title bar with three faint dots, then the installer's own gray (#767676, as in `Support/DMGBackground.svg`, whatever the appearance) with the app icon, an arrow and a folder outline in white, their names at 12 px (4.5:1). System Settings' row is a panel surface with 10 px corners: "“Pith” was blocked to protect your Mac." over Open Anyway drawn as a key cap. They show, they aren't controls.
+
+**The Keys-Are-the-Interface Rule.** Every control and every mention of a shortcut on the page is a key cap; there is no second button or chip style besides Download.
+
+**The Keys-Move Rule.** The panel snapshots still change in one frame, as the app does; the motion lives in the keys. A key goes down in 60 ms (2 px, filled with the label color) and comes up in 180 ms on cubic-bezier(0.16, 1, 0.3, 1). The hero plays a tour once (t e, ⌘K, ⌘⇧V, ⌘P), with a 2 px line under the shown state that fills over 3 s until the next press; it pauses off screen, in a hidden tab and on any key or click, and a text button pauses or replays it. The ⌘K and ⌘⇧V rows press their heading's keys once as they come into view and switch their snapshot; the config block retypes `terminal` with a caret that holds solid while typing; the drawn keyboard plays each combination as a chord when a lit key is pointed at. Small feedback: the Download arrow drops 2 px on hover, fills step in 160 ms, the meaning line rises 5 px in 220 ms. With Reduce Motion, nothing plays by itself, keys change color without moving, and every section shows its end state (the actions and clipboard snapshots, "Ghostty", "Saved, and Pith has it").
+
+### Do's and Don'ts
+- **Do** show the real panel snapshots, light and dark, at their real size, as the page's proof.
+- **Do** write every shortcut as key caps, and fill only Download and lit keys with the action color.
+- **Do** keep Faint for decoration the page also says in text (the keyboard's unlit legends), never for content.
+- **Don't** add an accent, gradient hero, glow or product video.
+- **Don't** fade, slide or cross-fade a panel snapshot; it changes in one frame. Motion is the keys' and ends where it started, and nothing loops.
+- **Don't** carry the web tokens (ground, tracking, key-cap shadows) into the app panel.
