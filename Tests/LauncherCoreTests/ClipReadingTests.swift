@@ -48,6 +48,13 @@ struct ClipReadingTests {
         #expect(!content.items.joined().contains(icon), "the icon isn't kept (decision 61)")
     }
 
+    /// A folder's path keeps its "/", so the panel shows a folder without asking the disk; spaces stay as they are.
+    @Test func aCopiedFolderKeepsItsSlash() throws {
+        let folder = URL(filePath: "/Users/me/Documents/Acme Projects/", directoryHint: .isDirectory)
+        let content = try #require(ClipReading.content(of: [[file(folder)]]))
+        #expect(content.text == "/Users/me/Documents/Acme Projects/")
+    }
+
     @Test func anImageWithoutTextIsAnImage() throws {
         let png = try image(as: .png)
         let html = Representation(type: "public.html", data: Data("<img src=chart.png>".utf8))

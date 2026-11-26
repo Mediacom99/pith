@@ -47,7 +47,7 @@ enum ClipText {
             return ("Image", false)
         case .files:
             // The count from the whole list: a long one is cut in memory.
-            let name = (paths(of: clip).first.map { ($0 as NSString).lastPathComponent }) ?? ""
+            let name = (firstPath(of: clip) as NSString).lastPathComponent
             return (clip.lines > 1 ? "\(name) and \((clip.lines - 1).formatted()) more" : name, false)
         }
     }
@@ -62,15 +62,31 @@ enum ClipText {
         }
     }
 
-    /// The files' folder from the home folder as `~`, or how many folders they're in.
+    /// The files' folder from the home folder as `~`, or how many folders they're in. One pass over the paths in
+    /// memory, without a string per path: a row draws it, and a copy can name thousands of files.
     static func folders(of clip: Clip) -> String {
-        let folders = Set(paths(of: clip).map { ($0 as NSString).deletingLastPathComponent })
-        guard folders.count == 1, let folder = folders.first else { return "\(folders.count) folders" }
-        return (folder as NSString).abbreviatingWithTildeInPath
+        var folders: Set<Substring> = []
+        var last: Substring?
+        let lines = clip.text.split(separator: "\n")
+        // A long list is cut in memory: its last path may be cut short.
+        for path in lines.prefix(clip.text.utf8.count < clip.textBytes ? lines.count - 1 : lines.count) {
+            // A folder's path ends in "/" (ClipReading), which isn't where its parent ends.
+            let trimmed = path.count > 1 && path.hasSuffix("/") ? path.dropLast() : path
+            let parent = trimmed.lastIndex(of: "/").map { trimmed[..<$0] } ?? ""
+            if parent != last { folders.insert(parent) }
+            last = parent
+        }
+        guard folders.count == 1, let folder = folders.first else { return "\(folders.count.formatted()) folders" }
+        return (String(folder.isEmpty ? "/" : folder) as NSString).abbreviatingWithTildeInPath
+    }
+
+    /// The first file's path, without splitting the list: what a row and Quick Look show of it.
+    nonisolated static func firstPath(of clip: Clip) -> String {
+        String(clip.text.prefix { $0 != "\n" })
     }
 
     /// The files' paths in memory: all of them, or the first 2,500 or so of a longer list, without one cut short.
-    static func paths(of clip: Clip) -> [String] {
+    nonisolated static func paths(of clip: Clip) -> [String] {
         var paths = clip.text.split(separator: "\n").map(String.init)
         if clip.text.utf8.count < clip.textBytes, !paths.isEmpty { paths.removeLast() }
         return paths

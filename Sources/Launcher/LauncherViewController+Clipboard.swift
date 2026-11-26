@@ -84,15 +84,14 @@ extension LauncherViewController {
                 kind: when.prefix(1).uppercased() + when.dropFirst(), primary: primary, secondary: actions,
                 preview: .image(image, size: ClipText.previewSize(of: clip)))
         case .files:
-            let paths = ClipText.paths(of: clip)
-            let known = paths.compactMap(facts.fact)
-            let gone = paths.count == 1 && known.first?.exists == false
-            let bytes = known.count == paths.count ? known.compactMap(\.bytes).reduce(0, +) : nil
-            let first = paths.first.map { URL(filePath: $0) }
-            let kind =
-                paths.count > 1 ? "\(paths.count) files" : first.flatMap { icons.typeName(forFile: $0) } ?? ""
+            // Counted from the whole list, which memory may have cut; the size only when every file's is known.
+            let summary = facts.summary(of: clip)
+            let gone = clip.lines == 1 && summary?.firstExists == false
+            let first = URL(filePath: ClipText.firstPath(of: clip))
+            let kind = clip.lines > 1 ? "\(clip.lines.formatted()) files" : icons.typeName(forFile: first) ?? ""
+            let bytes = summary?.bytes
             return TileView.Content(
-                icon: first.flatMap { icons.icon(forFile: $0, size: .tile) }, name: ClipText.title(of: clip).text,
+                icon: icons.icon(forFile: first, size: .tile), name: ClipText.title(of: clip).text,
                 place: gone ? "No longer in \(ClipText.folders(of: clip))" : ClipText.folders(of: clip),
                 kind: ClipText.about(
                     [kind, bytes.map(ClipText.bytes) ?? ""], copied: clip.copied, from: source, now: now),

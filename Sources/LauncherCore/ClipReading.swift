@@ -42,7 +42,9 @@ public enum ClipReading {
             item.first { $0.type == fileURL }.flatMap { URL(dataRepresentation: $0.data, relativeTo: nil) }
         }.filter(\.isFileURL)
         if !files.isEmpty {
-            return ClipContent(kind: .files, text: files.map(\.path).joined(separator: "\n"), items: withoutImages)
+            // A folder's path keeps its "/", so the panel knows it's a folder without asking the disk.
+            let paths = files.map { $0.path(percentEncoded: false) }
+            return ClipContent(kind: .files, text: paths.joined(separator: "\n"), items: withoutImages)
         }
 
         let text = Self.text(in: all)
