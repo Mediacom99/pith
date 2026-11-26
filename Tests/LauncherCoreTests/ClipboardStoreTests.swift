@@ -186,6 +186,26 @@ struct ClipboardStoreTests {
         #expect(await !ClipboardStore(folder: store.folder).isPaused())
     }
 
+    @Test func seesWhatAnotherProgramChanged() async throws {
+        let folder = try TemporaryDirectory()
+        let pith = ClipboardStore(folder: folder.url)
+        let key = try await pith.add(text("acme-example-key"), from: nil, at: start)
+        _ = try await pith.load()
+        let other = try await pith.add(text("Acme"), from: nil, at: start + 60)
+        try await pith.setPinned(true, for: other.id)
+        #expect(await !pith.changedElsewhere(), "its own writes don't count")
+
+        // Another program with the database open: a connection of its own.
+        try await ClipboardStore(folder: folder.url).delete(key.id)
+        #expect(await pith.changedElsewhere())
+        #expect(await !pith.changedElsewhere(), "said once")
+
+        let paste = await #expect(throws: ClipboardStore.Failure.self) { try await pith.items(of: key.id) }
+        let save = await #expect(throws: ClipboardStore.Failure.self) { try await pith.text(of: key.id) }
+        let move = await #expect(throws: ClipboardStore.Failure.self) { try await pith.touch(key.id, at: start) }
+        #expect([paste, save, move].allSatisfy { $0?.isGone == true }, "the clip is gone, not unreadable")
+    }
+
     @Test func aLongTextIsKeptWholeOnDiskAndOnlyItsStartInMemory() async throws {
         let folder = try TemporaryDirectory()
         let store = ClipboardStore(folder: folder.url)

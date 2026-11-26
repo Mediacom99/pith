@@ -277,7 +277,7 @@ struct ClipboardPanelTests {
         #expect(press("cmd+r", in: panel))
         #expect(await eventuallyTrue { pinned(panel) == ["newest", "keep me"] })
 
-        // ⌘T deletes; a pinned clip takes a second ⌘T.
+        // ⌘T deletes, at a second ⌘T (decision 74).
         panel.launcher.toggleActions()
         #expect(press("cmd+t", in: panel))
         #expect(panel.launcher.confirming)
@@ -484,6 +484,105 @@ struct ClipboardPanelTests {
         panel.launcher.reset()
         panel.launcher.prepareToShow(.clipboard)
         #expect(panel.launcher.tableView.selectedRow == 0, "opened again: the newest")
+    }
+
+    /// A copy that lands while a clip's actions are listed shows on going back, with that clip still selected.
+    @Test func aCopyBehindTheActionsShowsOnGoingBack() async throws {
+        let folder = try TemporaryDirectory()
+        let panel = try await clipboardPanel(folder.url, [(text("older"), nil, 10), (text("newer"), nil, 5)])
+        panel.launcher.prepareToShow(.clipboard)
+        press("down", in: panel)
+        panel.launcher.toggleActions()
+
+        let history = try #require(panel.launcher.clipboard)
+        history.recorded(try await history.store.add(text("just copied"), from: nil, at: .now))
+        #expect(panel.launcher.sublist != nil, "the actions stay up")
+        press("escape", in: panel)
+        #expect(titles(panel) == ["just copied", "newer", "older"])
+        #expect(panel.launcher.tableView.selectedRow == 2, "still on older")
+    }
+
+    /// A shortcut never deletes in one press, pinned or not; ⏎ on the Delete row does (decision 74).
+    @Test func deletingByShortcutWaitsForASecondPress() async throws {
+        let folder = try TemporaryDirectory()
+        let panel = try await clipboardPanel(folder.url, [(text("older"), nil, 2), (text("newest"), nil, 1)])
+        panel.launcher.canPaste = true
+        panel.launcher.prepareToShow(.clipboard)
+        panel.launcher.toggleActions()
+
+        // Paste, Copy to Clipboard, Save as File, Pin, Delete: ⌘T is the fifth.
+        #expect(press("cmd+t", in: panel))
+        #expect(panel.launcher.confirming && panel.launcher.tile.content.isDanger)
+        press("escape", in: panel)
+        #expect(!panel.launcher.confirming && panel.launcher.sublist != nil, "⎋ cancels it, not the actions")
+        #expect(try await panel.launcher.clipboard?.store.load().count == 2, "nothing deleted")
+
+        #expect(press("cmd+t", in: panel) && press("cmd+t", in: panel))
+        #expect(await eventuallyTrue { titles(panel) == ["older"] })
+
+        panel.launcher.toggleActions()
+        try select(.delete, in: panel)
+        press("return", in: panel)
+        #expect(await eventuallyTrue { titles(panel).isEmpty }, "⏎ on the row deletes at once")
+    }
+
+    /// Clips another program deleted or copied again are gone, or on top, when the clipboard opens next (decision 73).
+    @Test func anotherProgramsChangesShowWhenTheClipboardOpens() async throws {
+        let folder = try TemporaryDirectory()
+        let panel = try await clipboardPanel(
+            folder.url, [(text("one"), nil, 30), (text("two"), nil, 20), (text("three"), nil, 10)])
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(titles(panel) == ["three", "two", "one"])
+        panel.launcher.reset()
+
+        let other = ClipboardStore(folder: folder.url)
+        let two = try #require(try await other.load().first { $0.text == "two" })
+        try await other.delete(two.id)
+        _ = try await other.add(text("one"), from: nil, at: .now)
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(await eventuallyTrue { titles(panel) == ["one", "three"] })
+    }
+
+    /// A clip another program deleted since the clipboard opened says why it fails, and leaves the list.
+    @Test func aClipGoneFromTheDatabaseLeavesTheListWhenUsed() async throws {
+        let folder = try TemporaryDirectory()
+        let downloads = try TemporaryDirectory()
+        let panel = try await clipboardPanel(folder.url, [(text("older"), nil, 10), (text("gone"), nil, 5)])
+        var failures: [String] = []
+        panel.launcher.reportFailure = { title, _, reason in failures.append("\(title): \(reason)") }
+        panel.launcher.saveFolder = downloads.url
+        panel.launcher.prepareToShow(.clipboard)
+        let history = try #require(panel.launcher.clipboard)
+        try await ClipboardStore(folder: folder.url).delete(try #require(history.index.clips.first).id)
+
+        panel.launcher.toggleActions()
+        try select(.save, in: panel)
+        press("return", in: panel)
+        #expect(await eventuallyTrue { !failures.isEmpty })
+        #expect(failures == ["Couldn't save the clip: it's no longer in the history"])
+        #expect(history.index.clips.map(\.text) == ["older"])
+    }
+
+    /// Paste and Copy to Clipboard, for a clip that's gone, fail before they reach the clipboard and drop it.
+    @Test func pastingAClipThatsGoneDropsItFromTheList() async throws {
+        let folder = try TemporaryDirectory()
+        let store = ClipboardStore(folder: folder.url)
+        let kept = try await store.add(text("kept"), from: nil, at: .now - 60)
+        let gone = try await store.add(text("gone"), from: nil, at: .now)
+        let history = ClipboardHistory(store: store)
+        await history.load()
+        try await ClipboardStore(folder: folder.url).delete(gone.id)
+        // Gone before the paster looks, so it fails without writing the clipboard.
+        let failure = await #expect(throws: ClipboardStore.Failure.self) { try await store.items(of: gone.id) }
+        try #require(failure?.isGone == true)
+
+        let paster = ClipPaster()
+        var failures: [String] = []
+        paster.onFailure = { title, reason in failures.append("\(title): \(reason)") }
+        paster.deliver(gone, .copy, from: history)
+        #expect(await eventuallyTrue { !failures.isEmpty })
+        #expect(failures == ["Couldn't copy the clip: it's no longer in the history"])
+        #expect(history.index.clips.map(\.id) == [kept.id])
     }
 
     /// A thumbnail that can't be read is asked for once and draws nothing new: a redraw would ask again, forever,

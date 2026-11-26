@@ -52,6 +52,8 @@ Status: **done**.
 - Newest first; when typing, pinned matches first (decision 33). The newest clips are scanned first, and the rest is
   split over the cores when they don't fill the list.
 - `ClipboardHistory` loads the history at launch, builds the index on a worker, and only then starts the recorder.
+  It loads it again as the clipboard opens if another program changed the database (decision 73); a clip the store no
+  longer has leaves the list when it's used.
 - Speed (`make bench`, 5,000 clips): a query as you type it 0.01–0.04 ms; a word that matches nothing 1.1–1.5 ms; at
   worst, with every clip at the 4,096-character cap, 2.4 ms. The index builds in 27 ms (186 ms at the cap).
 
@@ -84,7 +86,8 @@ itself is one of the checks on the installed build before each release (`docs/RE
   itself.
 - ⌘K: Paste, Copy to Clipboard, Paste as Plain Text, Open in… (`[open_links]`'s app, else the default), Reveal in
   Finder (it says when the files are gone), Save as File (`Clipboard 2026-11-23 at 14.05.txt` in Downloads, decision
-  39), Pin, Delete (a pinned clip's needs a second ⏎). Pin and Delete keep the panel open and the place in the list.
+  39), Pin, Delete (a second press for a pinned clip, or from its shortcut: decision 74). Pin and Delete keep the panel
+  open and the place in the list.
 - ⌘Q…⌘U run the 1st to 7th action of any ⌘K list (decision 43). Failures post a notification (decision 32).
 - `make certificate` creates the "Pith Local Signing" certificate once (decision 41), so Accessibility access survives
   updates.
@@ -238,3 +241,14 @@ release; published in 0.3.12.
   Quick Look's memory. Freeing it means a preview window of Pith's own, made and dropped per use, which looks and
   behaves differently from Quick Look's; Edoardo kept ⌘P and Quick Look as they are (decision 72), and step 8 carries
   the target.
+
+## 14. The history in step with its database
+
+Status: **in review** on `fix/clipboard-sync`, not yet published. Clips another program deleted from
+`history.sqlite` stayed listed in the installed 0.3.12, so ⏎ and Copy to Clipboard failed on them with "it's no
+longer in the history", and the list's order and times went stale.
+- The history loads again as the clipboard opens when `PRAGMA data_version` says another connection committed
+  (decision 73); a clip the store no longer has leaves the list as its paste, copy, move or save fails.
+- ⎋ from a clip's ⌘K actions shows the list as it is now: copies that landed meanwhile used to wait for the next one.
+- Delete from its shortcut waits for a second press (decision 74).
+- 108 + 145 tests pass; each new one fails without its fix. The snapshots are unchanged.

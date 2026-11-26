@@ -168,9 +168,12 @@ final class LauncherViewController: NSViewController {
     var sublist: Sublist?
     /// What ⎋ goes back to, innermost last: each level's sublist (nil for the search), query, rows and selection.
     var backStack: [(sublist: Sublist?, query: String, rows: [Row], selection: Int)] = []
-    /// Force Quit, Clear Clipboard History or deleting a pinned clip is waiting for its second ⏎ (decision 28). ⎋,
+    /// Force Quit, Clear Clipboard History or a clip's Delete is waiting for its second ⏎ (decisions 28, 74). ⎋,
     /// typing or moving the selection cancels it.
     var confirming = false
+    /// The clipboard history changed while a clip's actions were listed: going back shows the change, not the list as
+    /// it was.
+    var clipsChangedBehind = false
 
     /// The file Quick Look shows: the one it was opened on, until the user moves the selection (`PreviewTarget`).
     /// Quick Look asks for it whenever it likes, so it's never worked out from the selection then: a list refreshed
@@ -289,10 +292,7 @@ final class LauncherViewController: NSViewController {
             self.mode = mode
             applyMode()
         }
-        if mode == .clipboard {
-            onShowClipboard()
-            facts.markStale()
-        }
+        if mode == .clipboard { clipboardShown() }
         refresh()
     }
 
@@ -303,13 +303,11 @@ final class LauncherViewController: NSViewController {
         sublist = nil
         backStack = []
         confirming = false
+        clipsChangedBehind = false
         mode = new
         applyMode()
         setQuery("")
-        if new == .clipboard {
-            onShowClipboard()
-            facts.markStale()
-        }
+        if new == .clipboard { clipboardShown() }
         refresh()
     }
 
@@ -333,6 +331,7 @@ final class LauncherViewController: NSViewController {
         sublist = nil
         backStack = []
         confirming = false
+        clipsChangedBehind = false
         if mode != .launcher {
             mode = .launcher
             applyMode()
