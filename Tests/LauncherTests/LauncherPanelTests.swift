@@ -317,6 +317,34 @@ struct LauncherPanelTests {
         #expect(table.selectedRow == 0, "↑ and ↓ repeat when held")
     }
 
+    /// ⏎ pressed before the query's files land opens the query's first result, not the row the list had before.
+    @Test func returnBeforeTheFilesLandOpensTheQuerysResult() async {
+        let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))
+        var run: [Command] = []
+        panel.launcher.runCommand = { run.append($0) }
+        panel.launcher.searchField.stringValue = "quit pith"
+        panel.launcher.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification))
+        #expect(press("return", in: panel))
+        #expect(run.isEmpty, "the files haven't landed: the list is the one before")
+        await panel.launcher.pendingSearch?.value
+        #expect(run == [.quit])
+    }
+
+    /// ⌥⏎ and ⌥⇥ would type a line break or a tab into the query, and ⌥⎋ open word completion: none of them do.
+    @Test func optionReturnTabAndEscapeTypeNothing() {
+        let panel = makePanel(items: apps)
+        for command in [
+            #selector(NSResponder.insertNewlineIgnoringFieldEditor(_:)),
+            #selector(NSResponder.insertTabIgnoringFieldEditor(_:)), #selector(NSResponder.complete(_:)),
+        ] {
+            #expect(panel.launcher.control(panel.launcher.searchField, textView: NSTextView(), doCommandBy: command))
+        }
+        #expect(
+            !panel.launcher.control(
+                panel.launcher.searchField, textView: NSTextView(),
+                doCommandBy: #selector(NSResponder.deleteBackward(_:))))
+    }
+
     /// The keypad's Enter (and fn+Return) does what Return does.
     @Test func keypadEnterIsReturn() async {
         let panel = makePanel(items: apps + Command.allCases.map(Item.init(command:)))

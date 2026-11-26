@@ -119,6 +119,7 @@ final class ClipboardHistory {
             onChange?()
         } catch {
             Log.app.error("Couldn't pin a clip: \(error.description, privacy: .public)")
+            onChange?()  // the list goes back to how it is, and lets go of the clip it kept selected
         }
     }
 
@@ -128,6 +129,7 @@ final class ClipboardHistory {
             remove([id])
         } catch {
             Log.app.error("Couldn't delete a clip: \(error.description, privacy: .public)")
+            onChange?()  // the list goes back to how it is, and lets go of the clip it kept selected
         }
     }
 

@@ -544,6 +544,19 @@ struct ClipboardPanelTests {
         #expect(opened.map(\.absoluteString) == [long])
     }
 
+    /// A clip kept selected for a Pin or Delete that never landed (the panel closed first) doesn't pick the row next
+    /// time: the clipboard opens on the newest.
+    @Test func aSelectionKeptForAnActionIsLetGoOnClosing() async throws {
+        let folder = try TemporaryDirectory()
+        let panel = try await clipboardPanel(
+            folder.url, [(text("one"), nil, 3), (text("two"), nil, 2), (text("three"), nil, 1)])
+        let oldest = try #require(panel.launcher.clipboard?.index.clips.last)
+        panel.launcher.keepSelection = (oldest.id, 2)
+        panel.launcher.reset()
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(panel.launcher.tableView.selectedRow == 0)
+    }
+
     /// A shortcut never deletes in one press, pinned or not; ⏎ on the Delete row does (decision 74).
     @Test func deletingByShortcutWaitsForASecondPress() async throws {
         let folder = try TemporaryDirectory()

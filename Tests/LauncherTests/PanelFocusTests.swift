@@ -135,6 +135,29 @@ struct PanelFocusTests {
     }
 
     /// ⎋ closes the preview first, then the launcher.
+    /// A query that finds nothing closes the preview: no file in the list, none on the preview.
+    @Test func anEmptyListClosesThePreview() async throws {
+        let focus = try await FocusHarness()
+        press("cmd+y", in: focus.panel)
+        #expect(focus.quickLook.isVisible)
+        await type("zzz", in: focus.panel)
+        #expect(!focus.quickLook.isVisible && focus.previewing == nil)
+    }
+
+    /// Typing moves the preview to the new selection, even when the list shrinks past the row it was on.
+    @Test func typingMovesThePreviewWhenTheListShrinks() async throws {
+        let focus = try await FocusHarness()
+        press("cmd+y", in: focus.panel)
+        press("down", in: focus.panel)
+        #expect(focus.previewing == "Acme budget.pdf")
+        // As a key typed in the field does: tests have no current event for `type` to pass on.
+        focus.panel.launcher.searchField.stringValue = "acme bri"
+        focus.panel.launcher.refresh(keystroke: (event: 0, handled: 0))
+        await focus.panel.launcher.pendingSearch?.value
+        #expect(focus.quickLook.isVisible)
+        #expect(focus.previewing == "Acme brief.pdf")
+    }
+
     @Test func escapeClosesThePreviewFirst() async throws {
         let focus = try await FocusHarness()
         press("cmd+y", in: focus.panel)
