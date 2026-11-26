@@ -21,6 +21,7 @@ nonisolated enum Paster {
             return item
         }
         if let first = objects.first {
+            first.setData(Data(), forType: .init(ClipReading.pithMarker))
             if let source { first.setString(source, forType: .init(ClipReading.sourceMarker)) }
             if transient { first.setData(Data(), forType: .init("org.nspasteboard.TransientType")) }
         }

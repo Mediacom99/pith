@@ -398,7 +398,9 @@ public final class ClipboardStore: @unchecked Sendable {
             let delete = try database.prepare("DELETE FROM clip WHERE id = ?")
             for id in ids { try delete.run([.integer(id)]) }
         }
-        try database.execute("PRAGMA incremental_vacuum")
+        // The deletion is done: giving pages back is a bonus, and its failure mustn't leave the list showing clips
+        // that are gone.
+        try? database.execute("PRAGMA incremental_vacuum")
         for id in ids {
             for file in [imageFile(of: id), rowThumbnail(of: id), previewThumbnail(of: id)] {
                 try? FileManager.default.removeItem(at: file)

@@ -28,6 +28,66 @@ struct ClipboardRecorderTests {
         #expect(try await store.load().map(\.id) == [clip.id])
     }
 
+    /// ⌘C, then ⌘Tab before the next tick: the copy is the app it was made in, not the one that came to the front.
+    @Test func aCopyBeforeSwitchingAppsKeepsTheAppItCameFrom() async throws {
+        let folder = try TemporaryDirectory()
+        let pasteboard = privatePasteboard()
+        defer { pasteboard.releaseGlobally() }
+        let store = ClipboardStore(folder: folder.url)
+        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: store) { _ in }
+        await recorder.start(timer: false)
+        recorder.appActivated("com.apple.Safari")
+        #expect(await recorder.check() == nil, "Safari in front, nothing copied yet")
+
+        pasteboard.clearContents()
+        pasteboard.setString("https://acme.example/pricing", forType: .string)
+        recorder.appActivated("com.apple.Notes")
+        var recorded: [Clip] = []
+        for _ in 0..<200 where recorded.isEmpty {
+            try await Task.sleep(for: .milliseconds(25))
+            recorded = try await store.load()
+        }
+        #expect(recorded.map(\.source) == ["com.apple.Safari"])
+        #expect(await recorder.check() == nil, "read once")
+    }
+
+    /// What Pith puts back names no app when its clip didn't: not the app it's pasted into.
+    @Test func pithsOwnPasteIsntNamedAfterTheAppInFront() async throws {
+        let folder = try TemporaryDirectory()
+        let pasteboard = privatePasteboard()
+        defer { pasteboard.releaseGlobally() }
+        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: ClipboardStore(folder: folder.url)) { _ in }
+        await recorder.start(timer: false)
+        recorder.appActivated("com.apple.TextEdit")
+        #expect(await recorder.check() == nil)
+
+        let item = NSPasteboardItem()
+        item.setString("Quarterly_Budget_Review", forType: .string)
+        item.setData(Data(), forType: .init(ClipReading.pithMarker))
+        pasteboard.clearContents()
+        pasteboard.writeObjects([item])
+        let clip = try #require(await recorder.check())
+        #expect(clip.source == nil)
+    }
+
+    /// A look that lands between an app clearing the clipboard and writing its copy looks once more, and finds it.
+    @Test func aCopyWrittenJustAfterTheClearIsntMissed() async throws {
+        let folder = try TemporaryDirectory()
+        let pasteboard = privatePasteboard()
+        defer { pasteboard.releaseGlobally() }
+        let recorder = ClipboardRecorder(pasteboard: pasteboard, store: ClipboardStore(folder: folder.url)) { _ in }
+        await recorder.start(timer: false)
+
+        let change = pasteboard.clearContents()
+        #expect(await recorder.check() == nil, "empty for now")
+        let item = NSPasteboardItem()
+        item.setString("docker compose up", forType: .string)
+        pasteboard.writeObjects([item])
+        try #require(pasteboard.changeCount == change, "writing doesn't change the count again")
+        #expect(await recorder.check()?.text == "docker compose up")
+        #expect(await recorder.check() == nil, "then it's settled")
+    }
+
     @Test func whatWasOnTheClipboardAtLaunchIsNotRecorded() async throws {
         let folder = try TemporaryDirectory()
         let pasteboard = privatePasteboard()

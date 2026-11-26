@@ -11,6 +11,9 @@ public enum ClipReading {
     ]
     /// The bundle id of the app that wrote the copy, when it says so (nspasteboard.org).
     public static let sourceMarker = "org.nspasteboard.source"
+    /// Marks what Pith puts back on the clipboard (a paste, Copy to Clipboard): with no source marker, its source is
+    /// unknown, not the app in front, which is the one it's pasted into.
+    public static let pithMarker = "dev.edoardo.pith.clip"
 
     /// The types read and kept from each pasteboard item: what apps paste with. Other types aren't read at all:
     /// reading one makes the app that copied render it, and apps like spreadsheets offer many large ones.
