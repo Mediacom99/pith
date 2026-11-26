@@ -24,7 +24,7 @@ final class LauncherViewController: NSViewController {
         didSet {
             index.setAliases([clipboardAlias], for: .clipboard)
             boosts = history.history.boosts(for: index)
-            loadIcons()
+            loadIcons(recheck: true)
             refresh()
         }
     }
@@ -545,10 +545,11 @@ final class LauncherViewController: NSViewController {
         updateTile()
     }
 
-    private func loadIcons() {
+    /// `recheck`: the apps changed on disk (the index was built again), so updated apps get their new icons.
+    private func loadIcons(recheck: Bool = false) {
         let indexed = index.items.lazy.compactMap(\.url)
         let running = running.order.lazy.compactMap { self.running.application($0)?.bundleURL }
-        icons.load(Set(indexed).union(running))
+        icons.load(Set(indexed).union(running), recheck: recheck)
     }
 
     private func runningAppsChanged(membership: Bool) {

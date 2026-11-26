@@ -435,6 +435,8 @@ struct ClipboardPanelTests {
         #expect(ago(minutes: 24 * 60) == "yesterday")
         #expect(ago(minutes: 3 * 24 * 60) == "Tue")
         #expect(ago(minutes: 20 * 24 * 60) == "Oct 31")
+        #expect(ago(minutes: 400 * 24 * 60) == "Oct 16, 2025", "another year says which")
+        #expect(DateWords.day(of: now - 400 * 86_400, now: now) == "Oct 16, 2025")
     }
 
     private func select(_ action: ClipAction, in panel: LauncherPanel) throws {
@@ -555,6 +557,32 @@ struct ClipboardPanelTests {
         panel.launcher.reset()
         panel.launcher.prepareToShow(.clipboard)
         #expect(panel.launcher.tableView.selectedRow == 0)
+    }
+
+    /// A long link fits its three lines on the tile whole, with "…" in its middle: no line hidden past the last.
+    @Test func aLongLinkFitsTheTile() async throws {
+        let folder = try TemporaryDirectory()
+        let long = "https://acme.example/dashboards/" + String(repeating: "quarterly-budget-review-", count: 20) + "42"
+        let link = ClipContent(
+            kind: .link, text: long, items: [[Representation(type: "public.utf8-plain-text", data: Data(long.utf8))]])
+        let panel = try await clipboardPanel(folder.url, [(link, nil, 1)])
+        panel.launcher.prepareToShow(.clipboard)
+        panel.layoutIfNeeded()
+        let place = panel.launcher.tile.placeLabel
+        #expect(place.stringValue.contains("…") && place.stringValue.hasSuffix("42"))
+        let needed = try #require(place.cell).cellSize(
+            forBounds: NSRect(x: 0, y: 0, width: place.frame.width, height: .greatestFiniteMagnitude)
+        ).height
+        #expect(needed <= place.frame.height + 4, "needs \(needed) pt, has \(place.frame.height)")
+    }
+
+    /// Blank lines before a text don't fill its preview: the tile shows the text, not "Spaces and line breaks".
+    @Test func blankLinesFirstDontHideTheText() async throws {
+        let folder = try TemporaryDirectory()
+        let blankFirst = String(repeating: "\n", count: 12) + "Acme\nbudget"
+        let panel = try await clipboardPanel(folder.url, [(text(blankFirst), nil, 1)])
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(panel.launcher.tile.content.preview == .text("Acme\nbudget", isBlank: false))
     }
 
     /// A shortcut never deletes in one press, pinned or not; ⏎ on the Delete row does (decision 74).

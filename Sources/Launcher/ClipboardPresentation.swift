@@ -95,16 +95,28 @@ enum ClipText {
     /// What the tile previews of a text: its first lines, as they'll paste, and one more when there is one, so the
     /// preview's last line ends in "…".
     static func preview(of clip: Clip) -> String {
+        // From the first line that isn't blank: blank lines first (a selection's leading space) would fill it.
+        let text = clip.text
+        var start = text.startIndex
+        var lineStart = text.startIndex
+        for index in text.indices {
+            if text[index].isNewline {
+                lineStart = text.index(after: index)
+            } else if !text[index].isWhitespace {
+                start = lineStart
+                break
+            }
+        }
         var lines = 0
-        var end = clip.text.endIndex
-        for index in clip.text.indices where clip.text[index].isNewline {
+        var end = text.endIndex
+        for index in text[start...].indices where text[index].isNewline {
             lines += 1
             if lines == previewLines + 1 {
                 end = index
                 break
             }
         }
-        return String(clip.text[..<end].prefix(previewCharacters)).trimmingCharacters(in: .newlines)
+        return String(text[start..<end].prefix(previewCharacters)).trimmingCharacters(in: .newlines)
     }
 
     /// When a clip was copied, at the end of its row: "now", "5 min", "14:05", "yesterday", "Mon", "Nov 12".
@@ -117,7 +129,7 @@ enum ClipText {
         let days = DateWords.days(from: date, to: now, in: calendar)
         if days == 1 { return "yesterday" }
         if (2..<7).contains(days) { return DateWords.shortWeekday.string(from: date) }
-        return DateWords.monthDay.string(from: date)
+        return DateWords.date(date, now: now, in: calendar)
     }
 
     /// On the tile: "copied today at 14:05", "copied yesterday", "copied Tuesday", "copied Nov 12".

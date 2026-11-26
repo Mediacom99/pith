@@ -59,6 +59,17 @@ final class IconStore {
     private var requestedBundles: Set<String> = []
     private var resolvedBundles: Set<String> = []
     private var extraApps: Set<URL> = []
+    /// Bundle ids being looked up: until theirs lands, an app isn't missing.
+    private var resolvingIDs: Set<String> = []
+    /// Each rendered app's Info.plist date: an app updated in place gets a new one, and its icon is drawn again.
+    private var stamps: [URL: Date] = [:]
+    /// The sharpest attached screen's scale, which icons are drawn for. Tests swap it.
+    var screenScale: () -> CGFloat = { NSScreen.screens.map(\.backingScaleFactor).max() ?? 2 }
+    /// The scale the last icons were drawn for.
+    private(set) var drawnScale: CGFloat = 0
+    private var screenObserver: (any NSObjectProtocol)?
+    /// App icons drawn so far, for tests.
+    private(set) var appsRendered = 0
     /// Bumped on every appearance or icon style change; renders started before it are dropped.
     private var style = 0
     private var appearanceObservation: NSKeyValueObservation?
@@ -72,6 +83,12 @@ final class IconStore {
         // NSApplication.shared, not NSApp: a test can build the store before anything has made the app.
         appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance) { [weak self] _, _ in
             Task { @MainActor in self?.restyle() }
+        }
+        // A sharper screen plugged in, or the lid opened on a 1x display: icons drawn for the old scale look blurry.
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.screensChanged() }
         }
         // Which center AppKit posts it on isn't documented: listen on both.
         iconStyleObservers = [NSWorkspace.shared.notificationCenter, NotificationCenter.default].map { center in
@@ -132,7 +149,7 @@ final class IconStore {
 
     /// Whether the app with bundle id `id` was looked up and isn't installed.
     func isMissing(bundleID id: String) -> Bool {
-        resolvedBundles.contains(id) && bundleApps[id] == nil && !isResolvingApps
+        resolvedBundles.contains(id) && bundleApps[id] == nil && !resolvingIDs.contains(id)
     }
 
     /// Lookups still under way, for snapshots to wait on.
@@ -158,6 +175,7 @@ final class IconStore {
         let ids = Array(requestedBundles)
         requestedBundles = []
         resolvedBundles.formUnion(ids)
+        resolvingIDs.formUnion(ids)
         resolvingBundles += 1
         Task {
             let found = await runInBackground(qos: .userInitiated) {
@@ -177,6 +195,7 @@ final class IconStore {
             }
             wanted.formUnion(extraApps)
             render(Array(extraApps.filter { apps[$0] == nil && !rendering.contains($0) }), symbols: [])
+            resolvingIDs.subtract(ids)
             resolvingBundles -= 1
             onChange?()
         }
@@ -197,7 +216,7 @@ final class IconStore {
         guard !keys.isEmpty else { return }
         renderingTypes.formUnion(keys)
         let style = self.style
-        let pixels = Self.pixels
+        let pixels = pixelSizes()
         let appearance = Self.appearance
         Task {
             let rendered = await runInBackground(qos: .userInitiated) {
@@ -220,22 +239,61 @@ final class IconStore {
         }
     }
 
-    /// Each size's width in pixels, on the sharpest screen attached: rows, then the tile.
-    private static var pixels: [Int] {
-        let scale = NSScreen.screens.map(\.backingScaleFactor).max() ?? 2
+    /// Each size's width in pixels, on the sharpest screen attached: rows, then the tile. Notes the scale, so a
+    /// screen change can tell whether icons need drawing again.
+    private func pixelSizes() -> [Int] {
+        let scale = screenScale()
+        drawnScale = scale
         return [Int(Layout.iconSize * scale), Int(Layout.tileIconSize * scale)]
     }
     private static var appearance: NSAppearance.Name {
         NSApplication.shared.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) ?? .aqua
     }
 
-    /// Keeps icons for `urls` only and renders the missing ones (and the symbols, the first time).
-    func load(_ urls: Set<URL>) {
+    /// Keeps icons for `urls` only and renders the missing ones (and the symbols, the first time). `recheck`: the
+    /// apps changed on disk, so those updated in place since their icon was drawn are drawn again.
+    func load(_ urls: Set<URL>, recheck: Bool = false) {
         wanted = urls.union(extraApps)
         apps = apps.filter { wanted.contains($0.key) }
+        stamps = stamps.filter { wanted.contains($0.key) }
         let missing = wanted.filter { apps[$0] == nil && !rendering.contains($0) }
         render(Array(missing), symbols: symbolsRequested ? [] : Symbols.rendered)
         symbolsRequested = true
+        if recheck { redrawUpdated() }
+    }
+
+    /// Adds apps found outside the indexed folders (Open With…'s choices: Archive Utility, an app in Downloads) and
+    /// renders their icons, which stay with the bundle-id lookups'.
+    func add(apps urls: [URL]) {
+        let new = urls.filter { !extraApps.contains($0) }
+        guard !new.isEmpty else { return }
+        extraApps.formUnion(new)
+        wanted.formUnion(new)
+        render(new.filter { apps[$0] == nil && !rendering.contains($0) }, symbols: [])
+    }
+
+    /// Draws again, on a worker's say, the apps whose Info.plist changed since their icon was drawn.
+    private func redrawUpdated() {
+        let drawn = stamps
+        let style = self.style
+        Task {
+            let updated = await runInBackground(qos: .utility) {
+                drawn.filter { Self.stamp(of: $0.key) != $0.value }.map(\.key)
+            }
+            guard style == self.style else { return }
+            render(updated.filter { wanted.contains($0) && !rendering.contains($0) }, symbols: [])
+        }
+    }
+
+    private nonisolated static func stamp(of app: URL) -> Date? {
+        let info = app.appending(path: "Contents/Info.plist").path
+        return (try? FileManager.default.attributesOfItem(atPath: info))?[.modificationDate] as? Date
+    }
+
+    /// Screens changed: everything is drawn again if the sharpest one's scale did.
+    func screensChanged() {
+        guard screenScale() != drawnScale else { return }
+        restyle()
     }
 
     private func restyle() {
@@ -251,23 +309,26 @@ final class IconStore {
         guard !urls.isEmpty || !wantedSymbols.isEmpty else { return }
         rendering.formUnion(urls)
         let style = self.style
-        let pixels = Self.pixels
+        let pixels = pixelSizes()
         let appearance = Self.appearance
         Task {
-            let (icons, glyphs) = await runInBackground(qos: .userInitiated) {
+            let (icons, glyphs, dates) = await runInBackground(qos: .userInitiated) {
                 (
                     Self.renderApps(urls, pixels: pixels, appearance: appearance),
                     wantedSymbols.map { symbol in
                         Self.renderSymbol(
                             symbol.name, tint: symbol.tint, pixels: pixels[symbol.size == .row ? 0 : 1],
                             appearance: appearance)
-                    }
+                    },
+                    urls.map { Self.stamp(of: $0) }
                 )
             }
             guard style == self.style else { return }
             rendering.subtract(urls)
-            for (url, icon) in zip(urls, icons) where wanted.contains(url) {
+            appsRendered += urls.count
+            for (url, (icon, date)) in zip(urls, zip(icons, dates)) where wanted.contains(url) {
                 apps[url] = icon
+                stamps[url] = date
             }
             for (symbol, glyph) in zip(wantedSymbols, glyphs) {
                 symbols[SymbolKey(name: symbol.name, tint: symbol.tint, size: symbol.size)] = glyph
