@@ -26,7 +26,7 @@ Read these before doing anything:
   - Check in with the maintainer after each step.
   - Keep each step's status line up to date.
   - Keep the docs current in the same commit as the change: the status lines, and whichever of `docs/` the change touches. Write what's true now; history goes to git, not the docs.
-- **Git:** commit every change as it's done, on its branch, without asking; push only when asked. The remote is the public GitHub repo `Mediacom99/pith`. Work goes on feature branches with a PR into `staging`; `staging` goes to `main` (production) when the maintainer says so. Only the maintainer merges into `main` and `staging` (decision 68): a ruleset requires a pull request with an approving review, no force pushes and no deletions, and only the repo's admin bypasses it, so the maintainer's own PRs merge with `gh pr merge --admin`, each time they say so.
+- **Git:** commit every change as it's done, on its branch, without asking. The remote is the public GitHub repo `Mediacom99/pith`. Changes flow one way, and none skips a step: a feature branch or the milestone branch (`clipboard/milestone-3`) → a PR into `staging` → a PR from `staging` into `main`, the release branch, when the maintainer says so. Releases are published from `main` only. Up to `staging`, Claude goes on its own (decision 75): once `make lint test` passes, it pushes the branch, opens the PR into `staging` and merges it, then says so. From `staging` into `main`, Claude asks the maintainer first, every time, and merges only when they say so. A ruleset on both requires a pull request with an approving review, no force pushes and no deletions; only the repo's admin bypasses it, so PRs merge with `gh pr merge --admin`.
 - **Talking with the maintainer:** status updates and check-ins are two short lists, what I did and what you have to do; details go in the docs' status lines, not the chat. Answer in Italian when the maintainer writes Italian.
 - **Design:**
   - UI/UX work goes through the impeccable skill (`/impeccable …`, decision 24). It reads `docs/PRODUCT.md` (product context) and `docs/DESIGN.md` (the design system).
@@ -42,9 +42,10 @@ Read these before doing anything:
 - **The maintainer's daily copy:** they use Pith in place of Raycast: the copy in `/Applications`, installed with the
   Terminal line, signed with the local certificate (decision 41) so its Accessibility access survives updates, and
   updating itself (decisions 48–50). `make install` puts a branch build there to try, until the next update replaces
-  it. A change reaches it, and whoever else has Pith, as a release (`docs/RELEASING.md`): raise the version in
-  `Support/Info.plist`, commit, `make publish`, then Check for Updates in the launcher. Publish from the branch they use
-  (`clipboard/milestone-3`). When they stop using it (back to another launcher), remind them and remove it.
+  it. A change reaches it, and whoever else has Pith, as a release (`docs/RELEASING.md`): the version raised in
+  `Support/Info.plist` on the feature or milestone branch, merged by the maintainer into `staging` and then `main`,
+  `make publish` on `main`, then Check for Updates in the launcher. Never publish from any other branch. When they stop
+  using it (back to another launcher), remind them and remove it.
 - **The repo is public** (decision 65) and GPL-3.0 (decision 66): everything committed, history included, is
   public. Nothing personal goes in it, as with the maintainer's work below.
 - **Secrets** never go in a repo.
