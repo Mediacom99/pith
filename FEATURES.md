@@ -129,6 +129,8 @@ Both limits apply; whichever triggers first wins:
 - **Size cap** in GB (2 GB by default, decision 37) — oldest dropped first.
 - **Max age** in days (30 by default) — older clips deleted.
 - **Pinned clips are never dropped**, and don't count toward the size cap (decision 62).
+- A limit lowered in the config applies once it has stayed set for a minute, so an editor saving a half-typed number
+  can't drop history (decision 76); a raised one applies at once.
 
 ### 5.3 Browsing
 

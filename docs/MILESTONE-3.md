@@ -16,6 +16,7 @@ Status: **done**.
 - Each clip records its kind (text, rich text, link, image, files), source app, time, pin and size.
 - Retention: 2 GB and 30 days by default (decision 37), oldest unpinned first; pins are never dropped and don't count
   toward the size (decision 62). Applied at launch, after each copy and when the config changes the limits: no timer.
+  A limit that would drop clips applies only once it has stayed set for a minute (decision 76).
 - Every call runs on the store's serial queue, `launcher.clipboard`, off the main thread and Swift's cooperative pool.
 - In memory, a clip keeps only the first 4,096 characters of its text (files: about 2,500 paths); the rest stays on
   disk for the paste. Duplicates are matched by a SHA-256 of the kind, every representation and the image.
@@ -38,8 +39,10 @@ Status: **done**. Built and tested on a private pasteboard.
   copied render it, so nothing else is read.
 - Classified by `ClipReading`: files first; an image only without text (converted to PNG unless it is one, and taken
   out of rich text when it comes only there); text that is one URL is a link; text with RTF or HTML is rich text.
-- Source: the copy's `org.nspasteboard.source` marker, otherwise the app in front. A copy already in the history moves
-  that clip to the top with its pin, and an unknown source doesn't overwrite a known one.
+- Source: the copy's `org.nspasteboard.source` marker, otherwise the app in front when it was copied: another app
+  coming to the front reads a pending copy first. What Pith puts back carries a marker of its own, so its source is
+  never the app it's pasted into. A copy already in the history moves that clip to the top with its pin, and an unknown
+  source doesn't overwrite a known one.
 
 ## 3. History in memory and search
 
@@ -252,3 +255,41 @@ longer in the history", and the list's order and times went stale.
 - ⎋ from a clip's ⌘K actions shows the list as it is now: copies that landed meanwhile used to wait for the next one.
 - Delete from its shortcut waits for a second press (decision 74).
 - 108 + 145 tests pass; each new one fails without its fix. The snapshots are unchanged.
+
+## 15. Bug check of the app
+
+Status: **in review** on `fix/bug-check-2`. Four readers went through every file of the app (`Sources/Launcher`), and
+the clipboard's core beside it; each finding was checked against the code, and all were fixed, each with a test that
+fails without its fix, except where noted. 129 + 148 tests pass; the snapshots are unchanged.
+- **High:**
+  1. A stricter clipboard limit applies only once it has stayed set for a minute (decision 76): an editor saving as
+     you type could save `max_age_days = 3` on the way to 365 and prune everything older.
+  2. A clip of thousands of files is read in one job and redraws the tile once; rows find the first path and the
+     folders without splitting the list (it was seconds of main-thread work).
+- **Medium:**
+  3. The file index's folders are resolved on a worker: `realpath` on main could wait on a privacy prompt or a dead
+     network share. No test: it would need the prompt.
+  4. A copied folder keeps its `/`, so it shows as a folder; a folder's own size isn't shown.
+  5. ⌘C then ⌘Tab names the app copied from, not the one that came to the front.
+  6. Open Link opens a link longer than 4,096 characters whole.
+  7. An image converted to PNG keeps its EXIF orientation (drawn upright) and its DPI.
+  8. SQLite waits up to 2 s for another program's write, and a committed delete always leaves the list.
+  9. A clip kept selected for a Pin or Delete is let go when the panel closes or the write fails.
+  10. ⏎ or ⌘K before the query's files land runs on the query's list.
+  11. Icons are drawn again when a sharper screen appears.
+  12. A long link fits the tile's three lines whole, with "…" in its middle.
+- **Low:**
+  - The clipboard: (13) blank lines first don't make a text's preview "Spaces and line breaks"; (14) a list of more
+    files than memory keeps counts them all and shows no partial size; (15) "Open in …" follows a new default
+    browser, and `[open_links]`' app applies before its name is known; (16) a copy caught between an app's clear and
+    its write is looked at again; (17) paste next waits until the app has read its clip (at most 500 ms), not a fixed
+    100 ms; (18) a paste of a clip with no source doesn't take the target app's name.
+  - The panel: (19) an emptied list closes Quick Look, and one that shrinks past the selection moves it; (20) ⌥⏎, ⌥⇥
+    and ⌥⎋ don't type into the query; (21) dates in another year say it.
+  - Icons: (22) Open With's apps outside the indexed folders get icons; (23) an app updated in place gets its new
+    icon; (24) an app that isn't installed doesn't blink while another is looked up.
+  - The app: (25) a config mistake at launch leaves Login Items alone; (26) a hotkey macOS uses (⌘Space) counts as
+    taken; (27) a keyboard layout change registers all hotkeys again and updates the problems; (28) update
+    notifications replace each other, and a scheduled check failing on the same update says it once; (29) System
+    Settings opens without waiting on the main thread (no test); (30) the hotkeys don't wait for the opened-files
+    history to check every file at launch.
