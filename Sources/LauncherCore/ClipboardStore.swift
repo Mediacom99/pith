@@ -11,10 +11,15 @@ import Foundation
 public final class ClipboardStore: @unchecked Sendable {
     public struct Failure: Error, CustomStringConvertible {
         public let description: String
+        /// The clip isn't in the database: deleted since it was listed, by Pith or another program.
+        public let isGone: Bool
 
-        public init(description: String) {
+        public init(description: String, isGone: Bool = false) {
             self.description = description
+            self.isGone = isGone
         }
+
+        static let gone = Failure(description: "it's no longer in the history", isGone: true)
     }
 
     /// How much history is kept: whichever limit is hit first drops the oldest unpinned clips (decision 37). Pinned
@@ -38,6 +43,8 @@ public final class ClipboardStore: @unchecked Sendable {
     // State below is only touched on `queue`.
     private let queue = DispatchQueue(label: "launcher.clipboard", qos: .userInitiated)
     private var openDatabase: SQLiteDatabase?
+    /// `PRAGMA data_version` at the last load or look: it changes when another connection commits.
+    private var dataVersion: Int64?
 
     public init(folder: URL) {
         self.folder = folder
@@ -67,9 +74,20 @@ public final class ClipboardStore: @unchecked Sendable {
             try statement.bind([.integer(Int64(Clip.textLimit))])
             var clips: [Clip] = []
             while try statement.step() { clips.append(Self.clip(statement)) }
+            self.dataVersion = try Self.dataVersion(of: database)
             self.removeOrphanFiles(keeping: Set(clips.lazy.filter { $0.kind == .image }.map(\.id)))
             return clips
         }
+    }
+
+    /// Whether another program changed the history since the last load or look (decision 73): Pith's own writes
+    /// don't count. False when the database can't be read; a look before any load only takes note.
+    public func changedElsewhere() async -> Bool {
+        (try? await run { () throws(Failure) in
+            let version = try Self.dataVersion(of: self.database())
+            defer { self.dataVersion = version }
+            return self.dataVersion.map { $0 != version } ?? false
+        }) ?? false
     }
 
     /// What a paste of clip `id` puts back on the pasteboard: each item's representations, in their order. An image
@@ -79,7 +97,7 @@ public final class ClipboardStore: @unchecked Sendable {
         try await run { () throws(Failure) in
             let clip = try self.database().prepare("SELECT kind FROM clip WHERE id = ?")
             try clip.bind([.integer(id)])
-            guard try clip.step() else { throw Failure(description: "it's no longer in the history") }
+            guard try clip.step() else { throw Failure.gone }
             let isImage = clip.text(0) == Clip.Kind.image.rawValue
             let statement = try self.database().prepare(
                 "SELECT item, type, data FROM representation WHERE clip = ? ORDER BY item, position")
@@ -106,7 +124,7 @@ public final class ClipboardStore: @unchecked Sendable {
         try await run { () throws(Failure) in
             let statement = try self.database().prepare("SELECT text FROM clip WHERE id = ?")
             try statement.bind([.integer(id)])
-            guard try statement.step() else { throw Failure(description: "clip \(id) isn't in the history") }
+            guard try statement.step() else { throw Failure.gone }
             return statement.text(0)
         }
     }
@@ -357,10 +375,18 @@ public final class ClipboardStore: @unchecked Sendable {
             textBytes: Int(row.integer(10)), pixelWidth: Int(row.integer(8)), pixelHeight: Int(row.integer(9)))
     }
 
+    /// A number that changes each time another connection, in this process or another, commits to the database.
+    private static func dataVersion(of database: SQLiteDatabase) throws(Failure) -> Int64 {
+        let statement = try database.prepare("PRAGMA data_version")
+        try statement.bind([])
+        _ = try statement.step()
+        return statement.integer(0)
+    }
+
     private func clip(_ id: Int64, in database: SQLiteDatabase) throws(Failure) -> Clip {
         let statement = try database.prepare("SELECT \(Self.clipColumns) FROM clip WHERE id = ?")
         try statement.bind([.integer(Int64(Clip.textLimit)), .integer(id)])
-        guard try statement.step() else { throw Failure(description: "clip \(id) vanished") }
+        guard try statement.step() else { throw Failure.gone }
         return Self.clip(statement)
     }
 

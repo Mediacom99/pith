@@ -14,13 +14,25 @@ extension LauncherViewController {
         return (notices + clips, clips.isEmpty ? 0 : notices.count)
     }
 
+    /// The clipboard is showing: access is checked again, copied files are looked at again, and the history is loaded
+    /// again if another program changed it (decision 73). The list shows at once; a reload updates it after.
+    func clipboardShown() {
+        onShowClipboard()
+        facts.markStale()
+        if let clipboard { Task { await clipboard.reloadIfChangedElsewhere() } }
+    }
+
     /// A new copy, or clips pinned or dropped: ready the newest images, and show the change if the clipboard is up.
     /// The clip you're on stays selected, so a copy that lands while you choose (the recorder sees it up to 0.75 s
     /// late) doesn't move ⏎ to another clip.
     func clipboardChanged() {
         guard let clipboard else { return }
         clipImages.preload(clipboard.index, store: clipboard.store)
-        guard mode == .clipboard, sublist == nil else { return }
+        guard mode == .clipboard else { return }
+        guard sublist == nil else {
+            clipsChangedBehind = true
+            return
+        }
         let selected = tableView.selectedRow
         if keepSelection == nil, rows.indices.contains(selected), case .clip(let clip) = rows[selected] {
             keepSelection = (clip.id, selected)
@@ -121,8 +133,9 @@ extension LauncherViewController {
     }
 
     /// Runs a clip action (docs/BRIEF-CLIPBOARD.md §6). Pinning and deleting keep the panel open and go back to the
-    /// list; everything else closes it first, so a paste lands in the app you were in.
-    func perform(_ action: ClipAction, on clip: Clip) {
+    /// list; everything else closes it first, so a paste lands in the app you were in. Delete waits for a second press
+    /// on a pinned clip, or when a shortcut ran it (decision 74): a ⌘ letter is easy to press by habit.
+    func perform(_ action: ClipAction, on clip: Clip, byShortcut: Bool = false) {
         switch action {
         case .pin, .unpin:
             keepSelection = (clip.id, backStack.last?.selection ?? tableView.selectedRow)
@@ -130,7 +143,7 @@ extension LauncherViewController {
             Task { await clipboard?.setPinned(action == .pin, for: clip.id) }
             return
         case .delete:
-            if clip.pinned, !confirming {
+            if clip.pinned || byShortcut, !confirming {
                 confirming = true
                 refreshVisibleRows()
                 return
@@ -222,6 +235,7 @@ extension LauncherViewController {
                 }
                 reportSaved(try saved.get())
             } catch {
+                if error.isGone { clipboard?.forget(clip.id) }
                 failed("Couldn't save the clip", nil, reason: error.description)
             }
         }

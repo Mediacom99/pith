@@ -65,11 +65,12 @@ final class ClipPaster {
     private var pasting: Task<Void, Never>?
 
     /// Puts `clip` on the clipboard as `delivery` says, then presses ⌘V for a paste. Plain text is the clip itself,
-    /// so it's marked for the history to skip, and the clip moves to the top as a copy would.
+    /// so it's marked for the history to skip, and the clip moves to the top as a copy would. A clip the store no
+    /// longer has (another program deleted it) leaves the list as it fails.
     func deliver(_ clip: Clip, _ delivery: ClipDelivery, from clipboard: ClipboardHistory) {
         let store = clipboard.store
         let vKey = KeyLayout.keyCode(typing: "v") ?? UInt32(kVK_ANSI_V)
-        if delivery == .pasteNext { return pasteInTurn(clip, from: store, key: vKey) }
+        if delivery == .pasteNext { return pasteInTurn(clip, from: clipboard, key: vKey) }
         Task {
             do throws(ClipboardStore.Failure) {
                 if delivery.isPlainText {
@@ -90,6 +91,7 @@ final class ClipPaster {
                     }
                 }
             } catch {
+                if error.isGone { clipboard.forget(clip.id) }
                 onFailure(delivery.presses ? "Couldn't paste the clip" : "Couldn't copy the clip", error.description)
             }
         }
@@ -98,8 +100,9 @@ final class ClipPaster {
     /// Paste next's paste (decision 64), after the one before it: its copy is marked for the history to skip, so the
     /// history keeps the order the run walks down. Accessibility is checked on the worker, at each press, since it can
     /// be given at any time. The next paste waits a moment, so the app has read the clipboard before it changes again.
-    private func pasteInTurn(_ clip: Clip, from store: ClipboardStore, key vKey: UInt32) {
+    private func pasteInTurn(_ clip: Clip, from clipboard: ClipboardHistory, key vKey: UInt32) {
         let previous = pasting
+        let store = clipboard.store
         pasting = Task {
             await previous?.value
             do throws(ClipboardStore.Failure) {
@@ -113,6 +116,7 @@ final class ClipPaster {
                 onAccessChecked(pasted)
                 try? await Task.sleep(for: .milliseconds(100))
             } catch {
+                if error.isGone { clipboard.forget(clip.id) }
                 onFailure("Couldn't paste the clip", error.description)
             }
         }

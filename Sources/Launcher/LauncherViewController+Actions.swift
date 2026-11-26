@@ -37,7 +37,7 @@ extension LauncherViewController {
         guard let row = rows.firstIndex(of: action) else { return false }
         // Selecting another row cancels a confirmation; the same row keeps it, for the second press.
         if tableView.selectedRow != row { select(row: row, byUser: true) }
-        activate(row: row)
+        activate(row: row, byShortcut: true)
         return true
     }
 
@@ -76,6 +76,11 @@ extension LauncherViewController {
         searchField.placeholderString = placeholder(for: previous.sublist)
         setQuery(previous.query)
         show(previous.rows, selecting: previous.selection, byUser: true)
+        // Back at the clipboard after copies or deletions landed behind the actions: the list as it is now.
+        if clipsChangedBehind, sublist == nil {
+            clipsChangedBehind = false
+            clipboardChanged()
+        }
     }
 }
 
@@ -87,7 +92,8 @@ extension LauncherViewController {
     }
 
     /// Does what ⏎ does on `row`: opens it, runs it, or asks for a second ⏎ first (decision 28).
-    func activate(row: Int) {
+    /// `byShortcut`: a `run_actions` key ran it, rather than ⏎ or a double click.
+    func activate(row: Int, byShortcut: Bool = false) {
         guard rows.indices.contains(row) else { return }
         switch (rows[row], sublist) {
         case (.item(let app), .openWith(let file, _)?):
@@ -118,7 +124,7 @@ extension LauncherViewController {
             // ⏎ meant to paste: without access it copies, and the first time asks for it. Copy to Clipboard doesn't.
             if !canPaste { askForAccessibility() }
         case (.clipAction(let action), .clipActions(let clip)?):
-            perform(action, on: clip)
+            perform(action, on: clip, byShortcut: byShortcut)
         case (.clipAction, _):
             break
         case (.notice(let notice), _):

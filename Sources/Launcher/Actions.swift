@@ -107,8 +107,11 @@ nonisolated enum ClipAction: CaseIterable, Sendable {
         }
     }
 
-    /// Deleting a pinned clip waits for a second ⏎, as Force Quit does (decision 28).
-    static let deleteConfirmation = "Press ⏎ again to delete this pinned clip"
+    /// Delete waiting for its second press, as Force Quit does (decisions 28, 74): on a pinned clip, or run by a
+    /// shortcut.
+    static func deleteConfirmation(pinned: Bool) -> String {
+        pinned ? "Press ⏎ again to delete this pinned clip" : "Press ⏎ again to delete this clip"
+    }
 }
 
 /// Where Save as File puts a clip (decision 39): "Clipboard 2026-11-23 at 14.05.png", then "… 2.png" and up when taken.
