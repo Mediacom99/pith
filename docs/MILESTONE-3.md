@@ -244,7 +244,7 @@ release; published in 0.3.12.
 
 ## 14. The history in step with its database
 
-Status: **in review** on `fix/clipboard-sync`, not yet published. Clips another program deleted from
+Status: **done**, published in 0.3.13. Clips another program deleted from
 `history.sqlite` stayed listed in the installed 0.3.12, so ⏎ and Copy to Clipboard failed on them with "it's no
 longer in the history", and the list's order and times went stale.
 - The history loads again as the clipboard opens when `PRAGMA data_version` says another connection committed
