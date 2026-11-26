@@ -88,6 +88,26 @@ struct ClipboardRecorderTests {
         #expect(await recorder.check() == nil, "then it's settled")
     }
 
+    /// Paste next promises its clip: the data is handed over when an app reads it, which is what the next paste waits
+    /// for, and a wait that nothing ends gives up at its timeout.
+    @Test func pasteNextsClipIsHandedOverWhenRead() async throws {
+        let pasteboard = privatePasteboard()
+        defer { pasteboard.releaseGlobally() }
+        let promised = PromisedPaste([[Representation(type: "public.utf8-plain-text", data: Data("Acme".utf8))]])
+        pasteboard.clearContents()
+        pasteboard.writeObjects(promised.pasteboardItems())
+
+        let start = ContinuousClock.now
+        await promised.waitUntilRead(timeout: .milliseconds(150))
+        #expect(!promised.wasRead && ContinuousClock.now - start >= .milliseconds(150), "nothing read it: the timeout")
+
+        #expect(pasteboard.string(forType: .string) == "Acme")
+        #expect(promised.wasRead)
+        let read = ContinuousClock.now
+        await promised.waitUntilRead(timeout: .seconds(5))
+        #expect(ContinuousClock.now - read < .seconds(1), "already read: no wait")
+    }
+
     @Test func whatWasOnTheClipboardAtLaunchIsNotRecorded() async throws {
         let folder = try TemporaryDirectory()
         let pasteboard = privatePasteboard()

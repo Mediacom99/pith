@@ -2,6 +2,7 @@ import AppKit
 import ApplicationServices
 import Carbon.HIToolbox
 import LauncherCore
+import Synchronization
 
 /// Puts a clip back on the clipboard, and pastes it into the app in front (`docs/MILESTONE-3.md` step 5). The panel
 /// never activates Pith, so the app you were in is still in front when it closes: a ⌘V posted then lands in it.
@@ -11,8 +12,6 @@ nonisolated enum Paster {
     /// the history keeps that app when the recorder sees the copy. `transient` marks a copy the history must not
     /// record: plain text made from a rich clip, which is the clip itself.
     static func write(_ items: [[Representation]], source: String?, transient: Bool) {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
         let objects = items.map { representations in
             let item = NSPasteboardItem()
             for representation in representations {
@@ -20,6 +19,13 @@ nonisolated enum Paster {
             }
             return item
         }
+        write(objects, source: source, transient: transient)
+    }
+
+    /// Writes `objects` as the clipboard's new contents, marked as `write(_:source:transient:)` says.
+    static func write(_ objects: [NSPasteboardItem], source: String?, transient: Bool) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
         if let first = objects.first {
             first.setData(Data(), forType: .init(ClipReading.pithMarker))
             if let source { first.setString(source, forType: .init(ClipReading.sourceMarker)) }
@@ -64,6 +70,10 @@ final class ClipPaster {
     var onFailure: (_ title: String, _ reason: String) -> Void = { _, _ in }
     /// The paste next in flight: the next one waits for it, so quick presses paste in order.
     private var pasting: Task<Void, Never>?
+    /// What the last paste next promised the clipboard.
+    private var lastPromised: PromisedPaste?
+    /// The longest paste next waits for an app to read its clip, in case it never does (a ⌘V that lands nowhere).
+    static let readWait: Duration = .milliseconds(500)
 
     /// Puts `clip` on the clipboard as `delivery` says, then presses ⌘V for a paste. Plain text is the clip itself,
     /// so it's marked for the history to skip, and the clip moves to the top as a copy would. A clip the store no
@@ -100,7 +110,8 @@ final class ClipPaster {
 
     /// Paste next's paste (decision 64), after the one before it: its copy is marked for the history to skip, so the
     /// history keeps the order the run walks down. Accessibility is checked on the worker, at each press, since it can
-    /// be given at any time. The next paste waits a moment, so the app has read the clipboard before it changes again.
+    /// be given at any time. Its data is promised rather than written, and the next paste waits until the app the ⌘V
+    /// lands in has read it (at most `readWait`): a busy app reads late, and a fixed pause let the next clip land first.
     private func pasteInTurn(_ clip: Clip, from clipboard: ClipboardHistory, key vKey: UInt32) {
         let previous = pasting
         let store = clipboard.store
@@ -108,18 +119,99 @@ final class ClipPaster {
             await previous?.value
             do throws(ClipboardStore.Failure) {
                 let items = try await store.items(of: clip.id)
+                let promised = PromisedPaste(items)
+                // Kept until the next paste replaces it: the clipboard may still ask for its data (another ⌘V, quitting).
+                lastPromised = promised
                 let pasted = await runInBackground(qos: .userInitiated) {
                     guard Accessibility.isAllowed else { return false }
-                    Paster.write(items, source: clip.source, transient: true)
+                    Paster.write(promised.pasteboardItems(), source: clip.source, transient: true)
                     Paster.pressCommandV(key: vKey)
                     return true
                 }
                 onAccessChecked(pasted)
-                try? await Task.sleep(for: .milliseconds(100))
+                guard pasted else { return }
+                await promised.waitUntilRead(timeout: Self.readWait)
+                // The app reads its types one after another: let it finish before the clipboard changes.
+                try? await Task.sleep(for: .milliseconds(30))
             } catch {
                 if error.isGone { clipboard.forget(clip.id) }
                 onFailure("Couldn't paste the clip", error.description)
             }
+        }
+    }
+}
+
+/// A clip on the clipboard whose data is handed over when an app reads it, for paste next: it says when the app the
+/// ⌘V landed in has read it, so the next paste doesn't replace it first. Each item has a provider of its own, so its
+/// data needs no lookup. AppKit asks the providers on any thread.
+nonisolated final class PromisedPaste: Sendable {
+    private let providers: [ItemProvider]
+    private let state = Mutex<(read: Bool, waiter: CheckedContinuation<Void, Never>?)>((false, nil))
+
+    init(_ items: [[Representation]]) {
+        providers = items.map { representations in
+            ItemProvider(
+                Dictionary(representations.map { ($0.type, $0.data) }, uniquingKeysWith: { first, _ in first }))
+        }
+        for provider in providers { provider.paste = self }
+    }
+
+    /// Whether an app has read it.
+    var wasRead: Bool { state.withLock { $0.read } }
+
+    /// The pasteboard items, each type promised to its provider. Made on the worker that writes them.
+    func pasteboardItems() -> [NSPasteboardItem] {
+        providers.map { provider in
+            let item = NSPasteboardItem()
+            item.setDataProvider(provider, forTypes: provider.types)
+            return item
+        }
+    }
+
+    /// Returns once an app has read it, or after `timeout`.
+    func waitUntilRead(timeout: Duration) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            let read = state.withLock { state in
+                if !state.read { state.waiter = continuation }
+                return state.read
+            }
+            guard !read else { return continuation.resume() }
+            let seconds = Double(timeout.components.seconds) + Double(timeout.components.attoseconds) / 1e18
+            DispatchQueue.global().asyncAfter(deadline: .now() + seconds) { [self] in
+                let waiter = state.withLock { state in
+                    defer { state.waiter = nil }
+                    return state.waiter
+                }
+                waiter?.resume()
+            }
+        }
+    }
+
+    fileprivate func markRead() {
+        let waiter = state.withLock { state in
+            state.read = true
+            defer { state.waiter = nil }
+            return state.waiter
+        }
+        waiter?.resume()
+    }
+
+    /// One item's data, by type.
+    private final class ItemProvider: NSObject, NSPasteboardItemDataProvider, @unchecked Sendable {
+        // Set once, before any item is made, and only read after.
+        nonisolated(unsafe) weak var paste: PromisedPaste?
+        let data: [String: Data]
+        var types: [NSPasteboard.PasteboardType] { data.keys.map { .init($0) } }
+
+        init(_ data: [String: Data]) {
+            self.data = data
+        }
+
+        nonisolated func pasteboard(
+            _ pasteboard: NSPasteboard?, item: NSPasteboardItem, provideDataForType type: NSPasteboard.PasteboardType
+        ) {
+            if let value = data[type.rawValue] { item.setData(value, forType: type) }
+            paste?.markRead()
         }
     }
 }
