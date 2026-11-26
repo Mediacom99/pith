@@ -72,12 +72,22 @@ struct ClipboardLookupsTests {
         links.configured = ["https": textEdit]
 
         #expect(links.app(for: "not a link") == nil)
-        #expect(links.app(for: "HTTPS://acme.example") == nil, "looked up on a worker the first time")
-        #expect(await eventuallyTrue { links.app(for: "https://acme.example")?.url == textEdit })
-        #expect(links.app(for: "https://acme.example/budget")?.name == "TextEdit")
+        let first = links.app(for: "HTTPS://acme.example")
+        #expect(first?.url == textEdit && first?.name == nil, "the configured app at once, its name on a worker")
+        #expect(await eventuallyTrue { links.app(for: "https://acme.example")?.name == "TextEdit" })
+        #expect(links.app(for: "mailto:jane@acme.example") == nil, "a default app is looked up first")
 
-        links.configured = ["https": URL(filePath: "/Applications/Safari.app")]
-        #expect(links.app(for: "https://acme.example") == nil, "looked up again")
+        let safari = URL(filePath: "/Applications/Safari.app")
+        links.configured = ["https": safari]
+        #expect(links.app(for: "https://acme.example")?.url == safari, "the new setting at once")
         #expect(await eventuallyTrue { links.app(for: "https://acme.example")?.name == "Safari" })
+
+        // The clipboard opening again looks it up again: the answer shows meanwhile, and the same one redraws nothing.
+        var changes = 0
+        links.onChange = { changes += 1 }
+        links.markStale()
+        #expect(links.app(for: "https://acme.example")?.name == "Safari")
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(changes == 0)
     }
 }

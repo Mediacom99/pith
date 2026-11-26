@@ -19,6 +19,7 @@ extension LauncherViewController {
     func clipboardShown() {
         onShowClipboard()
         facts.markStale()
+        linkApps.markStale()
         if let clipboard { Task { await clipboard.reloadIfChangedElsewhere() } }
     }
 
@@ -160,8 +161,7 @@ extension LauncherViewController {
         case .copy:
             deliverClip(clip, .copy)
         case .pastePlainText: deliverClip(clip, canPaste ? .pastePlainText : .copyPlainText)
-        case .openLink:
-            if let url = URL(string: clip.text) { open(url, with: linkApps.app(for: clip.text)?.url) }
+        case .openLink: open(link: clip)
         case .reveal: reveal(clip)
         case .save: save(clip)
         case .pin, .unpin, .delete: break
@@ -185,6 +185,24 @@ extension LauncherViewController {
     func deliver(_ clip: Clip, _ delivery: ClipDelivery) {
         guard let clipboard else { return }
         paster.deliver(clip, delivery, from: clipboard)
+    }
+
+    /// Opens a link in its app. One longer than what memory keeps of it is read whole from the store first.
+    private func open(link clip: Clip) {
+        let app = linkApps.app(for: clip.text)?.url
+        guard clip.text.utf8.count < clip.textBytes, let clipboard else {
+            if let url = URL(string: clip.text) { openLink(url, app) }
+            return
+        }
+        Task {
+            do throws(ClipboardStore.Failure) {
+                let link = try await clipboard.store.text(of: clip.id)
+                if let url = URL(string: link) { openLink(url, app) }
+            } catch {
+                if error.isGone { clipboard.forget(clip.id) }
+                failed("Couldn't open the link", nil, reason: error.description)
+            }
+        }
     }
 
     /// Shows the clip's files in Finder, or says they're gone.

@@ -100,11 +100,26 @@ public enum ClipReading {
         return CGImageSourceGetType(source) as String? == "public.png" && CGImageSourceGetCount(source) > 0
     }
 
-    /// An image in any format ImageIO reads, as PNG.
+    /// An image in any format ImageIO reads, as PNG: upright, since a photo's EXIF orientation turns into its pixels
+    /// (a PNG pasted elsewhere wouldn't carry it), and at its resolution, so a 144 dpi TIFF pastes at its size.
     static func png(_ data: Data) -> Data? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-            let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+            let width = properties[kCGImagePropertyPixelWidth] as? Int,
+            let height = properties[kCGImagePropertyPixelHeight] as? Int
         else { return nil }
-        return ImageThumbnails.png(image)
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(width, height),
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        var resolution: [CFString: Any] = [:]
+        if let x = properties[kCGImagePropertyDPIWidth], let y = properties[kCGImagePropertyDPIHeight] {
+            // Orientations 5–8 turn the image a quarter, and its resolution with it.
+            let turned = (properties[kCGImagePropertyOrientation] as? UInt32 ?? 1) >= 5
+            resolution = [kCGImagePropertyDPIWidth: turned ? y : x, kCGImagePropertyDPIHeight: turned ? x : y]
+        }
+        return ImageThumbnails.png(image, properties: resolution)
     }
 }

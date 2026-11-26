@@ -113,6 +113,8 @@ final class LauncherViewController: NSViewController {
         get { facts.read }
         set { facts.read = newValue }
     }
+    /// Opens a clip's link in an app (nil: its default). Tests swap it out, so they never open a browser.
+    lazy var openLink: (URL, _ app: URL?) -> Void = { [weak self] in self?.open($0, with: $1) }
     /// Quits or force-quits a running app. Tests swap it out, so they never quit a real one.
     var quitApp: (NSRunningApplication, _ force: Bool) -> Void = { app, force in
         if force { app.forceTerminate() } else { app.terminate() }

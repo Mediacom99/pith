@@ -527,6 +527,23 @@ struct ClipboardPanelTests {
         #expect(panel.launcher.tableView.selectedRow == 2, "still on older")
     }
 
+    /// A link longer than what memory keeps of it opens whole, read from the store.
+    @Test func aLongLinkOpensWhole() async throws {
+        let folder = try TemporaryDirectory()
+        let long = "https://acme.example/dashboards?state=" + String(repeating: "a1b2c3d4", count: 600) + "&id=42"
+        let link = ClipContent(
+            kind: .link, text: long, items: [[Representation(type: "public.utf8-plain-text", data: Data(long.utf8))]])
+        let panel = try await clipboardPanel(folder.url, [(link, nil, 1)])
+        var opened: [URL] = []
+        panel.launcher.openLink = { url, _ in opened.append(url) }
+        panel.launcher.prepareToShow(.clipboard)
+        panel.launcher.toggleActions()
+        try select(.openLink, in: panel)
+        press("return", in: panel)
+        #expect(await eventuallyTrue { !opened.isEmpty })
+        #expect(opened.map(\.absoluteString) == [long])
+    }
+
     /// A shortcut never deletes in one press, pinned or not; ⏎ on the Delete row does (decision 74).
     @Test func deletingByShortcutWaitsForASecondPress() async throws {
         let folder = try TemporaryDirectory()
