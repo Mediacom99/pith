@@ -2,10 +2,15 @@ import Foundation
 import LauncherCore
 
 /// The clipboard history in memory, in step with the store (`docs/MILESTONE-3.md` step 3): loaded at launch, then
-/// updated with each copy the recorder stores and each clip retention drops.
+/// updated with each copy the recorder stores and each clip retention drops. Loaded again when another program changed
+/// the database (decision 73).
 final class ClipboardHistory {
     let store: ClipboardStore
-    private(set) var index = ClipboardIndex()
+    private(set) var index = ClipboardIndex() {
+        didSet { changes += 1 }
+    }
+    /// How many times the index changed: a reload built while it changed is stale.
+    private var changes = 0
     /// Called after every change, so the panel can show it.
     var onChange: (() -> Void)?
     /// How much history is kept (`[clipboard]`, decision 37). Nil until the config is read, so nothing is dropped by
@@ -36,6 +41,29 @@ final class ClipboardHistory {
         isLoaded = true
         await prune()
         onChange?()
+    }
+
+    /// Loads the history again if another program changed the database since (decision 73), so the list doesn't show
+    /// clips that are gone or times that moved. Called as the clipboard opens. A change in Pith while it loads makes it
+    /// load again, so the reload never drops a copy that landed meanwhile.
+    func reloadIfChangedElsewhere() async {
+        guard isLoaded, await store.changedElsewhere() else { return }
+        for _ in 0..<3 {
+            let before = changes
+            do throws(ClipboardStore.Failure) {
+                let clips = try await store.load()
+                let reloaded = await runInBackground(qos: .userInitiated) { ClipboardIndex(clips: clips) }
+                guard changes == before else { continue }
+                Log.app.info("The clipboard history changed elsewhere: reloaded \(clips.count) clips")
+                index = reloaded
+                copies += 1
+                onChange?()
+                return
+            } catch {
+                Log.app.error("Couldn't reload the clipboard history: \(error.description, privacy: .public)")
+                return
+            }
+        }
     }
 
     /// Drops what `retention` doesn't keep, oldest unpinned first. Waits for the load, so the index it updates is
@@ -83,7 +111,14 @@ final class ClipboardHistory {
             onChange?()
         } catch {
             Log.app.error("Couldn't move a clip to the top: \(error.description, privacy: .public)")
+            if error.isGone { forget(id) }
         }
+    }
+
+    /// Drops clip `id`, which the store no longer has (deleted by another program), from the list.
+    func forget(_ id: Int64) {
+        guard index.position(of: id) != nil else { return }
+        remove([id])
     }
 
     private func remove(_ ids: [Int64]) {

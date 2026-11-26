@@ -146,7 +146,7 @@ Both limits apply; whichever triggers first wins:
 | `⌘K` → Copy to Clipboard | Moves the clip to the top of the history and onto the clipboard, so a normal `⌘V` pastes it |
 | `⌘K` → Paste as Plain Text | Strip formatting |
 | `⌘K` → Pin / Unpin | |
-| `⌘K` → Delete | |
+| `⌘K` → Delete | At once from its row; a pinned clip, or Delete from its shortcut, waits for a second press (decisions 28, 74) |
 | `⌘K` → Edit Text | *After milestone 3 (decision 36).* In-panel editor; saving creates a new clip at the top and puts it on the clipboard (original kept) |
 | `⌘K` → Edit Image | *After milestone 3 (decision 40).* Opens in Preview; when saved, the edited image comes back as a new clip at the top |
 | `⌘K` → Save as File | Images / text to a file in Downloads, then a notification (decision 39) |

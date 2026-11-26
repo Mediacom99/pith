@@ -12,12 +12,19 @@ Pith updates itself with [Sparkle](https://sparkle-project.org) from `pith.edoar
 
 ## Each release
 
-1. Raise the version in `Support/Info.plist`: 0.\<milestone\>.\<patch\>.
-2. Commit.
-3. `make install` that commit, and run the checks below on it. It takes ⌘P from every app, so Claude asks first.
-4. Run `make publish`. It builds and signs the app, zips it for the feed, makes the installer (`Pith.dmg`), tags the
-   commit `v<version>`, and puts the zip, the installer, the signed update feed and the landing page online.
-5. Push the branch and the tag, and create the GitHub release with `Pith.dmg` and the release notes.
+A release is published from `main`, the release branch, and nothing else: changes go from a feature branch or the
+milestone branch into `staging`, then from `staging` into `main`, each through a pull request. Claude takes a change
+into `staging` on its own, and asks Edoardo before anything goes from `staging` into `main` (decision 75).
+
+1. On the feature or milestone branch, raise the version in `Support/Info.plist` (0.\<milestone\>.\<patch\>) and
+   commit.
+2. Push the branch, open a pull request into `staging` and merge it.
+3. Ask Edoardo; when Edoardo says so, open a pull request from `staging` into `main` and merge it.
+4. Check out `main` as it is on GitHub. `make install` it and run the checks below. It takes ⌘P from every app, so
+   Claude asks first.
+5. Run `make publish` on `main`. It builds and signs the app, zips it for the feed, makes the installer (`Pith.dmg`),
+   tags the commit `v<version>`, and puts the zip, the installer, the signed update feed and the landing page online.
+6. Push the tag, and create the GitHub release with `Pith.dmg` and the release notes.
 
 `make package` alone makes the zip and the installer without publishing them.
 

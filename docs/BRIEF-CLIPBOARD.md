@@ -146,9 +146,10 @@ A pinned item has `pin.fill` in quiet gray before its age. The selected row ends
   - Delete
   - The item stays on the tile; the first key names the selected action, and the second becomes "Back esc".
 - **Delete:**
-  - immediate for an unpinned item;
+  - immediate for an unpinned item, from ⏎ on its row;
   - a pinned one asks for a second ⏎ in red, as Force Quit does (decision 28): "Press ⏎ again to delete this pinned
-    item".
+    clip";
+  - from its shortcut (⌘T for a text), any one asks the same way (decision 74): "Press ⏎ again to delete this clip".
 - **Clear Clipboard History** (a launcher command) asks for a second ⏎ the same way: "Press ⏎ again to clear the
   clipboard history". Pinned items stay.
 - **A failure after the panel closes** (paste, save, reveal) posts a notification, as decision 32 does for the

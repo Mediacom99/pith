@@ -63,7 +63,8 @@ extension LauncherViewController {
         case .clipAction(let action):
             if case .clipActions(let clip) = sublist {
                 isDanger = action == .delete && confirming
-                cell.title = isDanger ? ClipAction.deleteConfirmation : title(of: action, for: clip)
+                cell.title =
+                    isDanger ? ClipAction.deleteConfirmation(pinned: clip.pinned) : title(of: action, for: clip)
             }
             cell.icon.image = icons.symbol(action.symbol, tint: isDanger ? .danger : .quiet)
             tag = shortcut(for: row) ?? ""
