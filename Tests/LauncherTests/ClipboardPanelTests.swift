@@ -350,10 +350,35 @@ struct ClipboardPanelTests {
         history.retention = .init(maxBytes: 2_000_000_000, maxAge: 30 * 86_400)
         #expect(await eventuallyTrue { history.index.clips.map(\.text) == ["new", "pinned"] }, "pins stay")
 
+        history.stricterDelay = .zero
         history.retention = .init(maxBytes: 1, maxAge: 30 * 86_400)
         let copy = try await history.store.add(text("newest"), from: nil, at: .now)
         history.recorded(copy)
         #expect(await eventuallyTrue { history.index.clips.map(\.text) == ["pinned"] }, "the newest goes too")
+    }
+
+    /// An editor that saves as you type can save 3 on the way from 30 to 365: a stricter limit waits until it has
+    /// stayed set, and a looser one applies at once (decision 76).
+    @Test func aStricterLimitWaitsUntilItStaysSet() async throws {
+        let folder = try TemporaryDirectory()
+        let day = 24 * 60.0
+        let panel = try await clipboardPanel(
+            folder.url, [(text("ten days"), nil, 10 * day), (text("five days"), nil, 5 * day), (text("new"), nil, 1)])
+        let history = try #require(panel.launcher.clipboard)
+        history.stricterDelay = .milliseconds(300)
+        history.retention = .init(maxBytes: 2_000_000_000, maxAge: 30 * 86_400)
+
+        history.retention = .init(maxBytes: 2_000_000_000, maxAge: 3 * 86_400)
+        try await Task.sleep(for: .milliseconds(100))
+        history.retention = .init(maxBytes: 2_000_000_000, maxAge: 365 * 86_400)
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(history.index.count == 3, "the half-typed 3 never applied")
+        #expect(try await history.store.load().count == 3)
+
+        history.retention = .init(maxBytes: 2_000_000_000, maxAge: 7 * 86_400)
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(history.index.count == 3, "still waiting")
+        #expect(await eventuallyTrue { history.index.clips.map(\.text) == ["new", "five days"] }, "then it applies")
     }
 
     @Test func clearingKeepsThePinnedClips() async throws {
