@@ -48,6 +48,29 @@ struct ClipReadingTests {
         #expect(!content.items.joined().contains(icon), "the icon isn't kept (decision 61)")
     }
 
+    /// A folder's path keeps its "/", so the panel shows a folder without asking the disk; spaces stay as they are.
+    @Test func aCopiedFolderKeepsItsSlash() throws {
+        let folder = URL(filePath: "/Users/me/Documents/Acme Projects/", directoryHint: .isDirectory)
+        let content = try #require(ClipReading.content(of: [[file(folder)]]))
+        #expect(content.text == "/Users/me/Documents/Acme Projects/")
+    }
+
+    /// A photo turned by its EXIF orientation is stored upright, and a 144 dpi image keeps its resolution: a PNG
+    /// carries neither, so pasting it would come out sideways or at double size.
+    @Test func aConvertedImageStaysUprightAtItsResolution() throws {
+        let photo = try image(as: .jpeg, properties: [kCGImagePropertyOrientation: 6])
+        let upright = try #require(ClipReading.content(of: [[Representation(type: "public.jpeg", data: photo)]]))
+        let turned = try #require(upright.image.flatMap { CGImageSourceCreateWithData($0 as CFData, nil) })
+        let size = try #require(CGImageSourceCopyPropertiesAtIndex(turned, 0, nil) as? [CFString: Any])
+        #expect(size[kCGImagePropertyPixelWidth] as? Int == 20 && size[kCGImagePropertyPixelHeight] as? Int == 30)
+
+        let retina = try image(as: .tiff, properties: [kCGImagePropertyDPIWidth: 144, kCGImagePropertyDPIHeight: 144])
+        let kept = try #require(ClipReading.content(of: [[Representation(type: "public.tiff", data: retina)]]))
+        let png = try #require(kept.image.flatMap { CGImageSourceCreateWithData($0 as CFData, nil) })
+        let dpi = try #require(CGImageSourceCopyPropertiesAtIndex(png, 0, nil) as? [CFString: Any])
+        #expect(dpi[kCGImagePropertyDPIWidth] as? Double == 144)
+    }
+
     @Test func anImageWithoutTextIsAnImage() throws {
         let png = try image(as: .png)
         let html = Representation(type: "public.html", data: Data("<img src=chart.png>".utf8))
@@ -114,18 +137,19 @@ struct ClipReadingTests {
         Representation(type: "public.file-url", data: url.dataRepresentation)
     }
 
-    /// A small flat-color image in `type`'s format.
-    private func image(as type: UTType) throws -> Data {
+    /// A small flat-color image in `type`'s format, 8 pixels square unless the properties say a turn.
+    private func image(as type: UTType, properties: [CFString: Any] = [:]) throws -> Data {
+        let (width, height) = properties[kCGImagePropertyOrientation] == nil ? (8, 8) : (30, 20)
         let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
         let context = try #require(
             CGContext(
-                data: nil, width: 8, height: 8, bitsPerComponent: 8, bytesPerRow: 0, space: space,
+                data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
         context.setFillColor(CGColor(srgbRed: 0.9, green: 0.3, blue: 0.1, alpha: 1))
-        context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         let data = NSMutableData()
         let destination = try #require(CGImageDestinationCreateWithData(data, type.identifier as CFString, 1, nil))
-        CGImageDestinationAddImage(destination, try #require(context.makeImage()), nil)
+        CGImageDestinationAddImage(destination, try #require(context.makeImage()), properties as CFDictionary)
         #expect(CGImageDestinationFinalize(destination))
         return data as Data
     }

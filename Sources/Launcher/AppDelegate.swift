@@ -36,6 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Apps in config.toml that don't resolve to an installed app.
     private var appProblems: [String] = []
     private var resolveGeneration = 0
+    private var rulesGeneration = 0
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Built now, so the hotkey only has to show it.
@@ -46,14 +47,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             switch notice {
             case .cannotRead:
                 // Privacy & Security, where macOS lists the apps that may read the clipboard.
-                if let settings = Accessibility.clipboardSettings { NSWorkspace.shared.open(settings) }
+                if let settings = Accessibility.clipboardSettings { Self.openSettings(settings) }
             case .needsAccessibility:
-                if let settings = Accessibility.settings { NSWorkspace.shared.open(settings) }
+                if let settings = Accessibility.settings { Self.openSettings(settings) }
             case .paused:
                 self?.setRecordingPaused(false)
             }
         }
         launcher.onShowClipboard = { [weak self] in self?.checkAccessibility() }
+        hotkeys.onLayoutChange = { [weak self] in
+            self?.panel?.launcher.clipboardHotkey = self?.hotkeys.current("clipboard")?.symbols
+            self?.publishProblems()
+        }
         launcher.askForAccessibility = { [weak self] in
             // Once per launch: macOS's request, then the setting is a notice away.
             guard let self, !askedForAccessibility else { return }
@@ -97,6 +102,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Opening Pith.app while it runs (Finder, Spotlight, `open`) opens the launcher: the way in when its hotkey doesn't
     /// fire, taken by a system shortcut.
+    /// Opens a System Settings pane without waiting on LaunchServices on the main thread.
+    private static func openSettings(_ url: URL) {
+        NSWorkspace.shared.open(url, configuration: .init()) { _, error in
+            if let error {
+                Log.app.error("Couldn't open System Settings: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
         panel?.show()
         return false
@@ -123,14 +137,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         publishProblems()
         resolveApps()
 
-        let rules = config.fileRules()
-        if rules != fileRules {
+        // Resolving the folders reads the disk, and one in Desktop or Documents can wait on macOS's prompt, or a
+        // network share on its timeout: on a worker, with the newest config's winning.
+        rulesGeneration += 1
+        let generation = rulesGeneration
+        Task { [files] in
+            let rules = await runInBackground(qos: .userInitiated) { config.fileRules() }
+            guard generation == rulesGeneration, rules != fileRules else { return }
             fileRules = rules
-            Task { [files] in await files.rebuild(rules) }
+            await files.rebuild(rules)
         }
 
-        if !hasAppliedConfig || previous.launchAtLogin != config.launchAtLogin {
-            LoginItem.update(enabled: config.launchAtLogin)
+        if let enabled = config.launchAtLogin, !hasAppliedConfig || previous.launchAtLogin != enabled {
+            LoginItem.update(enabled: enabled)
         }
         hasAppliedConfig = true
     }

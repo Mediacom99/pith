@@ -14,16 +14,19 @@ final class HistoryStore {
         self.file = file
     }
 
-    /// Called once at launch, before the hotkey is registered, so nothing can be recorded before it lands.
+    /// Called once at launch, before the hotkey is registered, so nothing can be recorded before it lands. Files and
+    /// folders deleted since are forgotten after, on a worker: checking each one can wait on a network share or a
+    /// privacy prompt, and the hotkeys mustn't.
     func load() async {
         let file = self.file
-        history = await runInBackground(qos: .userInitiated) {
-            var history = Self.read(file)
-            // Files and folders deleted since: forget them, so `recent` never lists what's gone.
-            for id in Array(history.ids) {
-                if let path = Item(fileID: id)?.url?.path, Self.isGone(path) { history.remove(id) }
+        history = await runInBackground(qos: .userInitiated) { Self.read(file) }
+        let ids = Array(history.ids)
+        Task {
+            let gone = await runInBackground(qos: .utility) {
+                ids.filter { id in Item(fileID: id)?.url.map { Self.isGone($0.path) } ?? false }
             }
-            return history
+            for id in gone { history.remove(id) }
+            if !gone.isEmpty { Log.app.info("Forgot \(gone.count) opened files that are gone") }
         }
     }
 

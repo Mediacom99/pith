@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import LauncherCore
+import SQLite3
 import TestSupport
 import Testing
 import UniformTypeIdentifiers
@@ -204,6 +205,24 @@ struct ClipboardStoreTests {
         let save = await #expect(throws: ClipboardStore.Failure.self) { try await pith.text(of: key.id) }
         let move = await #expect(throws: ClipboardStore.Failure.self) { try await pith.touch(key.id, at: start) }
         #expect([paste, save, move].allSatisfy { $0?.isGone == true }, "the clip is gone, not unreadable")
+    }
+
+    /// Another program writing to the history holds its lock for a moment: a copy waits for it instead of failing.
+    @Test func aCopyWaitsForAnotherProgramsWrite() async throws {
+        let folder = try TemporaryDirectory()
+        let store = ClipboardStore(folder: folder.url)
+        _ = try await store.load()
+        var handle: OpaquePointer?
+        try #require(sqlite3_open(folder.url.appending(path: "history.sqlite").path, &handle) == SQLITE_OK)
+        try #require(sqlite3_exec(handle, "BEGIN IMMEDIATE", nil, nil, nil) == SQLITE_OK)
+        nonisolated(unsafe) let other = handle
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) {
+            sqlite3_exec(other, "COMMIT", nil, nil, nil)
+            sqlite3_close(other)
+        }
+
+        _ = try await store.add(text("copied while another program wrote"), from: nil, at: start)
+        #expect(try await store.load().count == 1)
     }
 
     @Test func aLongTextIsKeptWholeOnDiskAndOnlyItsStartInMemory() async throws {

@@ -1,6 +1,5 @@
 import AppKit
 import LauncherCore
-import Synchronization
 
 /// Watches the general pasteboard and stores each new copy in the clipboard history (`docs/MILESTONE-3.md` step 2).
 ///
@@ -9,7 +8,7 @@ import Synchronization
 /// session is in front, and while recording is paused. Only a change reads the copy; what was on the clipboard at launch
 /// isn't recorded.
 ///
-/// `@unchecked Sendable`: its mutable state is touched only on `queue`, and `frontmostApp` is behind a mutex.
+/// `@unchecked Sendable`: its mutable state is touched only on `queue`.
 nonisolated final class ClipboardRecorder: @unchecked Sendable {
     /// How often the change count is read, and how late the system may run it to save wakeups.
     static let interval = DispatchTimeInterval.milliseconds(500)
@@ -20,14 +19,18 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
     private let onRecord: @MainActor @Sendable (Clip) -> Void
     /// Whether macOS lets Pith read the clipboard, when that changes (false: denied in Privacy & Security).
     private let onAccessChange: @MainActor @Sendable (_ allowed: Bool) -> Void
-    /// The app in front: where a copy that doesn't name its source came from. Updated on the main thread.
-    private let frontmostApp = Mutex<String?>(nil)
     private var observers: [any NSObjectProtocol] = []
 
     // State below is only touched on `queue`.
     private let queue = DispatchQueue(label: "launcher.clipboard.watch", qos: .utility)
     private var timer: DispatchSourceTimer?
     private var lastChange = 0
+    /// The app in front: where a copy that doesn't name its source came from.
+    private var frontmostApp: String?
+    /// A change that showed an empty clipboard, looked at once more on the next tick: an app may have cleared it and
+    /// not yet written its copy, which doesn't change the count again.
+    private var emptyChange: Int?
+    private var started = false
     private var running = false
     private var asleep = false
     private var paused = false
@@ -48,13 +51,13 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
     /// after it returns is recorded. Without `timer`, only `check()` reads the clipboard (for tests).
     @MainActor func start(timer: Bool = true) async {
         let workspace = NSWorkspace.shared
-        frontmostApp.withLock { $0 = workspace.frontmostApplication?.bundleIdentifier }
+        let frontmost = workspace.frontmostApplication?.bundleIdentifier
         let center = workspace.notificationCenter
         observers = [
-            center.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) {
+            center.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: nil) {
                 [weak self] note in
                 let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
-                self?.frontmostApp.withLock { $0 = app?.bundleIdentifier }
+                self?.appActivated(app?.bundleIdentifier)
             },
             center.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: nil) {
                 [weak self] _ in self?.setAsleep(true)
@@ -72,6 +75,8 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
         await withCheckedContinuation { continuation in
             queue.async { [self] in
                 lastChange = pasteboard.changeCount
+                frontmostApp = frontmost
+                started = true
                 running = timer
                 updateTimer()
                 continuation.resume()
@@ -97,6 +102,15 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
             paused = value
             if !paused { lastChange = pasteboard.changeCount }
             updateTimer()
+        }
+    }
+
+    /// Another app came to the front. A copy made just before (⌘C, then ⌘Tab) is read now, as the app it came from,
+    /// before the next tick would name the new one.
+    func appActivated(_ app: String?) {
+        queue.async { [self] in
+            if started, !asleep, let copy = readIfChanged() { Task { await self.record(copy) } }
+            frontmostApp = app
         }
     }
 
@@ -131,8 +145,10 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
     /// auto-generated (decisions 35, 38), and holding text, an image or files.
     private func readIfChanged() -> (content: ClipContent, source: String?, date: Date)? {
         let change = pasteboard.changeCount
-        guard change != lastChange else { return nil }
+        let isSecondLook = change == lastChange && emptyChange == change
+        guard change != lastChange || isSecondLook else { return nil }
         lastChange = change
+        emptyChange = nil
         if paused { return nil }
 
         // Denied in Privacy & Security, a read would get nothing: say so instead of failing silently.
@@ -145,13 +161,17 @@ nonisolated final class ClipboardRecorder: @unchecked Sendable {
         }
         if isDenied { return nil }
 
-        guard let items = pasteboard.pasteboardItems, !items.isEmpty else { return nil }
+        guard let items = pasteboard.pasteboardItems, !items.isEmpty else {
+            if !isSecondLook { emptyChange = change }
+            return nil
+        }
         // Only the types are read here, so a password's data is never fetched.
         if items.contains(where: { $0.types.contains { ClipReading.skipMarkers.contains($0.rawValue) } }) {
             return nil
         }
         let marked = items.lazy.compactMap { $0.string(forType: .init(ClipReading.sourceMarker)) }.first
-        let source = marked ?? frontmostApp.withLock { $0 }
+        let fromPith = items.contains { $0.types.contains(.init(ClipReading.pithMarker)) }
+        let source = marked ?? (fromPith ? nil : frontmostApp)
         // Text, links and files first, without images: reading a type makes the app that copied render it, and a
         // spreadsheet renders its cells as pictures (decision 61).
         var representations = items.map { item in

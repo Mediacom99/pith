@@ -1,5 +1,7 @@
+import AppKit
 import Foundation
 import LauncherCore
+import TestSupport
 import Testing
 
 @testable import Launcher
@@ -65,5 +67,63 @@ struct IconStoreTests {
         #expect(icons.typeCount == 6, "down to three quarters of what's kept")
         #expect(icons.icon(forFile: files[0]) != nil, "asked for again last, so kept")
         #expect(icons.icon(forFile: files[1]) == nil, "among the least recent")
+    }
+    /// Icons drawn for a 1x screen are drawn again when a sharper one appears (the lid opened, a display plugged in),
+    /// and not when the screens change without a sharper one.
+    @Test func aSharperScreenRedrawsTheIcons() async throws {
+        let icons = IconStore()
+        let textEdit = URL(filePath: "/System/Applications/TextEdit.app")
+        var scale: CGFloat = 1
+        icons.screenScale = { scale }
+        icons.load([textEdit])
+        #expect(await eventuallyTrue { icons.icon(for: textEdit)?.width == Int(Layout.iconSize) })
+        #expect(icons.drawnScale == 1)
+
+        scale = 2
+        icons.screensChanged()
+        #expect(icons.drawnScale == 2, "drawing again for the sharper screen")
+        #expect(await eventuallyTrue { icons.icon(for: textEdit)?.width == Int(Layout.iconSize * 2) })
+    }
+
+    /// Open With… lists apps outside the indexed folders: their icons are drawn too.
+    @Test func appsAddedOutsideTheIndexGetIcons() async throws {
+        let icons = IconStore()
+        let archiveUtility = URL(filePath: "/System/Library/CoreServices/Applications/Archive Utility.app")
+        try #require(FileManager.default.fileExists(atPath: archiveUtility.path))
+        icons.load([])
+        icons.add(apps: [archiveUtility])
+        #expect(await eventuallyTrue { icons.icon(for: archiveUtility) != nil })
+        icons.load([])
+        #expect(icons.icon(for: archiveUtility) != nil, "kept as the index changes")
+    }
+
+    /// An app updated in place gets its new icon when the apps are read again; the others aren't drawn again.
+    @Test func anUpdatedAppIsDrawnAgain() async throws {
+        let folder = try TemporaryDirectory()
+        try folder.makeFile("Acme.app/Contents/Info.plist")
+        let acme = folder.url.appending(path: "Acme.app")
+        let textEdit = URL(filePath: "/System/Applications/TextEdit.app")
+        let icons = IconStore()
+        icons.load([acme, textEdit])
+        #expect(await eventuallyTrue { icons.appsRendered == 2 })
+
+        icons.load([acme, textEdit], recheck: true)
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(icons.appsRendered == 2, "nothing changed")
+
+        let info = acme.appending(path: "Contents/Info.plist").path
+        try FileManager.default.setAttributes([.modificationDate: Date.now + 60], ofItemAtPath: info)
+        icons.load([acme, textEdit], recheck: true)
+        #expect(await eventuallyTrue { icons.appsRendered == 3 })
+    }
+
+    /// An app that isn't installed stays missing while another app is looked up: its rows don't blink.
+    @Test func aMissingAppStaysMissingDuringOtherLookups() async {
+        let icons = IconStore()
+        _ = icons.icon(forBundleID: "example.acme.not-installed")
+        #expect(await eventuallyTrue { icons.isMissing(bundleID: "example.acme.not-installed") })
+        _ = icons.icon(forBundleID: "com.apple.TextEdit")
+        #expect(icons.isMissing(bundleID: "example.acme.not-installed"))
+        #expect(!icons.isMissing(bundleID: "com.apple.TextEdit"), "not until it's looked up")
     }
 }

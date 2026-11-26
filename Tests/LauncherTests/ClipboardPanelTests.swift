@@ -350,10 +350,35 @@ struct ClipboardPanelTests {
         history.retention = .init(maxBytes: 2_000_000_000, maxAge: 30 * 86_400)
         #expect(await eventuallyTrue { history.index.clips.map(\.text) == ["new", "pinned"] }, "pins stay")
 
+        history.stricterDelay = .zero
         history.retention = .init(maxBytes: 1, maxAge: 30 * 86_400)
         let copy = try await history.store.add(text("newest"), from: nil, at: .now)
         history.recorded(copy)
         #expect(await eventuallyTrue { history.index.clips.map(\.text) == ["pinned"] }, "the newest goes too")
+    }
+
+    /// An editor that saves as you type can save 3 on the way from 30 to 365: a stricter limit waits until it has
+    /// stayed set, and a looser one applies at once (decision 76).
+    @Test func aStricterLimitWaitsUntilItStaysSet() async throws {
+        let folder = try TemporaryDirectory()
+        let day = 24 * 60.0
+        let panel = try await clipboardPanel(
+            folder.url, [(text("ten days"), nil, 10 * day), (text("five days"), nil, 5 * day), (text("new"), nil, 1)])
+        let history = try #require(panel.launcher.clipboard)
+        history.stricterDelay = .milliseconds(300)
+        history.retention = .init(maxBytes: 2_000_000_000, maxAge: 30 * 86_400)
+
+        history.retention = .init(maxBytes: 2_000_000_000, maxAge: 3 * 86_400)
+        try await Task.sleep(for: .milliseconds(100))
+        history.retention = .init(maxBytes: 2_000_000_000, maxAge: 365 * 86_400)
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(history.index.count == 3, "the half-typed 3 never applied")
+        #expect(try await history.store.load().count == 3)
+
+        history.retention = .init(maxBytes: 2_000_000_000, maxAge: 7 * 86_400)
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(history.index.count == 3, "still waiting")
+        #expect(await eventuallyTrue { history.index.clips.map(\.text) == ["new", "five days"] }, "then it applies")
     }
 
     @Test func clearingKeepsThePinnedClips() async throws {
@@ -410,6 +435,8 @@ struct ClipboardPanelTests {
         #expect(ago(minutes: 24 * 60) == "yesterday")
         #expect(ago(minutes: 3 * 24 * 60) == "Tue")
         #expect(ago(minutes: 20 * 24 * 60) == "Oct 31")
+        #expect(ago(minutes: 400 * 24 * 60) == "Oct 16, 2025", "another year says which")
+        #expect(DateWords.day(of: now - 400 * 86_400, now: now) == "Oct 16, 2025")
     }
 
     private func select(_ action: ClipAction, in panel: LauncherPanel) throws {
@@ -500,6 +527,62 @@ struct ClipboardPanelTests {
         press("escape", in: panel)
         #expect(titles(panel) == ["just copied", "newer", "older"])
         #expect(panel.launcher.tableView.selectedRow == 2, "still on older")
+    }
+
+    /// A link longer than what memory keeps of it opens whole, read from the store.
+    @Test func aLongLinkOpensWhole() async throws {
+        let folder = try TemporaryDirectory()
+        let long = "https://acme.example/dashboards?state=" + String(repeating: "a1b2c3d4", count: 600) + "&id=42"
+        let link = ClipContent(
+            kind: .link, text: long, items: [[Representation(type: "public.utf8-plain-text", data: Data(long.utf8))]])
+        let panel = try await clipboardPanel(folder.url, [(link, nil, 1)])
+        var opened: [URL] = []
+        panel.launcher.openLink = { url, _ in opened.append(url) }
+        panel.launcher.prepareToShow(.clipboard)
+        panel.launcher.toggleActions()
+        try select(.openLink, in: panel)
+        press("return", in: panel)
+        #expect(await eventuallyTrue { !opened.isEmpty })
+        #expect(opened.map(\.absoluteString) == [long])
+    }
+
+    /// A clip kept selected for a Pin or Delete that never landed (the panel closed first) doesn't pick the row next
+    /// time: the clipboard opens on the newest.
+    @Test func aSelectionKeptForAnActionIsLetGoOnClosing() async throws {
+        let folder = try TemporaryDirectory()
+        let panel = try await clipboardPanel(
+            folder.url, [(text("one"), nil, 3), (text("two"), nil, 2), (text("three"), nil, 1)])
+        let oldest = try #require(panel.launcher.clipboard?.index.clips.last)
+        panel.launcher.keepSelection = (oldest.id, 2)
+        panel.launcher.reset()
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(panel.launcher.tableView.selectedRow == 0)
+    }
+
+    /// A long link fits its three lines on the tile whole, with "…" in its middle: no line hidden past the last.
+    @Test func aLongLinkFitsTheTile() async throws {
+        let folder = try TemporaryDirectory()
+        let long = "https://acme.example/dashboards/" + String(repeating: "quarterly-budget-review-", count: 20) + "42"
+        let link = ClipContent(
+            kind: .link, text: long, items: [[Representation(type: "public.utf8-plain-text", data: Data(long.utf8))]])
+        let panel = try await clipboardPanel(folder.url, [(link, nil, 1)])
+        panel.launcher.prepareToShow(.clipboard)
+        panel.layoutIfNeeded()
+        let place = panel.launcher.tile.placeLabel
+        #expect(place.stringValue.contains("…") && place.stringValue.hasSuffix("42"))
+        let needed = try #require(place.cell).cellSize(
+            forBounds: NSRect(x: 0, y: 0, width: place.frame.width, height: .greatestFiniteMagnitude)
+        ).height
+        #expect(needed <= place.frame.height + 4, "needs \(needed) pt, has \(place.frame.height)")
+    }
+
+    /// Blank lines before a text don't fill its preview: the tile shows the text, not "Spaces and line breaks".
+    @Test func blankLinesFirstDontHideTheText() async throws {
+        let folder = try TemporaryDirectory()
+        let blankFirst = String(repeating: "\n", count: 12) + "Acme\nbudget"
+        let panel = try await clipboardPanel(folder.url, [(text(blankFirst), nil, 1)])
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(panel.launcher.tile.content.preview == .text("Acme\nbudget", isBlank: false))
     }
 
     /// A shortcut never deletes in one press, pinned or not; ⏎ on the Delete row does (decision 74).

@@ -23,6 +23,8 @@ final class Updater: NSObject, SPUUpdaterDelegate {
     private var found: String?
     /// Whether the current check was asked for (Check for Updates), so its outcome is reported whatever it is.
     private var asked = false
+    /// Failed updates already said, so a scheduled check failing on the same one again says nothing.
+    private var failures = UpdateFailures()
     /// The update that's ready, saved for the next launch to say how it went.
     private var pending: PendingUpdate?
     /// Installs the downloaded update and relaunches; Sparkle hands it over once the update is ready.
@@ -154,6 +156,7 @@ final class Updater: NSObject, SPUUpdaterDelegate {
             report(.checkFailed(reason: (underlying ?? error).localizedDescription))
             return
         }
+        let wasAsked = asked
         asked = false
         // It's dropped: the next check finds it again and downloads it from the start.
         if install != nil {
@@ -162,7 +165,19 @@ final class Updater: NSObject, SPUUpdaterDelegate {
         }
         pending = nil
         Task { await runInBackground(qos: .utility) { _ = PendingUpdate.take() } }
-        onResult(.failed(to: found ?? "a new version", reason: error.localizedDescription))
+        let version = found ?? "a new version"
+        guard failures.shouldSay(version, asked: wasAsked) else { return }
+        onResult(.failed(to: version, reason: error.localizedDescription))
+    }
+}
+
+/// Which failed updates were said: a scheduled check that fails on the same update again (a bad signature, every
+/// hour) says nothing more; one that was asked for always says how it went.
+struct UpdateFailures {
+    private var said: Set<String> = []
+
+    mutating func shouldSay(_ version: String, asked: Bool) -> Bool {
+        said.insert(version).inserted || asked
     }
 }
 

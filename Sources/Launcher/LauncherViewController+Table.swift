@@ -52,7 +52,7 @@ extension LauncherViewController {
                 cell.icon.image = clipboard.flatMap { clipImages.row(clip, store: $0.store) }
                 corner = 4
             case .files:
-                cell.icon.image = ClipText.paths(of: clip).first.flatMap { icons.icon(forFile: URL(filePath: $0)) }
+                cell.icon.image = icons.icon(forFile: URL(filePath: ClipText.firstPath(of: clip)))
             case .text, .richText, .link:
                 cell.icon.image = sourceIcon(of: clip, size: .row)
             }

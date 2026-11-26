@@ -32,9 +32,9 @@ enum ImageThumbnails {
 
         let fit = min(1, Double(box.width) / Double(width), Double(box.height) / Double(height))
         let fill = Double(rowPixels) / Double(min(width, height))
-        guard let preview = thumbnail(source, maxPixels: longest * fit).flatMap(png),
+        guard let preview = thumbnail(source, maxPixels: longest * fit).flatMap({ png($0) }),
             let rowImage = thumbnail(source, maxPixels: min(longest, longest * fill)),
-            let row = square(rowImage, pixels: rowPixels).flatMap(png)
+            let row = square(rowImage, pixels: rowPixels).flatMap({ png($0) })
         else { return nil }
         return Rendered(width: width, height: height, row: row, preview: preview)
     }
@@ -67,11 +67,11 @@ enum ImageThumbnails {
         return context.makeImage()
     }
 
-    static func png(_ image: CGImage) -> Data? {
+    static func png(_ image: CGImage, properties: [CFString: Any] = [:]) -> Data? {
         let data = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil)
         else { return nil }
-        CGImageDestinationAddImage(destination, image, nil)
+        CGImageDestinationAddImage(destination, image, properties as CFDictionary)
         return CGImageDestinationFinalize(destination) ? data as Data : nil
     }
 }

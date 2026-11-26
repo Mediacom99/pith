@@ -37,7 +37,7 @@ extension LauncherViewController {
         case .clip(let clip):
             switch clip.kind {
             case .image: return clipboard?.store.imageFile(of: clip.id)
-            case .files: return ClipText.paths(of: clip).first.map { URL(filePath: $0) }
+            case .files: return URL(filePath: ClipText.firstPath(of: clip))
             case .text, .richText, .link: return nil
             }
         case .action, .problem, .notice, .clipAction:

@@ -20,10 +20,18 @@ extension LauncherViewController: NSTextFieldDelegate {
     }
 
     /// The panel's keys are looked up before the field editor sees them (`handleKey`). A ⏎ or ⎋ that isn't one of
-    /// them does nothing here, rather than end the field's editing; other keys edit the field as usual.
+    /// them does nothing here, rather than end the field's editing, and nor do ⌥⏎, ⌥⇥ (which would type a line break
+    /// or a tab into the query) and ⌥⎋ (word completion); other keys edit the field as usual.
     func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
-        selector == #selector(NSResponder.insertNewline(_:)) || selector == #selector(NSResponder.cancelOperation(_:))
+        Self.swallowedCommands.contains(selector)
     }
+
+    static let swallowedCommands: Set<Selector> = [
+        #selector(NSResponder.insertNewline(_:)), #selector(NSResponder.cancelOperation(_:)),
+        #selector(NSResponder.insertNewlineIgnoringFieldEditor(_:)),
+        #selector(NSResponder.insertTabIgnoringFieldEditor(_:)),
+        #selector(NSResponder.complete(_:)),
+    ]
 }
 
 // MARK: Keys
@@ -88,10 +96,13 @@ extension LauncherViewController {
     }
 
     /// Does what `key` does here; false when it doesn't apply now (nothing to preview, not in the clipboard).
-    private func perform(_ key: PanelKey) -> Bool {
+    func perform(_ key: PanelKey) -> Bool {
         switch key {
         case .up: moveSelection(by: -1)
         case .down: moveSelection(by: 1)
+        case .open where awaitingFiles && sublist == nil, .actions where awaitingFiles && sublist == nil:
+            // The list is the previous query's until the files land: act on the query's list then.
+            keyAfterSearch = key
         case .open: activate(row: tableView.selectedRow)
         case .actions: toggleActions()
         case .back:
