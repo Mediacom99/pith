@@ -16,7 +16,7 @@ struct ConfigTests {
         #expect(config.launcherHotkey.description == "cmd+p")
         #expect(config.clipboardHotkey?.description == "shift+cmd+v", "the modifiers in macOS order")
         #expect(config.emptyState == .recent)
-        #expect(config.launchAtLogin)
+        #expect(config.launchAtLogin == true)
     }
 
     @Test func readsEverySetting() {
@@ -31,7 +31,7 @@ struct ConfigTests {
         #expect(problems.isEmpty)
         #expect(config.launcherHotkey.description == "ctrl+alt+space")
         #expect(config.emptyState == .running)
-        #expect(!config.launchAtLogin)
+        #expect(config.launchAtLogin == false)
     }
 
     @Test func dottedKeysWork() {
@@ -50,7 +50,9 @@ struct ConfigTests {
             [hotkeys]
             launcher = "p"
             """)
-        #expect(config == Config())
+        var defaults = Config()
+        defaults.launchAtLogin = nil  // at launch, a wrong value leaves the login item as it is
+        #expect(config == defaults)
         #expect(
             problems == [
                 "line 2: launcher.empty_state is \"everything\", expected \"recent\", \"running\" or \"none\"",
@@ -124,6 +126,8 @@ struct ConfigTests {
         let (atLaunch, launchProblems) = Config.parse(broken)
         #expect(atLaunch.emptyState == .recent)
         #expect(atLaunch.clipboardRetention == .init(maxBytes: .max, maxAge: .infinity), "no clipboard history dropped")
+        #expect(atLaunch.launchAtLogin == nil, "the login item left as it is")
+        #expect(Config.parse("launcher.launch_at_login = \"false\"").config.launchAtLogin == nil, "a wrong value too")
         #expect(
             launchProblems == [
                 "line 2: unterminated string, so every setting is at its default and no clipboard history is dropped"

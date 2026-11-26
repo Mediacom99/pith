@@ -47,6 +47,22 @@ final class HotKeyCenter {
         return id
     }
 
+    /// Whether macOS itself uses `hotkey` (Spotlight's ⌘Space, ⌃Space for the input source, ⌘⇧4): Carbon registers
+    /// it all the same, but the system's wins and Pith's never fires. Read from macOS's settings: a quick call.
+    static func isSystemShortcut(_ hotkey: Shortcut) -> Bool {
+        var list: Unmanaged<CFArray>?
+        guard CopySymbolicHotKeys(&list) == noErr, let shortcuts = list?.takeRetainedValue() as? [[String: Any]] else {
+            return false
+        }
+        let code = Int(KeyLayout.keyCode(of: hotkey))
+        let modifiers = Int(hotkey.modifiers)
+        let mask = cmdKey | shiftKey | optionKey | controlKey
+        return shortcuts.contains { shortcut in
+            shortcut[kHISymbolicHotKeyEnabled] as? Bool == true && shortcut[kHISymbolicHotKeyCode] as? Int == code
+                && (shortcut[kHISymbolicHotKeyModifiers] as? Int).map { $0 & mask == modifiers } == true
+        }
+    }
+
     func unregister(_ id: ID) {
         if let hotKeyRef = hotKeys.removeValue(forKey: id) { UnregisterEventHotKey(hotKeyRef) }
         actions[id] = nil
@@ -71,9 +87,17 @@ final class GlobalHotkeys {
     private var slots: [String: (current: (hotkey: Shortcut, id: HotKeyCenter.ID)?, problem: String?)] = [:]
     private var wanted: [String: (hotkey: Shortcut?, action: (TimeInterval) -> Void)] = [:]
     private var layoutObserver: NSObjectProtocol?
+    /// Whether macOS itself uses a key. Tests swap it.
+    private let isSystemShortcut: @MainActor (Shortcut) -> Bool
+    /// Called after a layout change moved the hotkeys: what they show, and their problems, may have changed.
+    var onLayoutChange: () -> Void = {}
 
-    init(center: HotKeyCenter = HotKeyCenter()) {
+    init(
+        center: HotKeyCenter = HotKeyCenter(),
+        isSystemShortcut: @escaping @MainActor (Shortcut) -> Bool = HotKeyCenter.isSystemShortcut
+    ) {
         self.center = center
+        self.isSystemShortcut = isSystemShortcut
         // A hotkey is registered on the key that types its letter in the layout in use (`KeyLayout`): switching
         // layouts moves it there.
         layoutObserver = DistributedNotificationCenter.default().addObserver(
@@ -89,17 +113,25 @@ final class GlobalHotkeys {
     }
 
     /// Registers each hotkey again, on the keys of the layout now in use: the one it has, or the one configured if it
-    /// has none.
-    private func layoutChanged() {
+    /// has none. All are let go first, so two whose keys trade places (a and q from U.S. to French) don't block each
+    /// other.
+    func layoutChanged() {
+        let hotkeys = names.compactMap { name in
+            wanted[name].flatMap { wanted in
+                (current(name) ?? wanted.hotkey).map { (name: name, hotkey: $0, action: wanted.action) }
+            }
+        }
         for name in names {
-            guard let wanted = wanted[name], let hotkey = current(name) ?? wanted.hotkey else { continue }
             if let current = slots[name]?.current { center.unregister(current.id) }
-            if let id = center.register(hotkey, action: wanted.action) {
-                slots[name] = ((hotkey, id), hotkey == wanted.hotkey ? nil : slots[name]?.problem)
+        }
+        for (name, hotkey, action) in hotkeys {
+            if let id = center.register(hotkey, action: action) {
+                slots[name] = ((hotkey, id), hotkey == wanted[name]?.hotkey ? nil : slots[name]?.problem)
             } else {
                 slots[name] = (nil, "hotkeys.\(name) \"\(hotkey)\" is taken by another app")
             }
         }
+        onLayoutChange()
     }
 
     /// The key `name` is registered with, if any.
@@ -131,13 +163,16 @@ final class GlobalHotkeys {
         }
         for ((name, hotkey, action), old) in zip(changed, old) {
             guard let hotkey else { continue }
-            if let id = center.register(hotkey, action: action) {
+            // A key macOS uses registers fine but never fires: it counts as taken, by macOS.
+            let isSystems = isSystemShortcut(hotkey)
+            if !isSystems, let id = center.register(hotkey, action: action) {
                 slots[name] = ((hotkey, id), nil)
                 continue
             }
             let kept = old.flatMap { old in center.register(old, action: action).map { (hotkey: old, id: $0) } }
             let fallback = kept.map { ", so it's still \"\($0.hotkey)\"" } ?? ""
-            slots[name] = (kept, "hotkeys.\(name) \"\(hotkey)\" is taken by another app\(fallback)")
+            let holder = isSystems ? "macOS (System Settings, Keyboard, Keyboard Shortcuts)" : "another app"
+            slots[name] = (kept, "hotkeys.\(name) \"\(hotkey)\" is taken by \(holder)\(fallback)")
         }
     }
 }
