@@ -253,7 +253,8 @@ extension Config {
         }
 
         /// Gives each `[open_with]` type one app: a line of its own before an app's list, then the earlier line. A
-        /// type given twice is a problem on the line that loses; one kept from before a wrong value gives way quietly.
+        /// type given two apps is a problem on the line that loses; one kept from before a wrong value gives way
+        /// quietly, as does the same app given twice.
         private mutating func settleOpenWith() {
             var settled: [String: (app: String, line: Int)] = [:]
             for claim in openWithClaims.sorted(by: { ($0.form, $0.line) < ($1.form, $1.line) }) {
@@ -261,7 +262,9 @@ extension Config {
                     settled[claim.type] = (claim.app, claim.line)
                     continue
                 }
-                if claim.form < 2, claim.line != winner.line {
+                if claim.form < 2, claim.line != winner.line,
+                    claim.app.caseInsensitiveCompare(winner.app) != .orderedSame
+                {
                     problems.append(
                         (
                             claim.line,

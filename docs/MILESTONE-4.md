@@ -16,8 +16,8 @@ Status: **in review**. 137 + 150 tests pass; each new one fails without its fix.
 - In `[open_with]`, a list makes its key an app and its items extensions or types (decision 82):
   `"Visual Studio Code" = ["md", "txt", "json"]`. The one-line form stays: `md = "Visual Studio Code"`. Either form
   takes `md`, `.md` or `*.md`, in any case. An empty list sets nothing.
-- A type given twice goes to its line of its own first, then to the earlier list; the line that loses is a problem
-  in the launcher ("open_with sets "md" on line 6 too, so it opens in "Typora"").
+- A type given two apps goes to its line of its own first, then to the earlier list; the line that loses is a problem
+  in the launcher ("open_with sets "md" on line 6 too, so it opens in "Typora""). The same app twice is fine.
 - A wrong value (`Zed = ["md", 3]`) keeps what that setting gave before, as any wrong setting does.
 - Each app is looked up once: one that isn't installed is one problem, naming the types it was set for. Pith never
   checks whether such files exist.
