@@ -44,6 +44,29 @@ private func paths(_ engine: FileSearchEngine, _ query: String) async -> [String
         #expect(await eventually { await paths(engine, "inner-notes") == [root + "/Bundle/inner-notes.md"] })
     }
 
+    /// A file saved again moves to the top of its extension's newest (decision 80).
+    @Test func aSavedFileComesFirstForItsExtension() async throws {
+        let folder = try TemporaryDirectory()
+        for (name, age) in [("first.md", 100.0), ("second.md", 50.0)] {
+            try folder.makeFile(name)
+            try FileManager.default.setAttributes(
+                [.modificationDate: Date.now.addingTimeInterval(-age)],
+                ofItemAtPath: folder.url.appending(path: name).path)
+        }
+        let root = folder.canonicalPath
+        let engine = await engine(at: root)
+        #expect(await paths(engine, "*.md") == [root + "/second.md", root + "/first.md"])
+        // The folder's own creation can still arrive and rescan everything, which would read the new time anyway.
+        try await Task.sleep(for: .seconds(1.5))
+
+        // Written in place, as an editor saving over it: the file stays, only its time changes.
+        let handle = try FileHandle(forWritingTo: folder.url.appending(path: "first.md"))
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data("saved".utf8))
+        try handle.close()
+        #expect(await eventually { await paths(engine, "*.md") == [root + "/first.md", root + "/second.md"] })
+    }
+
     /// A rename that only changes the case of a name leaves one row, under the new name.
     @Test func aCaseOnlyRenameLeavesOneRow() async throws {
         let folder = try TemporaryDirectory()

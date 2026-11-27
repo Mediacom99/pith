@@ -56,10 +56,12 @@ public struct SearchIndex: Sendable {
     }
 
     /// The same, with each match's score (boost included), for merging with file results.
-    /// Every word of the query (`QueryTerms`) must match the name or file name; the scores add up.
+    /// Every word of the query (`QueryTerms`) must match the name or file name; the scores add up. A query that asks
+    /// for an extension (`*.pdf`) is for files only.
     public func scoredSearch(_ query: String, limit: Int, boosts: [Int32] = []) -> [(index: Int, score: Int32)] {
-        var matchers = QueryTerms(query).matchers()
-        guard !matchers.isEmpty else { return [] }
+        let terms = QueryTerms(query)
+        var matchers = terms.matchers()
+        guard !matchers.isEmpty, terms.extensions.isEmpty else { return [] }
         let boosted = boosts.count == items.count
 
         var hits: [(index: Int, score: Int32)] = []

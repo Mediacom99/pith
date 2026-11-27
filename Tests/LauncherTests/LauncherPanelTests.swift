@@ -662,6 +662,26 @@ struct LauncherPanelTests {
         #expect(panel.launcher.rows == [.item(app), .item(page)], "no actions list")
     }
 
+    /// `*.pdf` lists only PDFs, newest first: no app, however well its name matches (decision 80).
+    @Test func anExtensionListsItsFilesNewestFirst() async throws {
+        let folder = try TemporaryDirectory()
+        for (name, age) in [("Old Budget.pdf", 300.0), ("New Report.pdf", 10.0), ("notes.txt", 5.0)] {
+            try folder.makeFile(name)
+            try FileManager.default.setAttributes(
+                [.modificationDate: Date.now.addingTimeInterval(-age)],
+                ofItemAtPath: folder.url.appending(path: name).path)
+        }
+        let files = FileSearchEngine()
+        await files.rebuild(FileRules(roots: [folder.url.path], ignore: IgnoreRules([]), maxDepth: 6))
+        let pdfApp = Item(name: "PDF Expert", appAt: URL(filePath: "/Applications/PDF Expert.app"))
+        let panel = makePanel(items: [pdfApp], files: files)
+
+        await type("*.pdf", in: panel)
+        #expect(names(panel.launcher.rows) == ["New Report.pdf", "Old Budget.pdf"])
+        await type("budget *.pdf", in: panel)
+        #expect(names(panel.launcher.rows) == ["Old Budget.pdf"])
+    }
+
     @Test func recentListsFilesToo() {
         let panel = makePanel(items: apps, opened: [apps[0].id, "folder:/tmp/Somewhere"], emptyState: .recent)
         panel.launcher.prepareToShow()

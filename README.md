@@ -83,6 +83,7 @@ justify a subscription.
 - **Apps, files and folders** in one list. Every word you type must match, in any order, so `acme deploy` finds
   `deploy.sh` in a folder called Acme. What you open often comes first.
 - **System Settings' pages** too: type `blue` and ⏎ opens Bluetooth. They're read from macOS, in its language.
+- **By extension:** `*.pdf` lists your PDFs, newest first; `budget *.pdf` finds the ones about a budget.
 - **Actions on ⌘K:** Open With…, Reveal in Finder, Copy Path, Copy File, Zip, Move to Trash, Open in Terminal; Quit
   and Force Quit for a running app (Force Quit asks for a second ⏎). ⌘Y, or Space on an empty field, is Quick Look.
 - **Files stay current:** they're indexed in memory and updated as they change on disk.

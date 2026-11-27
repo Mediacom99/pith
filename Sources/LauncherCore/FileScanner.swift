@@ -216,7 +216,8 @@ public enum FileScanner {
         guard startDepth < rules.maxDepth, let pointer = strdup(start) else { return }
         defer { free(pointer) }
         var arguments: [UnsafeMutablePointer<CChar>?] = [pointer, nil]
-        guard let fts = fts_open(&arguments, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV | FTS_NOSTAT, nil) else { return }
+        // Not FTS_NOSTAT: each entry's time is kept, for an extension's newest files (decision 80).
+        guard let fts = fts_open(&arguments, FTS_PHYSICAL | FTS_NOCHDIR | FTS_XDEV, nil) else { return }
         defer { fts_close(fts) }
 
         while let entry = fts_read(fts) {
@@ -238,12 +239,13 @@ public enum FileScanner {
                 continue
             }
             let parent = Int32(entry.pointee.fts_parent.pointee.fts_number)
+            let modified = entry.pointee.fts_statp.map { FileIndex.seconds($0.pointee.st_mtimespec) } ?? 0
             if isDirectory, packages.isPackage(name: name) {
-                index.add(name: name, parent: parent, isFolder: false)
+                index.add(name: name, parent: parent, isFolder: false, modified: modified)
                 fts_set(fts, entry, FTS_SKIP)
                 continue
             }
-            let added = index.add(name: name, parent: parent, isFolder: isDirectory)
+            let added = index.add(name: name, parent: parent, isFolder: isDirectory, modified: modified)
             if isDirectory {
                 entry.pointee.fts_number = Int(added)
                 if startDepth + level >= rules.maxDepth { fts_set(fts, entry, FTS_SKIP) }

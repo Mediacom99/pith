@@ -73,6 +73,23 @@ struct FileScannerTests {
         #expect(index.count == 4)
     }
 
+    /// The scan keeps each file's time, so `*.txt` lists the newest first.
+    @Test func keepsWhenEachFileChanged() throws {
+        let folder = try TemporaryDirectory()
+        for (name, age) in [("old.txt", 300.0), ("new.txt", 10.0), ("middle.txt", 100.0)] {
+            try folder.makeFile(name)
+            try FileManager.default.setAttributes(
+                [.modificationDate: Date.now.addingTimeInterval(-age)],
+                ofItemAtPath: folder.url.appending(path: name).path)
+        }
+        var index = FileIndex()
+        FileScanner.scan(FileRules(roots: [folder.url.path], ignore: IgnoreRules([]), maxDepth: 6), into: &index)
+        #expect(
+            index.search("*.txt", limit: 10).map { ($0.path as NSString).lastPathComponent } == [
+                "new.txt", "middle.txt", "old.txt",
+            ])
+    }
+
     @Test func packagesAreFilesAndNotEntered() throws {
         let root = try TemporaryDirectory()
         try root.makeFile("Tool.app/Contents/Info.plist")
@@ -309,6 +326,29 @@ struct FileIndexTests {
         #expect(hits.count == 5)
         #expect(hits.first?.path == "/f/report.pdf", "shortest name first among equal scores")
         #expect(zip(hits, hits.dropFirst()).allSatisfy { $0.score >= $1.score })
+    }
+
+    /// `*.pdf` keeps only files with that extension, in any case (decision 80). Alone, newest first; with other
+    /// words, ranked by them; two extensions take either. A folder named like one, or a name that's only the
+    /// extension, doesn't count.
+    @Test func anExtensionKeepsItsFilesNewestFirst() {
+        var files = index(["/f/Old Budget.pdf", "/f/Report.PDF", "/f/budget.txt", "/f/.pdf", "/f/Shots/Logo.png"])
+        files.insert("/f/Archive.pdf", isFolder: true)
+        for (path, seconds) in [("/f/Old Budget.pdf", 100), ("/f/Report.PDF", 300), ("/f/Shots/Logo.png", 200)] {
+            files.setModified(path, UInt32(seconds))
+        }
+        #expect(files.search("*.pdf", limit: 10).map(\.path) == ["/f/Report.PDF", "/f/Old Budget.pdf"])
+        #expect(files.search("budget *.pdf", limit: 10).map(\.path) == ["/f/Old Budget.pdf"])
+        #expect(files.search("*.pdf budget", limit: 10).map(\.path) == ["/f/Old Budget.pdf"], "in any order")
+        #expect(
+            files.search("*.png *.pdf", limit: 10).map(\.path) == [
+                "/f/Report.PDF", "/f/Shots/Logo.png", "/f/Old Budget.pdf",
+            ])
+        #expect(files.search("*.pd", limit: 10).isEmpty, "the whole extension, as in a terminal")
+        #expect(files.search("*.", limit: 10).isEmpty)
+        #expect(
+            SearchIndex(items: [Item(name: "PDF Expert", appAt: URL(filePath: "/Applications/PDF Expert.app"))])
+                .search("*.pdf", limit: 10).isEmpty, "apps never match an extension")
     }
 
     @Test func boostsReorder() {

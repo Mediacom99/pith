@@ -26,6 +26,9 @@ public struct FileIndex: Sendable {
     private var keys = KeyStore()
     /// The history's ranking boost per entry.
     private var boosts: [Int32] = []
+    /// When each entry last changed, in seconds since 2001 (`seconds(_:)`), 0 when unknown: an extension asked for
+    /// alone lists its files newest first (decision 80).
+    private var modified: [UInt32] = []
     /// Children of each folder (and root) that has any. May still list removed entries, which are skipped and
     /// dropped at the next compaction, so removing is O(1).
     private var children: [Int32: [Int32]] = [:]
@@ -62,30 +65,43 @@ public struct FileIndex: Sendable {
 
     /// Adds `name` under `parent`, for scans of a folder whose children aren't indexed yet.
     @discardableResult
-    mutating func add(name: String, parent: Int32, isFolder: Bool) -> Int32 {
+    mutating func add(name: String, parent: Int32, isFolder: Bool, modified: UInt32 = 0) -> Int32 {
         let entry = append(
             name: name, parent: parent, depth: depths[Int(parent)] &+ 1, flag: isFolder ? Self.folder : 0,
             searchable: true)
+        self.modified[Int(entry)] = modified
         children[parent, default: []].append(entry)
         let key = ChildKey(parent: parent, name: name.utf8)
         if lookup[key] == nil { lookup[key] = entry } else { collisions.insert(key) }
         return entry
     }
 
-    /// Adds `path`, or updates whether it's a folder. Returns false if `path` is outside the index: not under a root,
-    /// its parent folder isn't indexed (ignored, or a file), or it would be deeper than `maxDepth`.
+    /// Adds `path`, or updates whether it's a folder and when it changed. Returns false if `path` is outside the
+    /// index: not under a root, its parent folder isn't indexed (ignored, or a file), or it would be deeper than
+    /// `maxDepth`.
     @discardableResult
-    public mutating func insert(_ path: String, isFolder: Bool, maxDepth: Int = .max) -> Bool {
+    public mutating func insert(_ path: String, isFolder: Bool, maxDepth: Int = .max, modified: UInt32 = 0) -> Bool {
         if let entry = entry(at: path) {
             guard flags[Int(entry)] & Self.root == 0 else { return true }
             flags[Int(entry)] = (flags[Int(entry)] & ~Self.folder) | (isFolder ? Self.folder : 0)
+            self.modified[Int(entry)] = modified
             return true
         }
         guard let slash = path.lastIndex(of: "/"), let parent = entry(at: String(path[..<slash])),
             flags[Int(parent)] & Self.folder != 0, depth(of: parent) < maxDepth
         else { return false }
-        add(name: String(path[path.index(after: slash)...]), parent: parent, isFolder: isFolder)
+        add(name: String(path[path.index(after: slash)...]), parent: parent, isFolder: isFolder, modified: modified)
         return true
+    }
+
+    /// Records when `path` changed, if it's indexed.
+    public mutating func setModified(_ path: String, _ seconds: UInt32) {
+        if let entry = entry(at: path) { modified[Int(entry)] = seconds }
+    }
+
+    /// A file system time as the index keeps it: whole seconds since 2001, which fit 32 bits until 2137.
+    public static func seconds(_ time: timespec) -> UInt32 {
+        UInt32(clamping: time.tv_sec - 978_307_200)
     }
 
     /// Removes `path` and, if it's a folder, everything under it.
@@ -204,11 +220,18 @@ public struct FileIndex: Sendable {
     ///
     /// The query's last word (`QueryTerms`) must match the name. Each earlier word must match the name too, or a
     /// folder above it, which counts half: a match in the name says more than one in the path.
+    ///
+    /// Extensions asked for (`*.pdf`, decision 80) keep only files with one of them. Asked for alone, they list those
+    /// files newest first, their score their time.
     public func search(_ query: String, limit: Int) -> [FileHit] {
-        let words = QueryTerms(query).words
+        let terms = QueryTerms(query)
+        let words = terms.nameWords
+        let extensions = terms.extensions.map { SearchKey($0).bytes }
         // No path has that many words, and each word before the last takes a score per entry: a pasted paragraph
         // finds no file, at once.
-        guard limit > 0, let lastWord = words.last, !flags.isEmpty, words.count <= Self.maxWords else { return [] }
+        guard limit > 0, !words.isEmpty || !extensions.isEmpty, !flags.isEmpty, words.count <= Self.maxWords else {
+            return []
+        }
         let pathWords = Array(words.dropLast())
         let above = scoresAbove(pathWords)
         let total = flags.count
@@ -219,9 +242,15 @@ public struct FileIndex: Sendable {
                 // Each chunk reads the shared, unchanging buffers and writes only its own slot.
                 nonisolated(unsafe) let tops = tops
                 DispatchQueue.concurrentPerform(iterations: chunks) { chunk in
-                    tops[chunk] = Self.bestMatches(
-                        in: (chunk * total / chunks)..<((chunk + 1) * total / chunks), of: buffers,
-                        lastWord: lastWord, pathWords: pathWords, limit: limit)
+                    let range = (chunk * total / chunks)..<((chunk + 1) * total / chunks)
+                    tops[chunk] =
+                        if let lastWord = words.last {
+                            Self.bestMatches(
+                                in: range, of: buffers, lastWord: lastWord, pathWords: pathWords,
+                                extensions: extensions, limit: limit)
+                        } else {
+                            Self.newest(in: range, of: buffers, extensions: extensions, limit: limit)
+                        }
                 }
             }
         }
@@ -243,6 +272,7 @@ public struct FileIndex: Sendable {
         let flags: UnsafeBufferPointer<UInt8>
         let boosts: UnsafeBufferPointer<Int32>
         let parents: UnsafeBufferPointer<Int32>
+        let modified: UnsafeBufferPointer<UInt32>
         /// `scoresAbove`'s scores for the query's earlier words.
         let above: UnsafeBufferPointer<Int32>
     }
@@ -256,11 +286,14 @@ public struct FileIndex: Sendable {
                         flags.withUnsafeBufferPointer { flags in
                             boosts.withUnsafeBufferPointer { boosts in
                                 parents.withUnsafeBufferPointer { parents in
-                                    above.withUnsafeBufferPointer { above in
-                                        body(
-                                            Buffers(
-                                                bytes: bytes, bonus: bonus, starts: starts, masks: masks, flags: flags,
-                                                boosts: boosts, parents: parents, above: above))
+                                    modified.withUnsafeBufferPointer { modified in
+                                        above.withUnsafeBufferPointer { above in
+                                            body(
+                                                Buffers(
+                                                    bytes: bytes, bonus: bonus, starts: starts, masks: masks,
+                                                    flags: flags, boosts: boosts, parents: parents, modified: modified,
+                                                    above: above))
+                                        }
                                     }
                                 }
                             }
@@ -274,7 +307,8 @@ public struct FileIndex: Sendable {
     /// The best `limit` entries in `range`: the last word scored on the name, plus each earlier word's best on the
     /// name or, at half, on a folder above it. An entry that one of the words doesn't match is left out.
     private static func bestMatches(
-        in range: Range<Int>, of buffers: Buffers, lastWord: String, pathWords: [String], limit: Int
+        in range: Range<Int>, of buffers: Buffers, lastWord: String, pathWords: [String], extensions: [[UInt8]],
+        limit: Int
     ) -> [Candidate] {
         var last = FuzzyMatcher(query: lastWord)
         var others = pathWords.map(FuzzyMatcher.init(query:))
@@ -285,6 +319,7 @@ public struct FileIndex: Sendable {
             let start = Int(buffers.starts[index])
             let end = Int(buffers.starts[index + 1])
             let text = UnsafeBufferPointer(rebasing: buffers.bytes[start..<end])
+            if !extensions.isEmpty, buffers.flags[index] & folder != 0 || !hasExtension(text, extensions) { continue }
             let textBonus = UnsafeBufferPointer(rebasing: buffers.bonus[start..<end])
             guard var score = last.score(text: text, bonus: textBonus, mask: buffers.masks[index]) else { continue }
             let parent = Int(buffers.parents[index])
@@ -298,6 +333,29 @@ public struct FileIndex: Sendable {
             top.insert(Candidate(score: score + buffers.boosts[index], length: end - start, index: index))
         }
         return top.items
+    }
+
+    /// The newest `limit` files in `range` with one of `extensions`.
+    private static func newest(in range: Range<Int>, of buffers: Buffers, extensions: [[UInt8]], limit: Int)
+        -> [Candidate]
+    {
+        var top = TopMatches(limit: limit)
+        let skip = removed | root | folder
+        for index in range where buffers.flags[index] & skip == 0 {
+            let start = Int(buffers.starts[index])
+            let end = Int(buffers.starts[index + 1])
+            guard hasExtension(UnsafeBufferPointer(rebasing: buffers.bytes[start..<end]), extensions) else { continue }
+            top.insert(Candidate(score: Int32(clamping: buffers.modified[index]), length: end - start, index: index))
+        }
+        return top.items
+    }
+
+    /// Whether a folded name ends in a dot and one of the folded `extensions`, with something before the dot.
+    static func hasExtension(_ name: UnsafeBufferPointer<UInt8>, _ extensions: [[UInt8]]) -> Bool {
+        extensions.contains { ext in
+            name.count > ext.count + 1 && name[name.count - ext.count - 1] == UInt8(ascii: ".")
+                && name[(name.count - ext.count)...].elementsEqual(ext)
+        }
     }
 
     private static let none = Int32.min
@@ -342,6 +400,7 @@ public struct FileIndex: Sendable {
         func size<T>(_ array: [T]) -> Int { array.capacity * MemoryLayout<T>.stride }
         let childLists = children.values.reduce(0) { $0 + size($1) + 32 }
         return size(names) + size(nameStarts) + size(parents) + size(depths) + size(flags) + size(boosts)
+            + size(modified)
             + keys.memoryBytes + childLists
             + children.capacity * (MemoryLayout<Int32>.stride + MemoryLayout<[Int32]>.stride + 1)
             + lookup.capacity * (MemoryLayout<ChildKey>.stride + MemoryLayout<Int32>.stride + 1)
@@ -356,6 +415,7 @@ public struct FileIndex: Sendable {
         exact(&depths)
         exact(&flags)
         exact(&boosts)
+        exact(&modified)
         keys.trim()
     }
 
@@ -369,6 +429,7 @@ public struct FileIndex: Sendable {
         depths.append(depth)
         flags.append(flag)
         boosts.append(0)
+        modified.append(0)
         keys.append(searchable ? name : "")
         return entry
     }
@@ -387,7 +448,8 @@ public struct FileIndex: Sendable {
                 renumbered[index] = compacted.addRoot(name)
             } else if parents[index] >= 0, renumbered[Int(parents[index])] >= 0 {
                 let new = compacted.add(
-                    name: name, parent: renumbered[Int(parents[index])], isFolder: flags[index] & Self.folder != 0)
+                    name: name, parent: renumbered[Int(parents[index])], isFolder: flags[index] & Self.folder != 0,
+                    modified: modified[index])
                 compacted.boosts[Int(new)] = boosts[index]
                 renumbered[index] = new
             }
