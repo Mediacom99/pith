@@ -424,6 +424,51 @@ struct ClipboardPanelTests {
         #expect(ClipText.folders(of: files).hasSuffix("Documents/Acme"))
     }
 
+    /// The tile lists a copy's other files under their folder: all of them when they fit, else as many as fit and
+    /// how many more; only those paths are read.
+    @Test func theTileListsTheOtherFiles() {
+        func files(_ count: Int) -> Clip {
+            let paths = (1...count).map { "/Users/me/Acme/\($0 == 2 ? "Drafts/" : "scan-\($0).pdf")" }
+            return Clip(
+                id: 1, kind: .files, copied: .now, source: nil, pinned: false, size: 0,
+                text: paths.joined(separator: "\n"), lines: count)
+        }
+        #expect(ClipText.otherFiles(of: files(1), limit: 5).isEmpty)
+        #expect(ClipText.otherFiles(of: files(3), limit: 5) == ["Drafts", "scan-3.pdf"], "a folder by its name")
+        #expect(ClipText.otherFiles(of: files(6), limit: 5).count == 5, "five others fill five lines")
+        #expect(
+            ClipText.otherFiles(of: files(7), limit: 5)
+                == ["Drafts", "scan-3.pdf", "scan-4.pdf", "scan-5.pdf", "and 2 more"])
+        var long = files(3)
+        long.lines = 4_000
+        #expect(
+            ClipText.otherFiles(of: long, limit: 5).last == "and \(3_997.formatted()) more",
+            "counted from the whole copy")
+    }
+
+    /// What VoiceOver says for each kind of clip.
+    @Test func eachKindIsSpokenWhole() {
+        let now = Date.now
+        func clip(_ kind: Clip.Kind, _ text: String, pinned: Bool = false, width: Int = 0, height: Int = 0) -> Clip {
+            Clip(
+                id: 1, kind: kind, copied: now, source: nil, pinned: pinned, size: 0, text: text,
+                lines: Clip.lineCount(of: text), pixelWidth: width, pixelHeight: height)
+        }
+        let when = ClipText.copied(now, now: now)
+        #expect(
+            ClipText.spoken(clip(.text, "docker compose up\n--build", pinned: true), from: "Terminal", now: now)
+                == "Text from Terminal, docker compose up, 2 lines, \(when), pinned")
+        #expect(
+            ClipText.spoken(clip(.image, "", width: 1920, height: 1080), from: nil, now: now)
+                == "Image, 1920 by 1080, \(when)")
+        #expect(
+            ClipText.spoken(clip(.link, "https://github.com/acme/site"), from: "Safari", now: now)
+                == "Link from Safari, github.com/acme/site, \(when)")
+        #expect(
+            ClipText.spoken(clip(.files, "/Users/me/Acme/notes.md\n/Users/me/Acme/plan.md"), from: nil, now: now)
+                == "2 files, notes.md and 1 more, /Users/me/Acme, \(when)")
+    }
+
     @Test func theAgeIsShortAndRecent() throws {
         let now = try #require(
             Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 20, hour: 14, minute: 30)))
@@ -574,6 +619,96 @@ struct ClipboardPanelTests {
             forBounds: NSRect(x: 0, y: 0, width: place.frame.width, height: .greatestFiniteMagnitude)
         ).height
         #expect(needed <= place.frame.height + 4, "needs \(needed) pt, has \(place.frame.height)")
+    }
+
+    /// Every tile reads the same way: what the clip is from the top, and the line about when and where it was copied
+    /// along the bottom, from the tile's left edge, so it stays put as the selection goes from one kind to another.
+    @Test func theLineAboutAClipStaysAlongTheTilesBottom() async throws {
+        let folder = try TemporaryDirectory()
+        let paths = [
+            "/Users/me/Documents/Acme/Quarterly_Budget_Review.pdf", "/Users/me/Documents/Acme/Hiring_Plan.pages",
+        ]
+        let files = ClipContent(
+            kind: .files, text: paths.joined(separator: "\n"),
+            items: paths.map { [Representation(type: "public.file-url", data: URL(filePath: $0).dataRepresentation)] })
+        let url = "https://github.com/acme/site/pull/42"
+        let link = ClipContent(
+            kind: .link, text: url, items: [[Representation(type: "public.utf8-plain-text", data: Data(url.utf8))]])
+        let panel = try await clipboardPanel(
+            folder.url, [(files, "com.apple.finder", 3), (link, nil, 2), (text("Acme budget"), nil, 1)])
+        panel.launcher.prepareToShow(.clipboard)
+        let tile = panel.launcher.tile
+        var lines: [NSRect] = []
+        for kind in ["text", "link", "files"] {
+            panel.layoutIfNeeded()
+            #expect(!tile.kindLabel.isHidden, "\(kind)")
+            lines.append(tile.kindLabel.frame)
+            press("down", in: panel)
+        }
+        #expect(Set(lines.map(\.origin)).count == 1, "\(lines)")
+        #expect(lines[0].maxY == tile.bounds.height - 16 && lines[0].minX == 16)
+        #expect(tile.content.name == "Quarterly_Budget_Review.pdf", "the other files are listed under it")
+        #expect(tile.content.list == ["Hiring_Plan.pages"])
+        #expect(!tile.listLabels[0].isHidden && tile.listLabels[0].frame.maxY < lines[2].minY)
+    }
+
+    /// Plain text previews in SF Mono, to show its quotes, tabs and indents; rich text in the system font, since it
+    /// pastes with its own.
+    @Test func richTextPreviewsInTheSystemFont() async throws {
+        let folder = try TemporaryDirectory()
+        let agenda = "Agenda for Thursday\nBudget review"
+        let rich = ClipContent(
+            kind: .richText, text: agenda,
+            items: [
+                [
+                    Representation(type: "public.html", data: Data("<b>Agenda for Thursday</b>".utf8)),
+                    Representation(type: "public.utf8-plain-text", data: Data(agenda.utf8)),
+                ]
+            ])
+        let panel = try await clipboardPanel(folder.url, [(rich, nil, 2), (text("docker compose up"), nil, 1)])
+        panel.launcher.prepareToShow(.clipboard)
+        let preview = panel.launcher.tile.previewText
+        #expect(preview.font?.fontDescriptor.symbolicTraits.contains(.monoSpace) == true)
+        press("down", in: panel)
+        #expect(panel.launcher.tile.content.preview == .text(agenda, isBlank: false, isRich: true))
+        #expect(preview.font?.fontDescriptor.symbolicTraits.contains(.monoSpace) == false)
+        #expect(preview.font?.pointSize == 13)
+    }
+
+    /// The empty clipboard says which keys will act on a clip, as they're configured, and leaves out one that's off.
+    @Test func theEmptyClipboardNamesItsKeys() async throws {
+        let folder = try TemporaryDirectory()
+        let panel = try await clipboardPanel(folder.url, [])
+        panel.launcher.pasteNextHotkey = "⌃⌥V"
+        panel.launcher.prepareToShow(.clipboard)
+        #expect(
+            panel.launcher.tile.content.kind
+                == "↩ copies the one you pick · ⌘K shows its actions · ⌃⌥V pastes the last one, then the one before",
+            "no Accessibility access in tests: ⏎ copies")
+        // Access given while it shows: the rows stay the same, the words don't.
+        panel.launcher.canPaste = true
+        #expect(panel.launcher.tile.content.kind.hasPrefix("↩ pastes the one you pick"))
+
+        let other = try TemporaryDirectory()
+        let noPasteNext = try await clipboardPanel(other.url, [])
+        noPasteNext.launcher.prepareToShow(.clipboard)
+        #expect(noPasteNext.launcher.tile.content.kind == "↩ copies the one you pick · ⌘K shows its actions")
+    }
+
+    /// Each clip's row tells VoiceOver what it is (docs/BRIEF-CLIPBOARD.md §8); a row reused for something else
+    /// doesn't keep it.
+    @Test func clipRowsSayWhatTheyAreToVoiceOver() async throws {
+        let folder = try TemporaryDirectory()
+        let panel = try await clipboardPanel(
+            folder.url, [(text("docker compose up\n  --build"), nil, 3)], pinned: [0])
+        panel.launcher.prepareToShow(.clipboard)
+        let cell = try #require(
+            panel.launcher.tableView.view(atColumn: 0, row: 0, makeIfNecessary: true) as? ResultCell)
+        let label = try #require(cell.accessibilityLabel())
+        #expect(label.hasPrefix("Text, docker compose up, 2 lines, copied today at ") && label.hasSuffix(", pinned"))
+        panel.launcher.switchMode(to: .launcher)
+        panel.launcher.configure(cell, for: .notice(.paused))
+        #expect(cell.accessibilityLabel() == nil)
     }
 
     /// Blank lines before a text don't fill its preview: the tile shows the text, not "Spaces and line breaks".

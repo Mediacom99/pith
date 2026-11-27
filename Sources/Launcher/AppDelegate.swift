@@ -57,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launcher.onShowClipboard = { [weak self] in self?.checkAccessibility() }
         hotkeys.onLayoutChange = { [weak self] in
             self?.panel?.launcher.clipboardHotkey = self?.hotkeys.current("clipboard")?.symbols
+            self?.panel?.launcher.pasteNextHotkey = self?.hotkeys.current("paste_next")?.symbols
             self?.publishProblems()
         }
         launcher.askForAccessibility = { [weak self] in
@@ -130,6 +131,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             ("paste_next", config.pasteNextHotkey, { [weak panel] in panel?.launcher.pasteNext(pressedAt: $0) }),
         ])
         panel.launcher.clipboardHotkey = hotkeys.current("clipboard")?.symbols
+        panel.launcher.pasteNextHotkey = hotkeys.current("paste_next")?.symbols
         panel.launcher.keys = config.keys
         panel.launcher.clipboardAlias = config.clipboardAlias
         panel.launcher.emptyState = config.emptyState

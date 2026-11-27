@@ -92,6 +92,39 @@ enum ClipText {
         return paths
     }
 
+    /// The tile's list under a copy's folder: the names of its other files, as many as `limit` lines hold, the last
+    /// line saying how many more there are when they don't all fit. Only those paths are read: a copy can name
+    /// thousands of files.
+    static func otherFiles(of clip: Clip, limit: Int) -> [String] {
+        let others = clip.lines - 1
+        guard clip.kind == .files, others > 0, limit > 0 else { return [] }
+        let shown = others <= limit ? others : limit - 1
+        var names = clip.text.split(separator: "\n", maxSplits: shown + 1).dropFirst().prefix(shown).map {
+            (String($0) as NSString).lastPathComponent
+        }
+        if others > names.count { names.append("and \((others - names.count).formatted()) more") }
+        return names
+    }
+
+    /// What VoiceOver says for a clip's row (`docs/BRIEF-CLIPBOARD.md` §8): "Text from Terminal, docker compose up,
+    /// 12 lines, copied today at 14:05, pinned"; "Image, 1920 by 1080, copied yesterday". `title`: the row's, already
+    /// found for the query.
+    static func spoken(_ clip: Clip, title: String? = nil, from source: String?, now: Date) -> String {
+        let kind =
+            clip.kind == .files ? (clip.lines > 1 ? "\(clip.lines.formatted()) files" : "File") : kindName(clip.kind)
+        var parts = [kind + (source.map { " from \($0)" } ?? "")]
+        if clip.kind == .image {
+            parts.append("\(clip.pixelWidth) by \(clip.pixelHeight)")
+        } else {
+            parts.append(title ?? Self.title(of: clip).text)
+            let detail = detail(of: clip)
+            if !detail.isEmpty { parts.append(detail) }
+        }
+        parts.append(copied(clip.copied, now: now))
+        if clip.pinned { parts.append("pinned") }
+        return parts.joined(separator: ", ")
+    }
+
     /// What the tile previews of a text: its first lines, as they'll paste, and one more when there is one, so the
     /// preview's last line ends in "…".
     static func preview(of clip: Clip) -> String {
