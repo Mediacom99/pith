@@ -229,10 +229,14 @@ public final class FileSearchEngine: @unchecked Sendable {
             return path
         }
         let isFolder = info.st_mode & S_IFMT == S_IFDIR && !FileScanner.isPackage(path)
-        if known, index.isFolder(path) == isFolder { return nil }
+        let modified = FileIndex.seconds(info.st_mtimespec)
+        if known, index.isFolder(path) == isFolder {
+            index.setModified(path, modified)
+            return nil
+        }
         if known { index.remove(path) }  // a file replaced by a folder, or the other way around
         // A folder that appears (created, moved in, restored) is indexed with what's in it.
-        if index.insert(path, isFolder: isFolder, maxDepth: rules.maxDepth), isFolder {
+        if index.insert(path, isFolder: isFolder, maxDepth: rules.maxDepth, modified: modified), isFolder {
             FileScanner.scan(folder: path, rules: rules, into: &index)
         }
         return nil

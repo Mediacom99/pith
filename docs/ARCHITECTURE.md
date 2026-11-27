@@ -281,6 +281,11 @@ At idle, one thing is scheduled: the clipboard's change-count check every 0.5 s,
   name or a folder above it, at half weight. Folder scores are computed once per search, in one pass down the tree
   (parents always come before children), so a path word costs one score per folder rather than per file. `~` and `.`
   are skipped, so `~/Projects/acme/deploy` works.
+- Extensions (decision 80): a word like `*.pdf` isn't matched fuzzily. It keeps the files whose folded name ends in
+  `.pdf` (any of them, when there are several), and apps, commands and settings pages never match it. With other words
+  they rank as usual; alone, the files come newest first. The index keeps each entry's modification time for that, 4
+  bytes in seconds since 2001, read by the scan (which `stat`s each entry: about 3 % slower) and kept fresh by the
+  FSEvents `lstat`.
 - Ranking: match score plus the history boost, then shorter name, then alphabetical. The boost is
   `min(48, 12 · log2(1 + frecency / 100))`: one open today is worth +12, a daily habit tops out at +48 (about three
   well-placed characters), so habits reorder close matches without burying a clearly better one.

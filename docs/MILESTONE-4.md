@@ -48,15 +48,17 @@ at launch on a worker (Release).
 
 ## 3. Search by extension
 
-Status: **todo**.
-- A query word like `*.pdf` (or `*.tar.gz`) keeps only files whose name ends with it, ignoring case; folders, apps,
-  commands and settings pages never match it (decision 80).
-- Alone, it lists those files most recently changed first, up to the 50 rows. With other words (`budget *.pdf`), they
-  search as usual among those files.
-- Newest first needs each file's modification date: kept in the index (filled by the scan, which today skips `stat`,
-  and kept fresh by FSEvents), or read for the matches only, on the file engine's queue. The step measures both and
-  keeps the cheaper that stays under 5 ms.
-- Tests: the query words, the filter and the order, on a temporary folder. A snapshot of `*.pdf`.
+Status: **in review**. 139 + 158 tests pass; each new one fails without its fix. The snapshots are unchanged.
+- A query word like `*.pdf` (or `*.tar.gz`) keeps only files whose name ends with it, ignoring case and accents;
+  folders, apps, commands and settings pages never match it (decision 80). `*.png *.jpg` takes either. The whole
+  extension, as in a terminal: `*.pd` finds nothing. In the clipboard it stays a word like any other.
+- Alone, those files come most recently changed first, up to the 50 rows. With other words (`budget *.pdf`), they
+  rank as usual among those files.
+- The dates live in the index: both ways were measured on the home folder (35,447 entries, Release). Reading them for
+  the matches took 0.2 ms for 201 PDFs and 3.6 ms for 4,665 `.ts` files, close to the 5 ms budget. Keeping them costs
+  4 bytes an entry (140 KB) and makes the scan about 3 % slower (126 → 130 ms), and the newest are then found in one
+  pass. The scan `stat`s each entry (no more `FTS_NOSTAT`), and a change FSEvents reports updates its time.
+- No snapshot of its own: the rows are ordinary file rows.
 
 ## 4. Paths with completion
 
