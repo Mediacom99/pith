@@ -65,7 +65,8 @@ A pinned item has `pin.fill` in quiet gray before its age. The selected row ends
 
 **Text** (plain and rich):
 - **Row:**
-  - **Icon:** the app it was copied from (the frontmost app at copy time), or `text.alignleft` when that's unknown.
+  - **Icon:** the app it was copied from (its source marker, else the frontmost app at copy time, even after a quick
+    ⌘Tab), or `text.alignleft` when that's unknown.
   - **Title:** the first line that isn't blank, with whitespace collapsed and cut at the end. While searching, it's
     the first line that matches instead.
   - **Detail:** "12 lines" when there's more than one.

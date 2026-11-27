@@ -78,6 +78,6 @@ struct HistoryStoreTests {
 
         let store = HistoryStore(file: file)
         await store.load()
-        #expect(Set(store.history.ids) == Set(kept))
+        #expect(await eventuallyTrue { Set(store.history.ids) == Set(kept) }, "checked after the load, on a worker")
     }
 }

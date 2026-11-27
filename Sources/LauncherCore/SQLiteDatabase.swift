@@ -25,6 +25,9 @@ final class SQLiteDatabase {
             throw Failure(description: "couldn't open \(path): \(message)")
         }
         self.handle = handle
+        // Another program writing to the history (decision 73) holds the lock for a moment: wait for it, on the
+        // store's queue, rather than lose the copy.
+        sqlite3_busy_timeout(handle, 2_000)
     }
 
     deinit {

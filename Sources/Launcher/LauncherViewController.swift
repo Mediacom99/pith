@@ -24,7 +24,7 @@ final class LauncherViewController: NSViewController {
         didSet {
             index.setAliases([clipboardAlias], for: .clipboard)
             boosts = history.history.boosts(for: index)
-            loadIcons()
+            loadIcons(recheck: true)
             refresh()
         }
     }
@@ -113,6 +113,8 @@ final class LauncherViewController: NSViewController {
         get { facts.read }
         set { facts.read = newValue }
     }
+    /// Opens a clip's link in an app (nil: its default). Tests swap it out, so they never open a browser.
+    lazy var openLink: (URL, _ app: URL?) -> Void = { [weak self] in self?.open($0, with: $1) }
     /// Quits or force-quits a running app. Tests swap it out, so they never quit a real one.
     var quitApp: (NSRunningApplication, _ force: Bool) -> Void = { app, force in
         if force { app.forceTerminate() } else { app.terminate() }
@@ -157,6 +159,11 @@ final class LauncherViewController: NSViewController {
     var searchGeneration = 0
     /// The search in flight, if any: tests await it.
     private(set) var pendingSearch: Task<Void, Never>?
+    /// ⏎ or ⌘K pressed while the files for the query were still being searched: run when they land, on the list the
+    /// query gives, not on the one before it.
+    var keyAfterSearch: PanelKey?
+    /// The query's files haven't landed yet: the list on screen is the previous query's.
+    private(set) var awaitingFiles = false
     /// The learned ranking, per index item. Recomputed on every show, since it fades with time.
     private var boosts: [Int32] = []
     /// What the list shows. Empty while the panel is just the search bar.
@@ -304,6 +311,8 @@ final class LauncherViewController: NSViewController {
         backStack = []
         confirming = false
         clipsChangedBehind = false
+        keepSelection = nil
+        keyAfterSearch = nil
         mode = new
         applyMode()
         setQuery("")
@@ -332,6 +341,8 @@ final class LauncherViewController: NSViewController {
         backStack = []
         confirming = false
         clipsChangedBehind = false
+        keepSelection = nil
+        keyAfterSearch = nil
         if mode != .launcher {
             mode = .launcher
             applyMode()
@@ -349,6 +360,7 @@ final class LauncherViewController: NSViewController {
     /// handling it started) is for the latency log.
     func refresh(keystroke: (event: TimeInterval, handled: TimeInterval)? = nil) {
         searchGeneration += 1
+        awaitingFiles = false
         let generation = searchGeneration
         let query = searchField.stringValue
         if let sublist {
@@ -367,11 +379,17 @@ final class LauncherViewController: NSViewController {
             update(rows, selecting: selection, keystroke: keystroke)
         } else {
             let apps = index.scoredSearch(query, limit: Self.resultLimit, boosts: boosts)
+            awaitingFiles = true
             pendingSearch = Task {
                 guard let hits = await files.search(query, limit: Self.resultLimit, generation: generation),
                     generation == searchGeneration
                 else { return }
+                awaitingFiles = false
                 update(merge(apps: apps, files: hits), selecting: 0, keystroke: keystroke)
+                if let key = keyAfterSearch {
+                    keyAfterSearch = nil
+                    _ = perform(key)
+                }
             }
         }
     }
@@ -492,13 +510,19 @@ final class LauncherViewController: NSViewController {
                 let old = tableRows.count
                 tableRows = rows
                 refreshVisibleRows()
+                // Removing the selected row changes the selection; the select below decides where it goes.
+                isSelecting = true
                 if rows.count > old {
                     tableView.insertRows(at: IndexSet(old..<rows.count), withAnimation: [])
                 } else if rows.count < old {
                     tableView.removeRows(at: IndexSet(rows.count..<old), withAnimation: [])
                 }
+                isSelecting = false
             }
             select(row: max(0, min(selection, rows.count - 1)), byUser: byUser)
+        } else {
+            // Nothing left to preview: Quick Look closes rather than keep a file the list no longer shows.
+            previewSelectionChanged(byUser: byUser)
         }
         // Only the search bar while there's nothing to list.
         let expanded = shouldExpand(rows)
@@ -521,10 +545,11 @@ final class LauncherViewController: NSViewController {
         updateTile()
     }
 
-    private func loadIcons() {
+    /// `recheck`: the apps changed on disk (the index was built again), so updated apps get their new icons.
+    private func loadIcons(recheck: Bool = false) {
         let indexed = index.items.lazy.compactMap(\.url)
         let running = running.order.lazy.compactMap { self.running.application($0)?.bundleURL }
-        icons.load(Set(indexed).union(running))
+        icons.load(Set(indexed).union(running), recheck: recheck)
     }
 
     private func runningAppsChanged(membership: Bool) {

@@ -13,11 +13,34 @@ final class ClipboardHistory {
     private var changes = 0
     /// Called after every change, so the panel can show it.
     var onChange: (() -> Void)?
-    /// How much history is kept (`[clipboard]`, decision 37). Nil until the config is read, so nothing is dropped by
-    /// limits it doesn't set; a change prunes at once.
+    /// How much history is kept (`[clipboard]`, decision 37), as the config says. Nil until the config is read, so
+    /// nothing is dropped by limits it doesn't set. A looser limit applies at once; a stricter one only once it has
+    /// stayed set for `stricterDelay`, so an editor that saves a half-typed number (3 on the way to 365) can't drop
+    /// history (decision 76).
     var retention: ClipboardStore.Retention? {
-        didSet { if retention != oldValue { Task { await prune() } } }
+        didSet {
+            guard retention != oldValue else { return }
+            stricterWait?.cancel()
+            stricterWait = nil
+            guard let retention, let current = applied, Self.isStricter(retention, than: current) else {
+                applied = retention
+                Task { await prune() }
+                return
+            }
+            stricterWait = Task { [stricterDelay] in
+                try? await Task.sleep(for: stricterDelay)
+                guard !Task.isCancelled else { return }
+                Log.app.info("A stricter clipboard limit stayed set: applying it")
+                applied = retention
+                await prune()
+            }
+        }
     }
+    /// The limits pruning applies: `retention`, or the one before it while a stricter one waits.
+    private(set) var applied: ClipboardStore.Retention?
+    /// How long a stricter limit waits before it applies. Tests shorten it.
+    var stricterDelay: Duration = .seconds(60)
+    private var stricterWait: Task<Void, Never>?
     private var isLoaded = false
     /// How many copies came in, or clips moved to the top: paste next starts again from the newest when it changes.
     private(set) var copies = 0
@@ -66,12 +89,17 @@ final class ClipboardHistory {
         }
     }
 
-    /// Drops what `retention` doesn't keep, oldest unpinned first. Waits for the load, so the index it updates is
+    /// Whether `new` keeps less than `old` by either limit: it would drop clips `old` keeps.
+    private static func isStricter(_ new: ClipboardStore.Retention, than old: ClipboardStore.Retention) -> Bool {
+        new.maxBytes < old.maxBytes || new.maxAge < old.maxAge
+    }
+
+    /// Drops what the applied limits don't keep, oldest unpinned first. Waits for the load, so the index it updates is
     /// the one on screen.
     func prune() async {
-        guard isLoaded, let retention else { return }
+        guard isLoaded, let applied else { return }
         do throws(ClipboardStore.Failure) {
-            let pruned = try await store.prune(retention, now: .now)
+            let pruned = try await store.prune(applied, now: .now)
             guard !pruned.isEmpty else { return }
             remove(pruned)
         } catch {
@@ -91,6 +119,7 @@ final class ClipboardHistory {
             onChange?()
         } catch {
             Log.app.error("Couldn't pin a clip: \(error.description, privacy: .public)")
+            onChange?()  // the list goes back to how it is, and lets go of the clip it kept selected
         }
     }
 
@@ -100,6 +129,7 @@ final class ClipboardHistory {
             remove([id])
         } catch {
             Log.app.error("Couldn't delete a clip: \(error.description, privacy: .public)")
+            onChange?()  // the list goes back to how it is, and lets go of the clip it kept selected
         }
     }
 

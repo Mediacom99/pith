@@ -11,6 +11,9 @@ public enum ClipReading {
     ]
     /// The bundle id of the app that wrote the copy, when it says so (nspasteboard.org).
     public static let sourceMarker = "org.nspasteboard.source"
+    /// Marks what Pith puts back on the clipboard (a paste, Copy to Clipboard): with no source marker, its source is
+    /// unknown, not the app in front, which is the one it's pasted into.
+    public static let pithMarker = "dev.edoardo.pith.clip"
 
     /// The types read and kept from each pasteboard item: what apps paste with. Other types aren't read at all:
     /// reading one makes the app that copied render it, and apps like spreadsheets offer many large ones.
@@ -42,7 +45,9 @@ public enum ClipReading {
             item.first { $0.type == fileURL }.flatMap { URL(dataRepresentation: $0.data, relativeTo: nil) }
         }.filter(\.isFileURL)
         if !files.isEmpty {
-            return ClipContent(kind: .files, text: files.map(\.path).joined(separator: "\n"), items: withoutImages)
+            // A folder's path keeps its "/", so the panel knows it's a folder without asking the disk.
+            let paths = files.map { $0.path(percentEncoded: false) }
+            return ClipContent(kind: .files, text: paths.joined(separator: "\n"), items: withoutImages)
         }
 
         let text = Self.text(in: all)
@@ -95,11 +100,26 @@ public enum ClipReading {
         return CGImageSourceGetType(source) as String? == "public.png" && CGImageSourceGetCount(source) > 0
     }
 
-    /// An image in any format ImageIO reads, as PNG.
+    /// An image in any format ImageIO reads, as PNG: upright, since a photo's EXIF orientation turns into its pixels
+    /// (a PNG pasted elsewhere wouldn't carry it), and at its resolution, so a 144 dpi TIFF pastes at its size.
     static func png(_ data: Data) -> Data? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-            let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+            let width = properties[kCGImagePropertyPixelWidth] as? Int,
+            let height = properties[kCGImagePropertyPixelHeight] as? Int
         else { return nil }
-        return ImageThumbnails.png(image)
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(width, height),
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        var resolution: [CFString: Any] = [:]
+        if let x = properties[kCGImagePropertyDPIWidth], let y = properties[kCGImagePropertyDPIHeight] {
+            // Orientations 5–8 turn the image a quarter, and its resolution with it.
+            let turned = (properties[kCGImagePropertyOrientation] as? UInt32 ?? 1) >= 5
+            resolution = [kCGImagePropertyDPIWidth: turned ? y : x, kCGImagePropertyDPIHeight: turned ? x : y]
+        }
+        return ImageThumbnails.png(image, properties: resolution)
     }
 }

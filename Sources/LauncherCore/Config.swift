@@ -25,7 +25,8 @@ public struct Config: Sendable, Equatable {
     public var clipboardAlias = "c"
     public var emptyState = EmptyState.recent
     /// Applies to the copy installed in an Applications folder (decision 14).
-    public var launchAtLogin = true
+    /// Nil when it isn't known (at launch, with config.toml or this setting wrong): the login item is left alone.
+    public var launchAtLogin: Bool? = true
     /// Folders whose files and folders are searched (decision 22). `~` is the home folder.
     public var folders = ["~"]
     /// Names, globs and paths to skip (see `IgnoreRules`).
@@ -59,11 +60,13 @@ public struct Config: Sendable, Equatable {
     static let protectedFolders = ["Desktop", "Documents", "Downloads", "Library/Mobile Documents/com~apple~CloudDocs"]
 
     /// What a wrong setting falls back to at launch, when Pith has no settings yet: its default, except the
-    /// clipboard's limits, which drop nothing until the file sets them right (decision 59).
+    /// clipboard's limits, which drop nothing until the file sets them right, and launching at login, which isn't
+    /// changed until it does (decision 59).
     static var atLaunch: Config {
         var config = Config()
         config.clipboardMaxSizeGB = nil
         config.clipboardMaxAgeDays = nil
+        config.launchAtLogin = nil
         return config
     }
 

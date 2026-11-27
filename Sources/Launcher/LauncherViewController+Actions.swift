@@ -225,6 +225,8 @@ extension LauncherViewController {
             let choices = await runInBackground(qos: .userInitiated) { AppResolver.apps(toOpen: url, among: apps) }
             // Only if the panel is still where Open With… was chosen: not closed, left or already in it.
             guard sublist == from.0, backStack.count == from.1 else { return }
+            // Apps outside the indexed folders (Archive Utility, one in Downloads) have no icon yet.
+            icons.add(apps: choices.compactMap(\.url))
             enter(.openWith(file: item, apps: choices))
         }
     }

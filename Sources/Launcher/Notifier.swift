@@ -69,7 +69,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         content.body = result.body
         Task {
             guard await Self.allowed() else { return }
-            await Self.post(content)
+            // One at a time: "Pith 0.4 is ready" makes way for "Pith updated to 0.4", and failures don't pile up.
+            await Self.post(content, id: "update")
         }
     }
 
@@ -77,9 +78,10 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert])) ?? false
     }
 
-    private static func post(_ content: UNNotificationContent) async {
+    /// `id`: a notification posted with the same one replaces it.
+    private static func post(_ content: UNNotificationContent, id: String = UUID().uuidString) async {
         try? await UNUserNotificationCenter.current().add(
-            UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+            UNNotificationRequest(identifier: id, content: content, trigger: nil))
     }
 
     // The center calls these on the main thread.

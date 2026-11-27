@@ -47,7 +47,7 @@ enum ClipText {
             return ("Image", false)
         case .files:
             // The count from the whole list: a long one is cut in memory.
-            let name = (paths(of: clip).first.map { ($0 as NSString).lastPathComponent }) ?? ""
+            let name = (firstPath(of: clip) as NSString).lastPathComponent
             return (clip.lines > 1 ? "\(name) and \((clip.lines - 1).formatted()) more" : name, false)
         }
     }
@@ -62,15 +62,31 @@ enum ClipText {
         }
     }
 
-    /// The files' folder from the home folder as `~`, or how many folders they're in.
+    /// The files' folder from the home folder as `~`, or how many folders they're in. One pass over the paths in
+    /// memory, without a string per path: a row draws it, and a copy can name thousands of files.
     static func folders(of clip: Clip) -> String {
-        let folders = Set(paths(of: clip).map { ($0 as NSString).deletingLastPathComponent })
-        guard folders.count == 1, let folder = folders.first else { return "\(folders.count) folders" }
-        return (folder as NSString).abbreviatingWithTildeInPath
+        var folders: Set<Substring> = []
+        var last: Substring?
+        let lines = clip.text.split(separator: "\n")
+        // A long list is cut in memory: its last path may be cut short.
+        for path in lines.prefix(clip.text.utf8.count < clip.textBytes ? lines.count - 1 : lines.count) {
+            // A folder's path ends in "/" (ClipReading), which isn't where its parent ends.
+            let trimmed = path.count > 1 && path.hasSuffix("/") ? path.dropLast() : path
+            let parent = trimmed.lastIndex(of: "/").map { trimmed[..<$0] } ?? ""
+            if parent != last { folders.insert(parent) }
+            last = parent
+        }
+        guard folders.count == 1, let folder = folders.first else { return "\(folders.count.formatted()) folders" }
+        return (String(folder.isEmpty ? "/" : folder) as NSString).abbreviatingWithTildeInPath
+    }
+
+    /// The first file's path, without splitting the list: what a row and Quick Look show of it.
+    nonisolated static func firstPath(of clip: Clip) -> String {
+        String(clip.text.prefix { $0 != "\n" })
     }
 
     /// The files' paths in memory: all of them, or the first 2,500 or so of a longer list, without one cut short.
-    static func paths(of clip: Clip) -> [String] {
+    nonisolated static func paths(of clip: Clip) -> [String] {
         var paths = clip.text.split(separator: "\n").map(String.init)
         if clip.text.utf8.count < clip.textBytes, !paths.isEmpty { paths.removeLast() }
         return paths
@@ -79,16 +95,28 @@ enum ClipText {
     /// What the tile previews of a text: its first lines, as they'll paste, and one more when there is one, so the
     /// preview's last line ends in "…".
     static func preview(of clip: Clip) -> String {
+        // From the first line that isn't blank: blank lines first (a selection's leading space) would fill it.
+        let text = clip.text
+        var start = text.startIndex
+        var lineStart = text.startIndex
+        for index in text.indices {
+            if text[index].isNewline {
+                lineStart = text.index(after: index)
+            } else if !text[index].isWhitespace {
+                start = lineStart
+                break
+            }
+        }
         var lines = 0
-        var end = clip.text.endIndex
-        for index in clip.text.indices where clip.text[index].isNewline {
+        var end = text.endIndex
+        for index in text[start...].indices where text[index].isNewline {
             lines += 1
             if lines == previewLines + 1 {
                 end = index
                 break
             }
         }
-        return String(clip.text[..<end].prefix(previewCharacters)).trimmingCharacters(in: .newlines)
+        return String(text[start..<end].prefix(previewCharacters)).trimmingCharacters(in: .newlines)
     }
 
     /// When a clip was copied, at the end of its row: "now", "5 min", "14:05", "yesterday", "Mon", "Nov 12".
@@ -101,7 +129,7 @@ enum ClipText {
         let days = DateWords.days(from: date, to: now, in: calendar)
         if days == 1 { return "yesterday" }
         if (2..<7).contains(days) { return DateWords.shortWeekday.string(from: date) }
-        return DateWords.monthDay.string(from: date)
+        return DateWords.date(date, now: now, in: calendar)
     }
 
     /// On the tile: "copied today at 14:05", "copied yesterday", "copied Tuesday", "copied Nov 12".

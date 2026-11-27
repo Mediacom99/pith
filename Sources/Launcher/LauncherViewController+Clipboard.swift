@@ -19,6 +19,7 @@ extension LauncherViewController {
     func clipboardShown() {
         onShowClipboard()
         facts.markStale()
+        linkApps.markStale()
         if let clipboard { Task { await clipboard.reloadIfChangedElsewhere() } }
     }
 
@@ -84,15 +85,14 @@ extension LauncherViewController {
                 kind: when.prefix(1).uppercased() + when.dropFirst(), primary: primary, secondary: actions,
                 preview: .image(image, size: ClipText.previewSize(of: clip)))
         case .files:
-            let paths = ClipText.paths(of: clip)
-            let known = paths.compactMap(facts.fact)
-            let gone = paths.count == 1 && known.first?.exists == false
-            let bytes = known.count == paths.count ? known.compactMap(\.bytes).reduce(0, +) : nil
-            let first = paths.first.map { URL(filePath: $0) }
-            let kind =
-                paths.count > 1 ? "\(paths.count) files" : first.flatMap { icons.typeName(forFile: $0) } ?? ""
+            // Counted from the whole list, which memory may have cut; the size only when every file's is known.
+            let summary = facts.summary(of: clip)
+            let gone = clip.lines == 1 && summary?.firstExists == false
+            let first = URL(filePath: ClipText.firstPath(of: clip))
+            let kind = clip.lines > 1 ? "\(clip.lines.formatted()) files" : icons.typeName(forFile: first) ?? ""
+            let bytes = summary?.bytes
             return TileView.Content(
-                icon: first.flatMap { icons.icon(forFile: $0, size: .tile) }, name: ClipText.title(of: clip).text,
+                icon: icons.icon(forFile: first, size: .tile), name: ClipText.title(of: clip).text,
                 place: gone ? "No longer in \(ClipText.folders(of: clip))" : ClipText.folders(of: clip),
                 kind: ClipText.about(
                     [kind, bytes.map(ClipText.bytes) ?? ""], copied: clip.copied, from: source, now: now),
@@ -161,8 +161,7 @@ extension LauncherViewController {
         case .copy:
             deliverClip(clip, .copy)
         case .pastePlainText: deliverClip(clip, canPaste ? .pastePlainText : .copyPlainText)
-        case .openLink:
-            if let url = URL(string: clip.text) { open(url, with: linkApps.app(for: clip.text)?.url) }
+        case .openLink: open(link: clip)
         case .reveal: reveal(clip)
         case .save: save(clip)
         case .pin, .unpin, .delete: break
@@ -186,6 +185,24 @@ extension LauncherViewController {
     func deliver(_ clip: Clip, _ delivery: ClipDelivery) {
         guard let clipboard else { return }
         paster.deliver(clip, delivery, from: clipboard)
+    }
+
+    /// Opens a link in its app. One longer than what memory keeps of it is read whole from the store first.
+    private func open(link clip: Clip) {
+        let app = linkApps.app(for: clip.text)?.url
+        guard clip.text.utf8.count < clip.textBytes, let clipboard else {
+            if let url = URL(string: clip.text) { openLink(url, app) }
+            return
+        }
+        Task {
+            do throws(ClipboardStore.Failure) {
+                let link = try await clipboard.store.text(of: clip.id)
+                if let url = URL(string: link) { openLink(url, app) }
+            } catch {
+                if error.isGone { clipboard.forget(clip.id) }
+                failed("Couldn't open the link", nil, reason: error.description)
+            }
+        }
     }
 
     /// Shows the clip's files in Finder, or says they're gone.

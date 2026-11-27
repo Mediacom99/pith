@@ -58,7 +58,7 @@ final class TileView: NSView {
 
     let icon = IconView()
     private let nameLabel = TileView.label(font: .systemFont(ofSize: 19, weight: .semibold), color: .labelColor)
-    private let placeLabel = TileView.label(font: placeFont, color: Palette.quiet)
+    let placeLabel = TileView.label(font: placeFont, color: Palette.quiet)
     /// The place label's height on one line, as its cell measures it.
     private lazy var placeLineHeight = placeLabel.frame.height
     private let kindLabel = TileView.label(font: .systemFont(ofSize: 12), color: Palette.quiet)
@@ -207,7 +207,7 @@ final class TileView: NSView {
             return ceil(
                 NSAttributedString(string: string, attributes: [.font: Self.placeFont, .paragraphStyle: style])
                     .boundingRect(
-                        with: NSSize(width: width, height: .greatestFiniteMagnitude),
+                        with: NSSize(width: width - 2 * Self.textInset, height: .greatestFiniteMagnitude),
                         options: [.usesLineFragmentOrigin]
                     ).height)
         }
@@ -226,6 +226,10 @@ final class TileView: NSView {
         placeLabel.stringValue = fitted
         placeLabel.frame.size.height = min(height(fitted), limit)
     }
+
+    /// How far in from each side a label draws its text (its text container's line fragment padding): what fits in
+    /// a label of width w is what fits in w − 2 × this.
+    static let textInset: CGFloat = 2
 
     /// `text` with its middle replaced by "…", keeping `count` characters.
     private static func middle(of text: String, keeping count: Int) -> String {
