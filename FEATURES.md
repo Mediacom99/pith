@@ -47,7 +47,8 @@ field (`⌘X`, `⌘C`, `⌘V`, `⌘A`, `⌘Z`, `⇧⌘Z`) are fixed, and no hotk
   opening anything (⌃⌥V, §5.4, decision 64). `""` turns the last two off.
 - **Inside the panel** (`[keys]`): `up`, `down`, `open` (⏎: the primary action on the selected row), `actions` (⌘K),
   `back` (⎋: back one level, or close), `preview` (Quick Look, §4.2), `run_actions` (in an actions list, the 1st to
-  7th action, decision 43) and `to_launcher` (⌫: from the clipboard back to the launcher, §5.3).
+  7th action, decision 43), `to_launcher` (⌫: from the clipboard back to the launcher, §5.3) and `complete` (Tab: in a
+  path, fills in the selected name, §4.6).
 
 A key without ⌘, ⌥ or ⌃ that types (a letter, Space, ⌫) works only while the search field is empty.
 
@@ -56,8 +57,11 @@ A key without ⌘, ⌥ or ⌃ that types (a letter, Space, ⌫) works only while
 ## 4. Launcher (root search)
 
 - **Empty state:** configurable (`[launcher] empty_state`): `recent` (default; what you opened last, newest first), `running` (open apps, most recently used first, then all other apps alphabetically) or `none` (just the search field).
-- **Sources:** applications and files/folders from configured folders.
+- **Sources:** applications, System Settings' pages (§4.5), and files/folders from configured folders.
 - **Matching:** fuzzy, word by word: every word must match, in any order. For files, earlier words may also match a folder in the path, so `acme/deploy` or `acme deploy` find `deploy.sh` under `Acme`.
+- **By extension:** a word like `*.pdf` keeps only files with that extension. Alone, it lists them most recently
+  changed first; `budget *.pdf` searches among them (decision 80).
+- **Paths:** a query that starts with `/` or `~/` completes like a terminal (§4.6).
 - **Ranking:** match quality, boosted by frequency + recency of what you pick. Learns over time.
 - **Calculator results** appear inline as the top row when the query parses as an expression (§6).
 - **Prefix `c `** switches to clipboard mode, and the **Clipboard History** command (first for `c`, decision 42) opens it.
@@ -108,6 +112,21 @@ A key without ⌘, ⌥ or ⌃ that types (a letter, Space, ⌫) works only while
 - Output next to the source as `name.zip` (`name 2.zip` if it exists).
 - Runs in the background; the panel closes at once. A notification on completion.
 - If `ditto` proves too slow on large folders, evaluate alternatives later.
+
+### 4.5 System Settings
+
+- System Settings' main pages (Wi‑Fi, Bluetooth, Displays, Sound, Storage, Login Items…) are results, with their
+  icon, their name in the Mac's language and "System Settings" under it, read from macOS's own list so they follow
+  its version (decision 79). Pages within pages (Privacy & Security → Camera) aren't listed: macOS has no public list
+  of them.
+- `Enter` opens the page. `[launcher] system_settings = false` leaves them out.
+
+### 4.6 Paths
+
+- A query that starts with `/` or `~/` lists what's in the folder typed so far, narrowed to the names that start with
+  the rest, ignoring case (decision 81). Anywhere on the disk; hidden names once you type the dot.
+- `Tab` fills in the selected name; a folder gets its `/`, and its contents show. `Enter`, `⌘K` and `⌘Y` act as on
+  any file or folder.
 
 ---
 
@@ -173,7 +192,7 @@ Typed directly in the launcher; result shows as the top row. `Enter` **copies th
 Since there is no menu bar icon, these are searchable commands:
 
 - **Clipboard History** — opens the clipboard in the panel; `c` alone lists it first (decision 42)
-- **Open config** — opens `config.toml` in the default editor
+- **Open config** — opens `config.toml` in the app `[open_with]` sets for `toml`, else the default editor
 - **Reload config** (also automatic on save)
 - **Pause / resume clipboard recording**: only the one that applies is listed, and a pause lasts through a relaunch
   (decisions 44, 45)
@@ -193,8 +212,9 @@ keeps them all (decision 59).
 Every setting, its default and what it does is in the README's [Configuration](README.md#configuration), and in
 the commented template Pith writes on its first launch (`Config.template`). The tables: `[hotkeys]`, `[keys]` (§3,
 decision 55), `[launcher]` (the empty state, `clipboard_alias`, launch at login, and the file index's `folders`,
-`ignore` and `max_depth`, decision 22), `[clipboard]` (the limits, §5.2), `[actions]` (the terminal app), `[open_with]`
-(file extension or type → app, decision 15) and `[open_links]` (URL scheme → app, decision 16). App names resolve by
+`ignore` and `max_depth`, decision 22, and `system_settings`, §4.5), `[clipboard]` (the limits, §5.2), `[actions]` (the
+terminal app), `[open_with]` (file extension or type → app, decision 15, or an app → a list of them, decision 82) and
+`[open_links]` (URL scheme → app, decision 16). App names resolve by
 name, bundle id or path; macOS's defaults are untouched. `[calculator]` comes with §6.
 
 ---

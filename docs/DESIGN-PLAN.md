@@ -5,7 +5,8 @@ Goal: a deliberate look for every surface in `FEATURES.md`, done through the imp
 - **Built, in the design:** the search bar and the tile; the app, file, folder and command rows; the empty states; the
   ⌘K actions and Open With…; config problems; the clipboard (§5), from its brief.
 - **Still to build:** the calculator row (§6) and the clipboard's text editor (§5, decision 36). Each gets a design
-  brief that its milestone builds from.
+  brief that its milestone builds from. Milestone 4's additions (System Settings pages, `*.pdf`, paths) reuse the
+  launcher's rows and tile, and its step 5 reviews them.
 - **What doesn't change:** the speed targets (one frame from ⌘P, under 5 ms per keystroke), and an opaque panel with
   no animation and no blur.
 
