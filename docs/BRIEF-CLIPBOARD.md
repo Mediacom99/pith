@@ -32,9 +32,12 @@ Stage carries over unchanged: the tile shows what ⏎ acts on, the list is compa
 - **The focal moment:** what ⏎ will paste, large on the tile, with "Paste ↩" and "Actions ⌘K" beside it.
 - **Marking the mode:** the magnifier becomes `doc.on.clipboard` (same size, quiet gray), and the placeholder reads
   "Search clipboard".
-- **One addition to the type:** SF Mono 12 pt, only for the text preview.
+- **One addition to the type:** SF Mono 12 pt, only for a plain text's preview.
   - It shows exactly what will be pasted: straight versus curly quotes, tabs, indentation.
-  - Everything else stays SF Pro.
+  - Rich text previews in SF Pro 13 pt, since it pastes with its own fonts. Everything else stays SF Pro.
+- **Every tile reads the same way** (step 9): what the clip is hangs from the top, keys included, and the line about
+  when and where it was copied runs along the bottom, from the tile's left edge. It stays put as the selection goes
+  from one kind to another; only an image, which fills the height, keeps it beside it.
 
 ## 4. Scope and boundaries
 
@@ -71,8 +74,8 @@ A pinned item has `pin.fill` in quiet gray before its age. The selected row ends
     the first line that matches instead.
   - **Detail:** "12 lines" when there's more than one.
 - **Tile:**
-  - **Preview:** the text itself, from the tile's top-left, in SF Mono 12 pt, label color. Up to 8 lines of about
-    70 characters, wrapped, with indentation kept; anything longer ends in "…".
+  - **Preview:** the text itself, from the tile's top-left, in SF Mono 12 pt (SF Pro 13 pt for rich text), label
+    color. Up to 8 lines of about 70 characters, wrapped, with indentation kept; anything longer ends in "…".
   - **Under it:** one line in Detail, "Text · 12 lines · copied today at 14:05 from Terminal". Rich text says "Rich
     text", and a long text adds its size ("1.2 MB").
   - **Keys:** at the top right, level with the first line.
@@ -81,11 +84,11 @@ A pinned item has `pin.fill` in quiet gray before its age. The selected row ends
 **Links:**
 - **Row:** the source app's icon (or `link`), then the URL without its scheme, cut in the middle
   (`github.com/acme/…/pull/42`).
-- **Tile:** the launcher's tile layout.
+- **Tile:** the launcher's tile layout, from the top.
   - a 48 pt icon of the source app;
   - the host as the name ("github.com");
-  - the full URL in Detail, wrapped over up to 3 lines and cut in the middle beyond that;
-  - the line "Link · copied today at 14:05 from Slack".
+  - the full URL in Detail, wrapped over up to 5 lines and cut in the middle beyond that;
+  - along the bottom, "Link · copied today at 14:05 from Slack".
 - **Opening it:** ⌘K → "Open in Safari" names the app that will open it (`[open_links]`, else the default browser),
   as "Open in Preview" does for files.
 
@@ -102,9 +105,11 @@ A pinned item has `pin.fill` in quiet gray before its age. The selected row ends
 
 **Files** (copied in Finder):
 - **Row:** the file's icon, its name cut in the middle, and its folder, exactly like a file row in the launcher.
-- **Tile:** the launcher's file tile, with the line "PDF document · 2.1 MB · copied today at 14:05 from Finder".
-- **Several files:** "Quarterly_Budget_Review.pdf and 2 more", with the first file's icon, their folder (or "3
-  folders"), and "3 files · 4.2 MB".
+- **Tile:** the launcher's file tile, from the top, with "PDF document · 2.1 MB · copied today at 14:05 from Finder"
+  along the bottom.
+- **Several files:** the row reads "Quarterly_Budget_Review.pdf and 2 more". The tile shows the first file's icon and
+  name, their folder (or "3 folders"), then the other files' names one per line, up to 5 lines, the last "and 12 more"
+  when they don't all fit; along the bottom, "3 files · 4.2 MB · copied …".
 - **A file that's gone:** its folder line reads "No longer in ~/Documents/Acme".
 
 **Quick Look:** ⌘Y, or Space with an empty field, previews an image or a file at full size, as in the launcher
@@ -125,7 +130,9 @@ A pinned item has `pin.fill` in quiet gray before its age. The selected row ends
   - the tile shows `doc.on.clipboard` at 48 pt in quiet gray;
   - "Nothing copied yet";
   - "Copy text, a link, an image or a file and it shows up here";
-  - no keys, no rows.
+  - along the bottom, the keys that will act on a clip, as configured: "↩ pastes the one you pick · ⌘K shows its
+    actions · ⌃⌥V pastes the last one, then the one before" (a key that's off isn't named);
+  - no keys on the right and no rows: there's nothing to act on yet.
 - **Recording paused:**
   - the first row reads "Recording is paused", with `pause.circle` in quiet gray, and ⏎ on it resumes;
   - quiet, not orange: it's a state you chose, not a problem.

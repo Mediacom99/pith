@@ -83,6 +83,14 @@ typography:
     fontFamily: "SF Pro, -apple-system, system-ui"
     fontSize: "11pt"
     fontWeight: 500
+  preview-plain:
+    fontFamily: "SF Mono, ui-monospace"
+    fontSize: "12pt"
+    fontWeight: 400
+  preview-rich:
+    fontFamily: "SF Pro, -apple-system, system-ui"
+    fontSize: "13pt"
+    fontWeight: 400
   web-display:
     fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
     fontSize: "clamp(2.5rem, 1.15rem + 4.4vw, 4.5rem)"
@@ -140,6 +148,8 @@ rounded:
   tile: "10pt"
   row: "7pt"
   key-cap: "5pt"
+  preview-image: "6pt"
+  thumbnail: "4pt"
   web-surface: "14px"
   web-button: "10px"
   web-key-cap: "7px"
@@ -150,6 +160,7 @@ spacing:
   tile-margin: "8pt"
   key-words-gap: "8pt"
   key-line-gap: "8pt"
+  preview-gap: "8pt"
   grid-inner: "10pt"
   tile-icon-gap: "14pt"
   tile-padding: "16pt"
@@ -177,6 +188,13 @@ components:
     rounded: "{rounded.tile}"
     padding: "0 16pt"
     height: "92pt"
+  clipboard-tile:
+    backgroundColor: "{colors.tile-fill-light}"
+    textColor: "{colors.label-light}"
+    typography: "{typography.preview-plain}"
+    rounded: "{rounded.tile}"
+    padding: "16pt"
+    height: "188pt"
   row:
     textColor: "{colors.label-light}"
     typography: "{typography.row-title}"
@@ -258,12 +276,14 @@ components:
 
 The panel answers one question before you press ⏎: what will it act on? A tile under the search bar shows the selected item large, with its icon, name, folder and kind, and the keys for ⏎ and ⌘K on its right. The list under it is compact. In ⌘K and Open With… the item stays on the tile while the list becomes its actions or apps, and the tile's first key names the selected one.
 
-Everything else is quiet. The panel is the system window color, the tile and the selection are low-opacity fills of the label color, and nothing is filled with the accent color. Color appears only where it means something: red for Force Quit waiting for its second ⏎, orange for a config problem. Type is SF at fixed point sizes, icons are the system's own app and file icons and SF Symbols. The panel never animates, blurs or goes translucent; it appears in one frame and stays still.
+Everything else is quiet. The panel is the system window color, the tile and the selection are low-opacity fills of the label color, and nothing is filled with the accent color. Color appears only where it means something: red for a second ⏎ that destroys (Force Quit, deleting a clip, clearing the clipboard), orange for a setup problem you fix with ⏎. Type is SF at fixed point sizes, icons are the system's own app and file icons and SF Symbols.
+
+In the clipboard (⌘⇧V) the same panel becomes a history: the tile grows to 188 pt and becomes the preview of what ⏎ will paste, and five rows fit under it. The panel never animates, blurs or goes translucent; it appears in one frame and stays still.
 
 Light and dark follow the system. Each custom color is a light/dark pair in `Sources/Launcher/Palette.swift`; every other color is an AppKit semantic color (`windowBackgroundColor`, `labelColor`, `placeholderTextColor`, the separator).
 
 **Key Characteristics:**
-- A 92 pt tile that always shows what ⏎ acts on, with its keys spelled out.
+- A 92 pt tile that always shows what ⏎ acts on, with its keys spelled out; 188 pt in the clipboard, where it previews the clip.
 - Compact 32 pt rows on one line: icon, name, folder.
 - Quiet fills (3.5–4.5 % tile, 7–10 % selection) instead of an accent bar.
 - The selected row ends in ↩, so the selection never relies on its fill.
@@ -290,20 +310,20 @@ The panel has no brand or accent color. The role of "primary" is held by the lab
 - **Separator**: the system separator, 1 pt, full width, under the search bar.
 
 ### Meaning
-- **Danger Red** (`danger-light` #D70015, `danger-dark` #FF6961): Force Quit waiting for its second ⏎: its row's text, symbol and ↩, and the tile's first key. 4.7:1 light and 4.9:1 dark on its fill.
+- **Danger Red** (`danger-light` #D70015, `danger-dark` #FF6961): a second ⏎ that destroys, waiting: Force Quit, Delete on a pinned clip or by its shortcut, Clear Clipboard History. Its row's text, symbol and ↩, and the tile's first key. 4.7:1 light and 4.9:1 dark on its fill.
 - **Danger Fill** (`danger-fill-light`, `danger-fill-dark`): the system red, faint, as that row's selection.
-- **Warning Orange** (`warning-light` #C93400, `warning-dark` #FF9F0A): a config problem's symbol, in the row and on the tile. Darker than the system orange in light mode, which is 2.2:1 on white.
+- **Warning Orange** (`warning-light` #C93400, `warning-dark` #FF9F0A): the symbol of a setup problem you fix with ⏎, in the row and on the tile: a config problem, paste needing Accessibility access, macOS denying Pith the clipboard. Darker than the system orange in light mode, which is 2.2:1 on white. Recording paused is a state you chose, not a problem: quiet gray.
 
 ### Named Rules
 **The No-Accent Rule.** Nothing in the panel is filled or tinted with the accent color or any brand hue. The selection is a gray fill plus ↩.
 
-**The Meaning-Only Rule.** Red and orange appear only for Force Quit's confirmation and config problems. A new hue needs a new meaning first.
+**The Meaning-Only Rule.** Red appears only for a second ⏎ that destroys, and orange only for a setup problem you fix with ⏎. A new hue needs a new meaning first.
 
 **The Fill-Is-Not-Enough Rule.** A low-contrast fill never carries state alone: the selected row ends in ↩ and the tile names the item.
 
 ## Typography
 
-**Font:** SF Pro, the system font (`NSFont.systemFont`), at fixed point sizes. There is no second family and no monospace.
+**Font:** SF Pro, the system font (`NSFont.systemFont`), at fixed point sizes. One addition, in the clipboard only: SF Mono for a plain text's preview, where it shows exactly what will paste (straight or curly quotes, tabs, indentation). Rich text previews in SF Pro, since it pastes with its own fonts.
 
 **Character:** One family at a few sizes; hierarchy comes from size, semibold weight and the quiet gray, never from case or tracking.
 
@@ -317,6 +337,8 @@ The panel has no brand or accent color. The role of "primary" is held by the lab
 - **Detail** (400, 12 pt, quiet gray): the folder after a row's name; the tile's folder and kind lines.
 - **Tag** (400, 11 pt, quiet gray): "running" at the end of a running app's row.
 - **Key Cap** (500, 11 pt, Key): the glyph inside a key cap (↩, ⌘, K, esc). Escape is "esc", as on the keyboard: ⎋ at 11 pt read as an undo arrow.
+- **Preview Plain** (SF Mono 400, 12 pt, label color): a plain text's first 8 lines on the clipboard's tile, wrapped, indentation kept.
+- **Preview Rich** (SF Pro 400, 13 pt, label color): a rich text's first 8 lines there.
 
 ### Named Rules
 **The 11 pt Floor Rule.** No text is smaller than 11 pt.
@@ -334,6 +356,8 @@ It opens on the screen under the pointer: the expanded panel would be centered t
 **One grid.** Row icons (20 pt) start 18 pt from the panel's side, 10 pt inside the selection. The magnifier (a 16 pt symbol in a 20 pt box) is centered on that column. Names and the query start at 48 pt, 10 pt after the icons, and stop 18 pt from the right side, 10 pt inside the selection.
 
 **The tile.** Inset 8 pt from the panel's sides, the same inset as the selection, so their edges line up. Inside: 16 pt padding, a 48 pt icon, 14 pt to the text block, and at least 16 pt between the text and the keys. Its lines (name, folder, kind) are stacked 1 pt apart and centered on its height, as are the icon and the keys.
+
+**The clipboard's tile.** 188 pt, the 92 pt tile and three rows, so five whole rows fit under it and the panel keeps 423 pt. Every kind reads the same way, so nothing moves as the selection goes from one kind to another: what the clip is hangs from the top, 16 pt in, keys included; the line about when and where it was copied runs along the bottom, 16 pt from the tile's left and bottom edges, under the icon, 8 pt below what's above it. An image fills the height, so its line stays beside it.
 
 **Rows.** Name, then 6 pt, then the folder. A folder takes at most 38 % of the room when the name is too long for both. From the right: ↩ on the selected row, then 12 pt, then "running".
 
@@ -368,17 +392,28 @@ What ⏎ acts on, always visible when there are results.
 - **Config problem:** the orange triangle, "Config problem, line 3" as the name, "Unknown setting "theme"" as the folder line, `~/.config/pith/config.toml` as the kind line, and "Open Config" as the only key.
 - **⌘K and Open With…:** the item stays; the first key becomes the selected action ("Reveal in Finder") or "Open in Preview", and the second becomes "Back esc".
 
+### Clipboard tile
+The tile in the clipboard: 188 pt, the preview of what ⏎ will paste ("Paste", or "Copy" without Accessibility access). The line about the clip ("Text · 10 lines · copied today at 14:28 from Terminal") is always Detail, along the bottom.
+- **Text:** its first 8 lines from the tile's top-left, in Preview Plain (Preview Rich for rich text), the 8th ending in "…" when there's more. Text that is only whitespace reads "Spaces and line breaks" in quiet gray.
+- **Link:** the source app's icon, the host as the name ("github.com"), the full URL in Detail wrapped over up to 5 lines and cut in the middle past them.
+- **Files:** the first file's icon and name, its folder (or "3 folders"), then the other files' names one per line in Detail, up to 5 lines, the last "and 12 more" when they don't fit.
+- **Image:** fitted into a box up to 320 × 156 pt, never past its own pixels, 6 pt corners, over a checkerboard of 6 pt squares of the tile and selection fills for transparency; "Image", its size and when it was copied beside it.
+- **Nothing copied yet:** `doc.on.clipboard` at 48 pt, "Copy text, a link, an image or a file and it shows up here", and along the bottom the keys that will act on a clip, as configured: "↩ pastes the one you pick · ⌘K shows its actions · ⌃⌥V pastes the last one, then the one before". No keys on the right: there's nothing to act on yet.
+- **Notices:** "Recording is paused" (`pause.circle`, quiet gray, "Resume"), "Paste needs Accessibility access" and "Pith can't read the clipboard" (the orange triangle, "Open Settings"), with where the setting is along the bottom.
+
 ### Keys
 - **Layout:** one key per line on the tile's right, right-aligned, 8 pt between lines: words, 8 pt, then key caps 4 pt apart.
 - **Key caps:** Selection Fill, 5 pt corners, 20 pt high and at least 20 pt wide (5 pt padding each side), the glyph in Key Cap type and the Key color.
-- **First key:** what ⏎ does, in Key Primary, label color; red in Force Quit's confirmation.
-- **Second key:** "Actions ⌘ K" for items, "Back esc" one level down, "Cancel esc" in Force Quit's confirmation; Key Secondary in quiet gray. Commands and problems have no second key.
+- **First key:** what ⏎ does, in Key Primary, label color; red while a second ⏎ that destroys is waiting (Force Quit, Delete, Clear).
+- **Second key:** "Actions ⌘ K" for items, "Back esc" one level down, "Cancel esc" while a second ⏎ is waiting; Key Secondary in quiet gray. Commands and problems have no second key.
 
 ### Rows
 - **Style:** 32 pt, one line: a 20 pt icon, the name (Row Title), the folder (Detail, quiet gray). A running app ends in "running" (Tag).
 - **Selected:** a Selection Fill rounded rectangle (7 pt corners) inset 8 pt from the panel's sides, and ↩ at its end in Return Mark. It is drawn by the row view, never emphasized, so text keeps its colors.
 - **Force Quit confirmation:** after the first ⏎ the row reads "Press ⏎ again to force quit Finder", its text, symbol and ↩ in Danger Red on Danger Fill, and the tile's first key turns red. ⎋, typing or moving the selection puts it back.
 - **Config problem:** first in the empty state, "Config problem, line 3: unknown setting "theme"", with the orange triangle as its icon. ⏎ opens the config file. Each says what's wrong and what Pith does meanwhile when that isn't obvious ("…, so every setting is at its default", "…is taken by another app, so it's still "cmd+p"").
+- **Clips:** the source app's icon for texts and links (`text.alignleft` or `link` when it isn't installed), a 20 pt thumbnail with 4 pt corners for images, the file's icon for files. A text's title is its first line that isn't blank, cut at the end; links and files are cut in the middle. At the end, the age in Tag ("now", "5 min", "14:05", "yesterday", "Tue", "Nov 12"), after `pin.fill` at 10 pt in quiet gray for a pinned clip. Each tells VoiceOver what it is ("Text from Terminal, docker compose up, 12 lines, copied today at 14:05, pinned").
+- **Clipboard notices:** first in the list, above the clips; the newest clip is still the one selected.
 - **Scrollers:** overlay only.
 
 ### Icons and Symbols
@@ -387,10 +422,12 @@ What ⏎ acts on, always visible when there are results.
   - Commands: `gearshape` (Open Config), `arrow.clockwise` (Reload Config), `power` (Quit Pith).
   - Actions: `arrow.up.forward.app` (Open, Open in Finder), `folder` (Reveal in Finder), `link` (Copy Path), `square.grid.2x2` (Open With…), `terminal` (Open in Terminal), `doc.on.doc` (Copy File, Copy Folder), `doc.zipper` (Zip), `trash` (Move to Trash), `xmark.circle` (Quit), `xmark.octagon` (Force Quit).
   - Problems: `exclamationmark.triangle`, in Warning Orange.
+  - Clip actions: `arrow.down.doc` (Paste), `doc.on.doc` (Copy to Clipboard), `textformat` (Paste as Plain Text), `arrow.up.forward.app` (Open in …), `folder` (Reveal in Finder), `square.and.arrow.down` (Save as File), `pin` and `pin.slash` (Pin, Unpin), `trash` (Delete).
+  - The clipboard: `doc.on.clipboard` in place of the magnifier and on the empty tile, `pause.circle` for recording paused.
   - Search: `magnifyingglass`, 16 pt, quiet gray.
 
 ### Planned surfaces
-The calculator isn't built. The clipboard is (milestone 3): its values are in the Visual decisions table, and this document takes them in at milestone 3's step 9, the design review. Both extend the tile: in the clipboard the tile grows to 188 pt and becomes the preview (`docs/BRIEF-CLIPBOARD.md`); for the calculator it shows the answer that ⏎ will copy. They use the same fills, type and keys.
+The calculator isn't built. It extends the tile as the clipboard does: the tile shows the answer that ⏎ will copy, with the same fills, type and keys.
 
 ## Do's and Don'ts
 
@@ -405,7 +442,7 @@ The calculator isn't built. The clipboard is (milestone 3): its values are in th
 
 ### Don't:
 - **Don't** fill the selection, a key or anything else with the accent color or a solid color bar.
-- **Don't** use red or orange except for Force Quit's confirmation and config problems.
+- **Don't** use red except for a second ⏎ that destroys, or orange except for a setup problem you fix with ⏎.
 - **Don't** animate, fade, slide or blur anything; the panel appears and disappears in one frame.
 - **Don't** use materials, vibrancy, translucency or Liquid Glass; the panel is opaque.
 - **Don't** add shadows inside the panel.

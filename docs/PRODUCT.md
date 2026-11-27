@@ -119,6 +119,7 @@ short and literal ("Config problem, line 3: …", "Filter actions", "Open in Pre
   - WCAG AA contrast for text, meaningful symbols and the selection, in both light and dark.
   - Full keyboard operation, which the app already has.
 - **Not in the bar for now:** VoiceOver, Increase Contrast and Reduce Transparency. Don't break what AppKit's
-  standard controls give for free, though. With no motion, Reduce Motion doesn't apply.
+  standard controls give for free, though. With no motion, Reduce Motion doesn't apply. The clipboard's rows do tell
+  VoiceOver what each clip is (`docs/BRIEF-CLIPBOARD.md` §8); nothing else is checked with it.
 - **Language:** the interface copy is in English, while app names appear in the system language (Calcolatrice for
   Calculator).

@@ -134,10 +134,24 @@ after a first Quick Look, and up to 90 MB after scrolling a long PDF in it; 0 % 
 
 ## 9. Design review
 
-Status: **todo**.
-- An impeccable critique and polish of clipboard mode against the brief, on the snapshots.
-- `docs/DESIGN.md`, through its full text: the 188 pt tile, the SF Mono preview, orange for any setup problem. The
-  values go in the Visual decisions table.
+Status: **in review** on `design/clipboard-review`. `/impeccable critique` of clipboard mode against the brief, on
+the 12 `clipboard-*` snapshots in light and dark: 31/40, no P0 or P1. Edoardo picked the fixes for its four issues:
+- **The tile reads the same for every kind** (issues 1 and 2): half of the 188 pt tile was empty for links, files,
+  notices and the empty state, and the line about when and where a clip was copied sat somewhere else for each kind.
+  Now what the clip is hangs from the top and that line runs along the bottom, where a text's was. The room between
+  holds a link's URL over up to 5 lines (3 before), a copy's other files one per line (up to 5, the last "and 12 more"),
+  and on the empty tile the keys that will act on a clip, as configured. A new snapshot, `clipboard-files-several`.
+- **VoiceOver** (issue 3): each clip's row says what it is ("Text from Terminal, docker compose up, 12 lines, copied
+  today at 14:05, pinned"), as brief §8 asked; nothing else changes for VoiceOver.
+- **Rich text previews in SF Pro 13 pt** (issue 4): in SF Mono it looked like code, and it pastes with its own fonts.
+  Plain text keeps SF Mono, which shows quotes, tabs and indents.
+- Also fixed: the tile kept "Copy" when Accessibility access came while the clipboard showed the same rows.
+- `docs/DESIGN.md`, through its full text, takes in the clipboard: the 188 pt tile and its layout, the two preview
+  fonts, red for any second ⏎ that destroys and orange for any setup problem (the Meaning-Only Rule), the clipboard's
+  symbols. Its sidecar has the Clipboard Tile. The values are in the Visual decisions table.
+- Not changed: ⌘K's letters are positional (decision 55), so they move with a clip's kind (Delete is ⌘T on a text, ⌘Y
+  on rich text). Giving each action its own letter would be a new decision, later.
+- Each fix has a test that fails without it; 135 + 148 tests pass.
 
 ## 10. Configurable keys
 

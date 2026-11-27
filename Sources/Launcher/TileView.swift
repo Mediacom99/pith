@@ -4,8 +4,9 @@ import AppKit
 /// for ⏎ and ⌘K (decision 29). Fixed frames; it changes with the selection, and only when what it shows does.
 ///
 /// In the clipboard it's three rows taller and becomes the preview (docs/BRIEF-CLIPBOARD.md): a text as it will paste,
-/// an image in its box, a link or files as an item. Everything there hangs from the top, keys included, so nothing
-/// moves as the selection goes from one kind to another.
+/// an image in its box, a link or files as an item. Every kind reads the same way there, so nothing moves as the
+/// selection goes from one to another: what it is hangs from the top, keys included, and the line about when and where
+/// it was copied runs along the bottom (beside an image, which fills the height).
 final class TileView: NSView {
     /// A key the tile shows: what it does, and its key caps.
     struct Key: Equatable {
@@ -15,8 +16,9 @@ final class TileView: NSView {
 
     /// What the clipboard previews in place of the icon and name.
     enum Preview: Equatable {
-        /// A text's first lines, as they'll paste. `isBlank`: only whitespace, described instead.
-        case text(String, isBlank: Bool)
+        /// A text's first lines, as they'll paste. `isBlank`: only whitespace, described instead. `isRich`: rich text,
+        /// in the system font, since it pastes with its own; plain text is in SF Mono, to show quotes, tabs and indents.
+        case text(String, isBlank: Bool, isRich: Bool = false)
         /// An image in a box of this size in points; nil while it loads.
         case image(CGImage?, size: CGSize)
     }
@@ -37,7 +39,12 @@ final class TileView: NSView {
         var preview: Preview? = nil
         /// How many lines `place` may wrap over (a link's URL); past them it's cut in the middle.
         var placeLines = 1
+        /// Lines under `place` in the clipboard's taller tile, each cut in the middle: a copy's other files.
+        var list: [String] = []
     }
+
+    /// The most `list` lines the tile shows.
+    static let listLimit = 5
 
     private static let padding: CGFloat = 16
     private static let iconGap: CGFloat = 14
@@ -46,6 +53,8 @@ final class TileView: NSView {
     /// Between a text preview and the line about it.
     private static let previewGap: CGFloat = 8
     private static let placeFont = NSFont.systemFont(ofSize: 12)
+    private static let plainFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+    private static let richFont = NSFont.systemFont(ofSize: 13)
 
     var content = Content(name: "", primary: "") {
         didSet { if content != oldValue { show(content) } }
@@ -61,12 +70,15 @@ final class TileView: NSView {
     let placeLabel = TileView.label(font: placeFont, color: Palette.quiet)
     /// The place label's height on one line, as its cell measures it.
     private lazy var placeLineHeight = placeLabel.frame.height
-    private let kindLabel = TileView.label(font: .systemFont(ofSize: 12), color: Palette.quiet)
+    let kindLabel = TileView.label(font: .systemFont(ofSize: 12), color: Palette.quiet)
+    let listLabels = (0..<TileView.listLimit).map { _ in
+        TileView.label(font: TileView.placeFont, color: Palette.quiet)
+    }
     let keys = KeysView()
     /// The clipboard's previews.
     let previewText: NSTextField = {
         let label = NSTextField(wrappingLabelWithString: "")
-        label.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        label.font = plainFont
         label.textColor = .labelColor
         label.maximumNumberOfLines = ClipText.previewLines
         label.lineBreakMode = .byWordWrapping
@@ -83,7 +95,7 @@ final class TileView: NSView {
         wantsLayer = true
         layerContentsRedrawPolicy = .onSetNeedsDisplay
         previewImage.cornerRadius = 6
-        for view in [icon, nameLabel, placeLabel, kindLabel, keys, previewText, checker, previewImage] {
+        for view in [icon, nameLabel, placeLabel, kindLabel, keys, previewText, checker, previewImage] + listLabels {
             addSubview(view)
         }
         _ = placeLineHeight
@@ -108,15 +120,18 @@ final class TileView: NSView {
         nameLabel.stringValue = content.name
         placeLabel.stringValue = content.place
         kindLabel.stringValue = content.kind
+        for (index, label) in listLabels.enumerated() {
+            label.stringValue = index < content.list.count ? content.list[index] : ""
+        }
         keys.keys =
             content.primary.isEmpty
             ? [] : [Key(words: content.primary, caps: openCaps)] + (content.secondary.map { [$0] } ?? [])
         keys.isDanger = content.isDanger
         switch content.preview {
-        case .text(let text, let isBlank)?:
+        case .text(let text, let isBlank, let isRich)?:
             previewText.stringValue = isBlank ? "Spaces and line breaks" : text
             previewText.textColor = isBlank ? Palette.quiet : .labelColor
-            previewText.font = isBlank ? Self.placeFont : .monospacedSystemFont(ofSize: 12, weight: .regular)
+            previewText.font = isBlank ? Self.placeFont : isRich ? Self.richFont : Self.plainFont
             previewImage.image = nil
         case .image(let image, _)?:
             previewImage.image = image
@@ -127,7 +142,7 @@ final class TileView: NSView {
     }
 
     /// The keys on the right, the text block between them and the icon: centered on the tile's height, or from the
-    /// top in the clipboard's taller tile.
+    /// top in the clipboard's taller tile, with the line about it along the bottom.
     override func layout() {
         super.layout()
         let tall = bounds.height > Layout.tileHeight
@@ -150,17 +165,26 @@ final class TileView: NSView {
         checker.isHidden = visual == nil
         icon.isHidden = isText || visual != nil
 
+        // The line about it from the tile's left edge, under the icon, where a text's is: it stays put as the
+        // selection goes from one kind to another. An image fills the height, so its line stays beside it.
+        kindLabel.isHidden = content.kind.isEmpty
+        var bottom = bounds.height - Self.padding
+        let aboutAtBottom = tall && visual == nil
+        if aboutAtBottom {
+            let height = kindLabel.frame.height
+            kindLabel.frame = NSRect(
+                x: Self.padding, y: bounds.height - Self.padding - height,
+                width: max(0, bounds.width - 2 * Self.padding), height: height)
+            if !kindLabel.isHidden { bottom = kindLabel.frame.minY - Self.previewGap }
+        }
+
         if isText {
             nameLabel.isHidden = true
             placeLabel.isHidden = true
-            kindLabel.isHidden = content.kind.isEmpty
-            let width = max(0, right - Self.padding)
-            let kindHeight = kindLabel.frame.height
-            kindLabel.frame = NSRect(
-                x: Self.padding, y: bounds.height - Self.padding - kindHeight, width: width, height: kindHeight)
+            for label in listLabels { label.isHidden = true }
             previewText.frame = NSRect(
-                x: Self.padding, y: Self.padding, width: width,
-                height: max(0, kindLabel.frame.minY - Self.previewGap - Self.padding))
+                x: Self.padding, y: Self.padding, width: max(0, right - Self.padding),
+                height: max(0, bottom - Self.padding))
             return
         }
 
@@ -179,15 +203,18 @@ final class TileView: NSView {
         let width = max(0, right - x)
         nameLabel.isHidden = false
         placeLabel.isHidden = content.place.isEmpty
-        kindLabel.isHidden = content.kind.isEmpty
         fitPlace(width: width)
-        let lines = [nameLabel, placeLabel, kindLabel].filter { !$0.isHidden }
+        for (index, label) in listLabels.enumerated() { label.isHidden = index >= content.list.count }
+        let list = listLabels.prefix(content.list.count)
+        let lines = ([nameLabel, placeLabel] + list + (aboutAtBottom ? [] : [kindLabel])).filter { !$0.isHidden }
         let total = lines.map(\.frame.height).reduce(0, +) + Self.lineGap * CGFloat(max(0, lines.count - 1))
         var y = tall ? Self.padding : ((bounds.height - total) / 2).rounded()
         for line in lines {
             line.frame = NSRect(x: x, y: y, width: width, height: line.frame.height)
             y += line.frame.height + Self.lineGap
         }
+        // What would run into the line about it isn't shown.
+        for label in list { label.isHidden = label.frame.maxY > bottom }
     }
 
     /// One line cut in the middle, or for a link's URL up to `placeLines` wrapped lines, cut in the middle past them.

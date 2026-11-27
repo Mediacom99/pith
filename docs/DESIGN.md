@@ -83,6 +83,14 @@ typography:
     fontFamily: "SF Pro, -apple-system, system-ui"
     fontSize: "11pt"
     fontWeight: 500
+  preview-plain:
+    fontFamily: "SF Mono, ui-monospace"
+    fontSize: "12pt"
+    fontWeight: 400
+  preview-rich:
+    fontFamily: "SF Pro, -apple-system, system-ui"
+    fontSize: "13pt"
+    fontWeight: 400
   web-display:
     fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, system-ui, Helvetica Neue, Helvetica, Arial, sans-serif"
     fontSize: "clamp(2.5rem, 1.15rem + 4.4vw, 4.5rem)"
@@ -140,6 +148,8 @@ rounded:
   tile: "10pt"
   row: "7pt"
   key-cap: "5pt"
+  preview-image: "6pt"
+  thumbnail: "4pt"
   web-surface: "14px"
   web-button: "10px"
   web-key-cap: "7px"
@@ -150,6 +160,7 @@ spacing:
   tile-margin: "8pt"
   key-words-gap: "8pt"
   key-line-gap: "8pt"
+  preview-gap: "8pt"
   grid-inner: "10pt"
   tile-icon-gap: "14pt"
   tile-padding: "16pt"
@@ -177,6 +188,13 @@ components:
     rounded: "{rounded.tile}"
     padding: "0 16pt"
     height: "92pt"
+  clipboard-tile:
+    backgroundColor: "{colors.tile-fill-light}"
+    textColor: "{colors.label-light}"
+    typography: "{typography.preview-plain}"
+    rounded: "{rounded.tile}"
+    padding: "16pt"
+    height: "188pt"
   row:
     textColor: "{colors.label-light}"
     typography: "{typography.row-title}"
@@ -255,21 +273,20 @@ components:
 <!-- impeccable:design-map -->
 Name: Pith
 Colors: window-background-light #FFFFFF, window-background-dark #1E1E1E, label-light rgba(0, 0, 0, 0.85), label-dark rgba(255, 255, 255, 0.85), quiet-light #666666, quiet-dark #A1A1A1, key-light #3C3C3C, key-dark #D6D6D6 (+36 more in the frontmatter)
-Fonts: SF Pro (search, tile-name, row-title, key-primary, key-secondary, return-mark, detail, tag, key-cap, web-display, web-headline, web-feature-headline, web-title, web-lede, web-body, web-note, web-button, web-key-cap); ui-monospace (web-code)
-Spacing: key-cap-gap 4pt, label-gap 6pt, list-bottom 6pt, tile-margin 8pt, key-words-gap 8pt, key-line-gap 8pt, grid-inner 10pt, tile-icon-gap 14pt, tile-padding 16pt, tile-keys-gap 16pt, icon-x 18pt (+5 more in the frontmatter)
-Radius: panel 14pt, tile 10pt, row 7pt, key-cap 5pt, web-surface 14px, web-button 10px, web-key-cap 7px
+Fonts: SF Pro (search, tile-name, row-title, key-primary, key-secondary, return-mark, detail, tag, key-cap, preview-rich, web-display, web-headline, web-feature-headline, web-title, web-lede, web-body, web-note, web-button, web-key-cap); SF Mono (preview-plain); ui-monospace (...
+Spacing: key-cap-gap 4pt, label-gap 6pt, list-bottom 6pt, tile-margin 8pt, key-words-gap 8pt, key-line-gap 8pt, preview-gap 8pt, grid-inner 10pt, tile-icon-gap 14pt, tile-padding 16pt (+7 more in the frontmatter)
+Radius: panel 14pt, tile 10pt, row 7pt, key-cap 5pt, preview-image 6pt, thumbnail 4pt, web-surface 14px, web-button 10px, web-key-cap 7px
 North Star: "Stage"
 Rules:
 - The No-Accent Rule. Nothing in the panel is filled or tinted with the accent color or any brand hue.
-- The Meaning-Only Rule. Red and orange appear only for Force Quit's confirmation and config problems.
+- The Meaning-Only Rule. Red appears only for a second ⏎ that destroys, and orange only for a setup problem you fix with ⏎.
 - The Fill-Is-Not-Enough Rule. A low-contrast fill never carries state alone: the selected row ends in ↩ and the tile names the item.
 - The 11 pt Floor Rule. No text is smaller than 11 pt.
 - The Cut-in-the-Middle Rule. Names and folders that don't fit truncate in the middle, so both the start and the extension stay visible (`Quarterly_Bud…Review.pdf`).
-- The One-Baseline Rule. Everything on a row (name, folder, "running", ↩) sits on the name's baseline.
-- (+4 more)
+- (+5 more)
 Don't:
 - Don't fill the selection, a key or anything else with the accent color or a solid color bar.
-- Don't use red or orange except for Force Quit's confirmation and config problems.
+- Don't use red except for a second ⏎ that destroys, or orange except for a setup problem you fix with ⏎.
 - Don't animate, fade, slide or blur anything; the panel appears and disappears in one frame.
 - Don't use materials, vibrancy, translucency or Liquid Glass; the panel is opaque.
 - Don't add shadows inside the panel.

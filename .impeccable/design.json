@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-24T09:45:00Z",
+  "generatedAt": "2026-11-27T12:00:00Z",
   "title": "Design System: launcher",
   "extensions": {
     "colorMeta": {
@@ -53,12 +53,14 @@
       "search": { "displayName": "Search", "purpose": "The query and its placeholder in the 52 pt search bar." },
       "tile-name": { "displayName": "Tile Name", "purpose": "The selected item's name on the tile." },
       "row-title": { "displayName": "Row Title", "purpose": "Each row's name; actions and apps in ⌘K." },
-      "key-primary": { "displayName": "Key Primary", "purpose": "What ⏎ does, on the tile, in label color (red in Force Quit's confirmation)." },
+      "key-primary": { "displayName": "Key Primary", "purpose": "What ⏎ does, on the tile, in label color (red while a second ⏎ that destroys is waiting)." },
       "key-secondary": { "displayName": "Key Secondary", "purpose": "Actions, Back, Cancel, in quiet gray." },
       "return-mark": { "displayName": "Return Mark", "purpose": "The ↩ at the end of the selected row, in the Key color." },
       "detail": { "displayName": "Detail", "purpose": "Folders after row names; the tile's folder and kind lines." },
       "tag": { "displayName": "Tag", "purpose": "\"running\" at the end of a running app's row." },
       "key-cap": { "displayName": "Key Cap", "purpose": "The glyph inside a key cap (↩, ⌘, K, esc), in the Key color." },
+      "preview-plain": { "displayName": "Preview Plain", "purpose": "A plain text's first 8 lines on the clipboard's tile, in SF Mono, to show exactly what will paste." },
+      "preview-rich": { "displayName": "Preview Rich", "purpose": "A rich text's first 8 lines on the clipboard's tile, in SF Pro, since it pastes with its own fonts." },
       "web-display": { "displayName": "Web Display", "purpose": "The landing page's hero H1 only." },
       "web-headline": { "displayName": "Web Headline", "purpose": "Section H2s on the landing page." },
       "web-feature-headline": { "displayName": "Web Feature Headline", "purpose": "H2s in the alternating feature rows." },
@@ -112,6 +114,14 @@
       "description": "What ⏎ acts on: 48 pt icon, name, folder, kind, and the keys for ⏎ and ⌘K on the right.",
       "html": "<div class=\"ds-tile\"><div class=\"ds-tile-icon\"></div><div class=\"ds-tile-text\"><div class=\"ds-tile-name\">Quarterly_Budget_Review.pdf</div><div class=\"ds-tile-detail\">~/Documents/Acme</div><div class=\"ds-tile-detail\">PDF document · opened today at 14:05</div></div><div class=\"ds-keys\"><div class=\"ds-key\"><span class=\"ds-key-primary\">Open</span><span class=\"ds-cap\">↩</span></div><div class=\"ds-key\"><span class=\"ds-key-secondary\">Actions</span><span class=\"ds-cap\">⌘</span><span class=\"ds-cap\">K</span></div></div></div>",
       "css": ".ds-tile { width: 664px; height: 92px; box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; background: rgba(0,0,0,0.035); border-radius: 10px; font-family: -apple-system, system-ui, sans-serif; } .ds-tile-icon { width: 48px; height: 48px; border-radius: 10px; background: #E6E6E6; flex: none; } .ds-tile-text { flex: 1; min-width: 0; margin: 0 16px 0 14px; display: flex; flex-direction: column; gap: 1px; } .ds-tile-name { font-size: 19px; font-weight: 600; color: rgba(0,0,0,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-tile-detail { font-size: 12px; color: #666666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-keys { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; } .ds-key { display: flex; align-items: center; gap: 4px; } .ds-key-primary { font-size: 13px; font-weight: 600; color: rgba(0,0,0,0.85); margin-right: 4px; } .ds-key-secondary { font-size: 13px; color: #666666; margin-right: 4px; } .ds-cap { min-width: 20px; height: 20px; box-sizing: border-box; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; background: rgba(0,0,0,0.07); font-size: 11px; font-weight: 500; color: #3C3C3C; } @media (prefers-color-scheme: dark) { .ds-tile { background: rgba(255,255,255,0.045); } .ds-tile-icon { background: #454545; } .ds-tile-name, .ds-key-primary { color: rgba(255,255,255,0.85); } .ds-tile-detail, .ds-key-secondary { color: #A1A1A1; } .ds-cap { color: #D6D6D6; background: rgba(255,255,255,0.10); } }"
+    },
+    {
+      "name": "Clipboard Tile",
+      "kind": "custom",
+      "refersTo": "clipboard-tile",
+      "description": "The tile in the clipboard, 188 pt: what the clip is from the top, keys included, and the line about when and where it was copied along the bottom, so nothing moves from one kind to the next.",
+      "html": "<div class=\"ds-cliptile\"><div class=\"ds-cliptile-top\"><div class=\"ds-tile-icon\"></div><div class=\"ds-tile-text\"><div class=\"ds-tile-name\">Quarterly_Budget_Review.pdf</div><div class=\"ds-tile-detail\">~/Documents/Acme</div><div class=\"ds-tile-detail\">Hiring_Plan.pages</div><div class=\"ds-tile-detail\">Launch_Dates.numbers</div></div><div class=\"ds-keys\"><div class=\"ds-key\"><span class=\"ds-key-primary\">Paste</span><span class=\"ds-cap\">↩</span></div><div class=\"ds-key\"><span class=\"ds-key-secondary\">Actions</span><span class=\"ds-cap\">⌘</span><span class=\"ds-cap\">K</span></div></div></div><div class=\"ds-tile-detail ds-cliptile-about\">3 files · 6.4 MB · copied today at 14:29 from Finder</div></div>",
+      "css": ".ds-cliptile { width: 664px; height: 188px; box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; background: rgba(0,0,0,0.035); border-radius: 10px; font-family: -apple-system, system-ui, sans-serif; } .ds-cliptile-top { display: flex; align-items: flex-start; } .ds-tile-icon { width: 48px; height: 48px; border-radius: 10px; background: #E6E6E6; flex: none; } .ds-tile-text { flex: 1; min-width: 0; margin: 0 16px 0 14px; display: flex; flex-direction: column; gap: 1px; } .ds-tile-name { font-size: 19px; font-weight: 600; color: rgba(0,0,0,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-tile-detail { font-size: 12px; color: #666666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-keys { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; } .ds-key { display: flex; align-items: center; gap: 4px; } .ds-key-primary { font-size: 13px; font-weight: 600; color: rgba(0,0,0,0.85); margin-right: 4px; } .ds-key-secondary { font-size: 13px; color: #666666; margin-right: 4px; } .ds-cap { min-width: 20px; height: 20px; box-sizing: border-box; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; border-radius: 5px; background: rgba(0,0,0,0.07); font-size: 11px; font-weight: 500; color: #3C3C3C; } @media (prefers-color-scheme: dark) { .ds-cliptile { background: rgba(255,255,255,0.045); } .ds-tile-icon { background: #454545; } .ds-tile-name, .ds-key-primary { color: rgba(255,255,255,0.85); } .ds-tile-detail, .ds-key-secondary { color: #A1A1A1; } .ds-cap { color: #D6D6D6; background: rgba(255,255,255,0.10); } }"
     },
     {
       "name": "Row",
@@ -188,9 +198,9 @@
   ],
   "narrative": {
     "northStar": "Stage",
-    "overview": "The panel answers one question before you press ⏎: what will it act on? A tile under the search bar shows the selected item large, with its icon, name, folder and kind, and the keys for ⏎ and ⌘K on its right. The list under it is compact. In ⌘K and Open With… the item stays on the tile while the list becomes its actions or apps, and the tile's first key names the selected one.\n\nEverything else is quiet. The panel is the system window color, the tile and the selection are low-opacity fills of the label color, and nothing is filled with the accent color. Color appears only where it means something: red for Force Quit waiting for its second ⏎, orange for a config problem. Type is SF at fixed point sizes, icons are the system's own app and file icons and SF Symbols. The panel never animates, blurs or goes translucent; it appears in one frame and stays still.\n\nLight and dark follow the system. Each custom color is a light/dark pair in `Sources/Launcher/Palette.swift`; every other color is an AppKit semantic color (`windowBackgroundColor`, `labelColor`, `placeholderTextColor`, the separator).",
+    "overview": "The panel answers one question before you press ⏎: what will it act on? A tile under the search bar shows the selected item large, with its icon, name, folder and kind, and the keys for ⏎ and ⌘K on its right. The list under it is compact. In ⌘K and Open With… the item stays on the tile while the list becomes its actions or apps, and the tile's first key names the selected one.\n\nEverything else is quiet. The panel is the system window color, the tile and the selection are low-opacity fills of the label color, and nothing is filled with the accent color. Color appears only where it means something: red for a second ⏎ that destroys (Force Quit, deleting a clip, clearing the clipboard), orange for a setup problem you fix with ⏎. Type is SF at fixed point sizes, icons are the system's own app and file icons and SF Symbols. The panel never animates, blurs or goes translucent; it appears in one frame and stays still.\n\nLight and dark follow the system. Each custom color is a light/dark pair in `Sources/Launcher/Palette.swift`; every other color is an AppKit semantic color (`windowBackgroundColor`, `labelColor`, `placeholderTextColor`, the separator).\n\nIn the clipboard (⌘⇧V) the same panel becomes a history: the tile grows to 188 pt and becomes the preview of what ⏎ will paste, and five rows fit under it.",
     "keyCharacteristics": [
-      "A 92 pt tile that always shows what ⏎ acts on, with its keys spelled out.",
+      "A 92 pt tile that always shows what ⏎ acts on, with its keys spelled out; 188 pt in the clipboard, where it previews the clip.",
       "Compact 32 pt rows on one line: icon, name, folder.",
       "Quiet fills (3.5–4.5 % tile, 7–10 % selection) instead of an accent bar.",
       "The selected row ends in ↩, so the selection never relies on its fill.",
@@ -199,7 +209,7 @@
     ],
     "rules": [
       { "name": "The No-Accent Rule", "body": "Nothing in the panel is filled or tinted with the accent color or any brand hue. The selection is a gray fill plus ↩.", "section": "colors" },
-      { "name": "The Meaning-Only Rule", "body": "Red and orange appear only for Force Quit's confirmation and config problems. A new hue needs a new meaning first.", "section": "colors" },
+      { "name": "The Meaning-Only Rule", "body": "Red appears only for a second ⏎ that destroys, and orange only for a setup problem you fix with ⏎. A new hue needs a new meaning first.", "section": "colors" },
       { "name": "The Fill-Is-Not-Enough Rule", "body": "A low-contrast fill never carries state alone: the selected row ends in ↩ and the tile names the item.", "section": "colors" },
       { "name": "The 11 pt Floor Rule", "body": "No text is smaller than 11 pt.", "section": "typography" },
       { "name": "The Cut-in-the-Middle Rule", "body": "Names and folders that don't fit truncate in the middle, so both the start and the extension stay visible (`Quarterly_Bud…Review.pdf`).", "section": "typography" },
@@ -223,7 +233,7 @@
     ],
     "donts": [
       "**Don't** fill the selection, a key or anything else with the accent color or a solid color bar.",
-      "**Don't** use red or orange except for Force Quit's confirmation and config problems.",
+      "**Don't** use red except for a second ⏎ that destroys, or orange except for a setup problem you fix with ⏎.",
       "**Don't** animate, fade, slide or blur anything; the panel appears and disappears in one frame.",
       "**Don't** use materials, vibrancy, translucency or Liquid Glass; the panel is opaque.",
       "**Don't** add shadows inside the panel.",

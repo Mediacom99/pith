@@ -20,7 +20,8 @@ extension LauncherViewController {
         if rows.isEmpty, showsEmptyClipboard {
             tile.content = TileView.Content(
                 icon: icons.symbol(Symbols.clipboard, size: .tile), name: "Nothing copied yet",
-                place: "Copy text, a link, an image or a file and it shows up here", primary: "")
+                place: "Copy text, a link, an image or a file and it shows up here", kind: emptyClipboardKeys,
+                primary: "")
             return
         }
         guard rows.indices.contains(tableView.selectedRow) else { return }
@@ -81,6 +82,18 @@ extension LauncherViewController {
                 break
             }
         }
+    }
+
+    /// The empty clipboard's line about the keys that will act on a clip, as they're configured: "↩ pastes the one you
+    /// pick · ⌘K shows its actions · ⌃⌥V pastes the last one, then the one before". A key that's off isn't named.
+    var emptyClipboardKeys: String {
+        var parts: [String] = []
+        if let open = keys[.open].first {
+            parts.append("\(open.symbols) \(canPaste ? "pastes" : "copies") the one you pick")
+        }
+        if let actions = keys[.actions].first { parts.append("\(actions.symbols) shows its actions") }
+        if let pasteNextHotkey { parts.append("\(pasteNextHotkey) pastes the last one, then the one before") }
+        return parts.joined(separator: " · ")
     }
 
     /// "Actions ⌘K" on the tile, as `actions` is configured; none when it's off.

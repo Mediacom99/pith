@@ -70,12 +70,13 @@ extension LauncherViewController {
                     [ClipText.kindName(clip.kind), ClipText.detail(of: clip), size], copied: clip.copied, from: source,
                     now: now),
                 primary: primary, secondary: actions,
-                preview: .text(preview, isBlank: preview.allSatisfy(\.isWhitespace)))
+                preview: .text(
+                    preview, isBlank: preview.allSatisfy(\.isWhitespace), isRich: clip.kind == .richText))
         case .link:
             return TileView.Content(
                 icon: sourceIcon(of: clip, size: .tile), name: ClipText.host(of: clip), place: clip.text,
                 kind: ClipText.about(["Link"], copied: clip.copied, from: source, now: now), primary: primary,
-                secondary: actions, placeLines: 3)
+                secondary: actions, placeLines: 5)
         case .image:
             let image = clipboard.flatMap { clipImages.preview(clip, store: $0.store) }
             let when = ClipText.copied(clip.copied, now: now) + (source.map { " from \($0)" } ?? "")
@@ -91,12 +92,14 @@ extension LauncherViewController {
             let first = URL(filePath: ClipText.firstPath(of: clip))
             let kind = clip.lines > 1 ? "\(clip.lines.formatted()) files" : icons.typeName(forFile: first) ?? ""
             let bytes = summary?.bytes
+            // The first file's name, with the others listed under its folder.
             return TileView.Content(
-                icon: icons.icon(forFile: first, size: .tile), name: ClipText.title(of: clip).text,
+                icon: icons.icon(forFile: first, size: .tile),
+                name: (ClipText.firstPath(of: clip) as NSString).lastPathComponent,
                 place: gone ? "No longer in \(ClipText.folders(of: clip))" : ClipText.folders(of: clip),
                 kind: ClipText.about(
                     [kind, bytes.map(ClipText.bytes) ?? ""], copied: clip.copied, from: source, now: now),
-                primary: primary, secondary: actions)
+                primary: primary, secondary: actions, list: ClipText.otherFiles(of: clip, limit: TileView.listLimit))
         }
     }
 
