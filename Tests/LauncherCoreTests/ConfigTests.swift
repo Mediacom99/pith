@@ -154,6 +154,7 @@ struct ConfigTests {
             md = "Typora"
             Zed = ["json", "toml"]
             Nothing = []
+            typora = ["md"]
             """)
         #expect(
             config.openWith == [
