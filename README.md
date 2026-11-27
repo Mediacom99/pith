@@ -315,6 +315,8 @@ rendered once, at their exact pixel size, and rows have fixed frames.
 - [x] Stage, the visual design: the tile, compact rows, light and dark
 - [x] Updates from `pith.edoardobertoli.xyz`, with Check for Updates in the launcher
 - [x] Clipboard manager: history with previews, pins, search, paste into the previous app, paste next
+- [ ] Better search: System Settings pages, files by extension (`*.pdf`), paths with Tab completion, one app for a
+  list of extensions
 - [ ] Editing a clip's text, and Edit Image
 - [ ] Calculator: math, units, currency and programmer expressions, as the top result
 - [ ] On-screen latency down to the targets
