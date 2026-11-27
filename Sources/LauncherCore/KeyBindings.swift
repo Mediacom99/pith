@@ -15,6 +15,8 @@ public enum PanelKey: String, Sendable, CaseIterable {
     case runActions = "run_actions"
     /// ⌫: from the clipboard back to the launcher.
     case toLauncher = "to_launcher"
+    /// ⇥: in a path, fills in the selected name (decision 81).
+    case complete
 
     var defaults: [String] {
         switch self {
@@ -26,6 +28,7 @@ public enum PanelKey: String, Sendable, CaseIterable {
         case .preview: ["cmd+y", "space"]
         case .runActions: ["cmd+q", "cmd+w", "cmd+e", "cmd+r", "cmd+t", "cmd+y", "cmd+u"]
         case .toLauncher: ["backspace"]
+        case .complete: ["tab"]
         }
     }
 

@@ -61,7 +61,9 @@ extension LauncherViewController {
 
     /// The order keys are looked up in: `back` and `open` first, as they get their default back when a setting
     /// leaves them with none, even if another setting has it (decision 55).
-    private static let lookupOrder: [PanelKey] = [.back, .open, .up, .down, .actions, .preview, .toLauncher]
+    private static let lookupOrder: [PanelKey] = [
+        .back, .open, .up, .down, .actions, .preview, .toLauncher, .complete,
+    ]
 
     /// What a key press does in the panel (decision 55). True when it's taken: it did something, or it's one of the
     /// panel's keys that doesn't type. A key that types (a letter, Space, ⌫) acts only while the field is empty, and
@@ -100,7 +102,8 @@ extension LauncherViewController {
         switch key {
         case .up: moveSelection(by: -1)
         case .down: moveSelection(by: 1)
-        case .open where awaitingFiles && sublist == nil, .actions where awaitingFiles && sublist == nil:
+        case .open where awaitingFiles && sublist == nil, .actions where awaitingFiles && sublist == nil,
+            .complete where awaitingFiles && sublist == nil:
             // The list is the previous query's until the files land: act on the query's list then.
             keyAfterSearch = key
         case .open: activate(row: tableView.selectedRow)
@@ -124,6 +127,9 @@ extension LauncherViewController {
             // From the clipboard's empty field back to the launcher.
             guard mode == .clipboard, sublist == nil, searchField.stringValue.isEmpty else { return false }
             switchMode(to: .launcher)
+        case .complete:
+            // Outside a path, Tab does nothing, as before.
+            return completePath()
         case .runActions:
             return false
         }

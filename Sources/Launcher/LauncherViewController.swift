@@ -171,6 +171,9 @@ final class LauncherViewController: NSViewController {
     var keyAfterSearch: PanelKey?
     /// The query's files haven't landed yet: the list on screen is the previous query's.
     private(set) var awaitingFiles = false
+    /// The folder a path query lists, read once and narrowed as its last part is typed (decision 81); forgotten when
+    /// the panel closes, so it's read fresh next time.
+    var folderListing: FolderListing?
     /// The learned ranking, per index item. Recomputed on every show, since it fades with time.
     private var boosts: [Int32] = []
     /// What the list shows. Empty while the panel is just the search bar.
@@ -355,6 +358,7 @@ final class LauncherViewController: NSViewController {
             applyMode()
         }
         searchField.placeholderString = placeholder(for: nil)
+        folderListing = nil
         setQuery("")
         if !rows.isEmpty || isExpanded { show([], selecting: 0, byUser: false) }
         icons.trimTypes()
@@ -384,6 +388,24 @@ final class LauncherViewController: NSViewController {
         } else if query.allSatisfy(\.isWhitespace) {
             let (rows, selection) = emptyStateRows()
             update(rows, selecting: selection, keystroke: keystroke)
+        } else if let path = PathQuery(query) {
+            if let listing = folderListing, listing.folder == path.folder {
+                update(rows(in: listing, matching: path.prefix), selecting: 0, keystroke: keystroke)
+                return
+            }
+            // A folder not read yet: on a worker, as it can wait on the disk or on macOS's prompt.
+            awaitingFiles = true
+            pendingSearch = Task {
+                let listing = await runInBackground(qos: .userInitiated) { FolderListing(reading: path.folder) }
+                guard generation == searchGeneration else { return }
+                folderListing = listing
+                awaitingFiles = false
+                update(rows(in: listing, matching: path.prefix), selecting: 0, keystroke: keystroke)
+                if let key = keyAfterSearch {
+                    keyAfterSearch = nil
+                    _ = perform(key)
+                }
+            }
         } else {
             let apps = index.scoredSearch(query, limit: Self.resultLimit, boosts: boosts)
             awaitingFiles = true
@@ -431,6 +453,26 @@ final class LauncherViewController: NSViewController {
             a.element.score != b.element.score ? a.element.score > b.element.score : a.offset < b.offset
         }
         return ranked.prefix(Self.resultLimit).map { .item($0.element.item) }
+    }
+
+    /// A path's rows: what's in its folder whose names start with what's typed, as Finder sorts them.
+    private func rows(in listing: FolderListing, matching prefix: String) -> [Row] {
+        listing.matching(prefix, limit: Self.resultLimit).map { entry in
+            .item(Item(path: listing.path(of: entry), isFolder: entry.isFolder))
+        }
+    }
+
+    /// Tab in a path: the selected name in place of what's typed after the last slash, and a folder's contents next.
+    func completePath() -> Bool {
+        guard mode == .launcher, sublist == nil, let path = PathQuery(searchField.stringValue),
+            rows.indices.contains(tableView.selectedRow), case .item(let item) = rows[tableView.selectedRow],
+            let url = item.url
+        else { return false }
+        let isFolder = if case .folder = item.kind { true } else { false }
+        setQuery(path.completed(with: url.lastPathComponent, isFolder: isFolder))
+        cancelConfirmation()
+        refresh()
+        return true
     }
 
     private func emptyStateRows() -> (rows: [Row], selection: Int) {

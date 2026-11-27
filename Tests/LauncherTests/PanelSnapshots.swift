@@ -84,6 +84,17 @@ import Testing
         await type("te", in: search)
         try await snapshot(search, "search-\(suffix)")
 
+        // A path, on a made-up ~/Documents: never the Mac's own folders.
+        let path = try await panel(emptyState: .none)
+        path.launcher.folderListing = FolderListing(
+            folder: NSHomeDirectory() + "/Documents/",
+            entries: [
+                ("Accounts 2026.numbers", false), ("Acme", true), ("Acme Archive", true),
+                ("Acme_Brand_Guidelines.pdf", false), ("Activity Log.txt", false),
+            ])
+        await type("~/Documents/ac", in: path)
+        try await snapshot(path, "path-\(suffix)")
+
         let settings = try await panel(emptyState: .none)
         await type("blue", in: settings)
         try await snapshot(settings, "settings-page-\(suffix)")

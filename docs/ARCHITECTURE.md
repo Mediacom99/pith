@@ -109,7 +109,8 @@ Sources/
     SearchKey.swift        text → lowercased, diacritic-folded UTF-8 + per-byte bonus + 64-bit byte mask
     KeyStore.swift         many search keys in four flat buffers (for the file index)
     FuzzyMatcher.swift     query × key → score (fzf v2-style dynamic programming)
-    QueryTerms.swift       a query split into words, at spaces and `/`, each matched on its own
+    QueryTerms.swift       a query split into words, at spaces and `/`, each matched on its own; `*.pdf` extensions
+    PathQuery.swift        a query that's a path (`/`, `~/`); FolderListing, a folder read once and narrowed by prefix
     SearchIndex.swift      apps, settings pages and commands + keys + id lookup; scored search with boosts
     SettingsScanner.swift  System Settings' pages from its extensions: its sidebar's and General's, named in the
                            Mac's language
@@ -224,7 +225,9 @@ app alphabetically. As with ⌘Tab, the first one is the app you were in and the
 
 **Typing.** Each keystroke runs `SearchIndex.search` over the apps synchronously on the main thread (microseconds), and
 the file search on the file engine's queue; both land in one ranked list (decision 19), and a newer keystroke drops an
-older search's files. The match score is boosted by the history: frecency, counting opens weighted by age (Firefox-style buckets), turns into up to +48
+older search's files. A query that starts with `/` or `~/` is a path instead (decision 81): its folder is read once on
+a worker (`FolderListing`), kept until the panel closes, and each keystroke after that narrows it on the main thread
+by prefix, in microseconds. The match score is boosted by the history: frecency, counting opens weighted by age (Firefox-style buckets), turns into up to +48
 points on a log scale. The table reloads only when the rows changed, and its rows show bitmaps that are already
 rendered. The panel is just the search bar while there's nothing to list, so it resizes only on that change. The
 search field has its own field editor with inline predictions, Writing Tools, autocompletion, spell and grammar
@@ -233,7 +236,7 @@ box. The keystroke latency goes to the `perf` log, split into delivery (key pres
 
 **Keys.** Every key press reaches the panel's `sendEvent` (or `performKeyEquivalent`, for chords) before the field
 editor, and one lookup turns it into what `[keys]` says it does (decision 55): `back` and `open` first, then `up`,
-`down`, `actions`, `preview` and `to_launcher`, with `run_actions` ahead of them all in a ⌘K list. Letters and
+`down`, `actions`, `preview`, `to_launcher` and `complete`, with `run_actions` ahead of them all in a ⌘K list. Letters and
 punctuation match by the character they type in the current layout (with ⌘ alone applied, as menus do), other keys by
 position. A key that types acts only on an empty field and otherwise goes on to it; an input method that is composing
 text keeps every key. A ⏎ or ⎋ that isn't a panel key does nothing rather than end the field's editing. ⌘X/C/V/A/Z
