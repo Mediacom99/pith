@@ -32,7 +32,7 @@ extension LauncherViewController {
         case .item(let item):
             switch item.kind {
             case .file(let url), .folder(let url): return url
-            case .app, .command: return nil
+            case .app, .settingsPage, .command: return nil
             }
         case .clip(let clip):
             switch clip.kind {

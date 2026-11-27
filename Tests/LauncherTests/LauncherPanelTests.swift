@@ -638,6 +638,30 @@ struct LauncherPanelTests {
             ])
     }
 
+    /// A System Settings page is a result as an app is, with System Settings where a file shows its folder, but with no
+    /// head start: an app that matches as well comes first (decision 79). ⌘K has nothing for it.
+    @Test func settingsPagesAreResultsWithoutAHeadStart() async throws {
+        let page = Item(
+            settingsPage: "com.acme.displays", name: "Displays",
+            at: URL(filePath: "/System/Library/ExtensionKit/Extensions/DisplaysExt.appex"))
+        let app = Item(name: "Displays Pro", appAt: URL(filePath: "/Applications/Displays Pro.app"))
+        let panel = makePanel(items: [page, app])
+
+        await type("displays", in: panel)
+        #expect(panel.launcher.rows == [.item(app), .item(page)], "same match: the app's head start wins")
+        press("down", in: panel)
+        let tile = panel.launcher.tile.content
+        #expect((tile.name, tile.place, tile.primary) == ("Displays", "System Settings", "Open"))
+        #expect(tile.secondary == nil)
+        let cell = try #require(
+            panel.launcher.tableView.view(atColumn: 0, row: 1, makeIfNecessary: false) as? ResultCell)
+        #expect(cell.detail == "System Settings")
+        #expect(page.settingsURL?.absoluteString == "x-apple.systempreferences:com.acme.displays")
+
+        panel.launcher.toggleActions()
+        #expect(panel.launcher.rows == [.item(app), .item(page)], "no actions list")
+    }
+
     @Test func recentListsFilesToo() {
         let panel = makePanel(items: apps, opened: [apps[0].id, "folder:/tmp/Somewhere"], emptyState: .recent)
         panel.launcher.prepareToShow()

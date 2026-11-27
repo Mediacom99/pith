@@ -1,11 +1,14 @@
 import Foundation
 
-/// Something the launcher can find and open: an app, a file, a folder, or one of the launcher's own commands.
+/// Something the launcher can find and open: an app, a file, a folder, a System Settings page, or one of the
+/// launcher's own commands.
 public struct Item: Sendable, Hashable {
     public enum Kind: Sendable, Hashable {
         case app(URL)
         case file(URL)
         case folder(URL)
+        /// Its extension bundle, for the icon (decision 79).
+        case settingsPage(URL)
         case command(Command)
     }
 
@@ -14,7 +17,8 @@ public struct Item: Sendable, Hashable {
     /// title.
     public let name: String
     /// Stable identity for the history and for matching running apps: an app's bundle path with symlinks resolved,
-    /// `file:<path>` or `folder:<path>`, `command:<name>` for a command.
+    /// `file:<path>` or `folder:<path>`, `settings:<bundle id>` for a System Settings page, `command:<name>` for a
+    /// command.
     public let id: String
 
     /// `id` defaults to the path as given; the scanner passes the resolved one.
@@ -28,6 +32,12 @@ public struct Item: Sendable, Hashable {
         kind = .command(command)
         name = command.title
         id = "command:\(command.rawValue)"
+    }
+
+    public init(settingsPage bundleID: String, name: String, at bundle: URL) {
+        kind = .settingsPage(bundle)
+        self.name = name
+        id = Self.settingsPrefix + bundleID
     }
 
     public init(path: String, isFolder: Bool) {
@@ -50,11 +60,18 @@ public struct Item: Sendable, Hashable {
 
     static let filePrefix = "file:"
     static let folderPrefix = "folder:"
+    static let settingsPrefix = "settings:"
 
-    /// Where it is on disk: an app bundle, a file or a folder.
+    /// What opens a System Settings page: `x-apple.systempreferences:<bundle id>`.
+    public var settingsURL: URL? {
+        guard case .settingsPage = kind else { return nil }
+        return URL(string: "x-apple.systempreferences:" + id.dropFirst(Self.settingsPrefix.count))
+    }
+
+    /// Where it is on disk: an app bundle, a file or a folder, or a settings page's extension.
     public var url: URL? {
         switch kind {
-        case .app(let url), .file(let url), .folder(let url): url
+        case .app(let url), .file(let url), .folder(let url), .settingsPage(let url): url
         case .command: nil
         }
     }

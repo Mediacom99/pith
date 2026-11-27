@@ -145,6 +145,7 @@ extension LauncherViewController {
         case .app(let url): openApp(at: url)
         case .file(let url): openFile(at: url)
         case .folder(let url): open(url, with: nil)
+        case .settingsPage: if let url = item.settingsURL { open(url, with: nil) }
         case .command(let command): runCommand(command)
         }
     }

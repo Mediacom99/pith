@@ -50,7 +50,7 @@ extension Config {
             case "hotkeys.launcher", "hotkeys.clipboard", "hotkeys.paste_next":
                 readHotkey(setting, value)
             case "launcher.clipboard_alias", "launcher.empty_state", "launcher.launch_at_login", "launcher.folders",
-                "launcher.ignore", "launcher.max_depth":
+                "launcher.ignore", "launcher.max_depth", "launcher.system_settings":
                 readLauncher(setting, value)
             case "clipboard.max_size_gb", "clipboard.max_age_days":
                 readClipboard(setting, value)
@@ -84,6 +84,7 @@ extension Config {
             case "launcher.empty_state": config.emptyState = fallback.emptyState
             case "launcher.clipboard_alias": config.clipboardAlias = fallback.clipboardAlias
             case "launcher.launch_at_login": config.launchAtLogin = fallback.launchAtLogin
+            case "launcher.system_settings": config.systemSettings = fallback.systemSettings
             case "launcher.folders": config.folders = fallback.folders
             case "launcher.ignore": config.ignore = fallback.ignore
             case "launcher.max_depth": config.maxDepth = fallback.maxDepth
@@ -182,6 +183,8 @@ extension Config {
                 }
             case ("launcher.launch_at_login", .boolean(let on)):
                 config.launchAtLogin = on
+            case ("launcher.system_settings", .boolean(let on)):
+                config.systemSettings = on
             case ("launcher.folders", .array(let values)), ("launcher.ignore", .array(let values)):
                 let strings = values.compactMap { if case .string(let text) = $0 { text } else { nil } }
                 guard strings.count == values.count else {
@@ -196,8 +199,8 @@ extension Config {
                 }
             case ("launcher.empty_state", _), ("launcher.clipboard_alias", _):
                 problem("\(name) should be a string in quotes", setting)
-            case ("launcher.launch_at_login", _):
-                problem("launcher.launch_at_login should be true or false", setting)
+            case ("launcher.launch_at_login", _), ("launcher.system_settings", _):
+                problem("\(name) should be true or false", setting)
             case ("launcher.folders", _), ("launcher.ignore", _):
                 problem("\(name) should be a list of strings, like [\"~/Documents\"]", setting)
             default:

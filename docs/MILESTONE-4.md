@@ -26,19 +26,25 @@ Status: **in review**. 137 + 150 tests pass; each new one fails without its fix.
 
 ## 2. System Settings pages
 
-Status: **todo**.
-- Read at launch, on a worker, with the apps: the extensions in `/System/Library/ExtensionKit/Extensions` whose
-  extension point is `com.apple.Settings.extension.ui`, limited to the pages System Settings lists on this Mac (decision
-  79). Each gives its name in the Mac's language, its icon, and its bundle id. Pages whose bundle has no shown name
-  (Battery's reads "PowerPreferences") get System Settings' own; the step finds where it keeps it.
-- A page is a launcher result, as an app is: its icon, its name, and "System Settings" where a file shows its folder.
-  ⏎ opens it (`x-apple.systempreferences:<bundle id>`), off the main thread. The history learns it like anything else.
-- No head start, as files: "dis" gives Discord before Displays until Displays is the habit.
-- Icons are rendered once at their exact pixel sizes, with the apps'.
-- `[launcher] system_settings = false` leaves them out; on by default.
-- Not re-read while Pith runs: the folder changes only with a macOS update, which restarts the Mac.
-- Tests: the reader over a temporary folder of made-up `.appex` bundles (the real file system), and the rows.
-  A snapshot: "blue" finds Bluetooth.
+Status: **in review**. 138 + 155 tests pass; each new one fails without its fix. On this Mac: 43 pages, read in 16 ms
+at launch on a worker (Release).
+- `SettingsScanner` reads the extensions in `/System/Library/ExtensionKit/Extensions` whose extension point is
+  `com.apple.Settings.extension.ui` and that a link can open, limited to the ones System Settings lists: its
+  `Sidebar*.plist` and General's `hosted_bundles` (without the sidebar file, every one that opens).
+- **Names** come from each bundle's `InfoPlist.loctable` in the Mac's language, else its Info.plist. A page with
+  several representations takes the one that applies: Battery or Energy by whether the Mac has a battery (IOKit), and
+  other conditions are taken for the usual Mac (Mouse shows; Touch ID isn't hidden as it is for a guest). Its sidebar
+  name and icon type come with it.
+- Left out, since System Settings shows them only in cases Pith can't tell: FollowUps, Classroom, Class Progress, CDs &
+  DVDs, Headphones, Game Controllers.
+- A page is a result like an app: its icon (rendered once, with the apps'; Battery's from its type), its name, and
+  "System Settings" where a file shows its folder. ⏎ opens `x-apple.systempreferences:<bundle id>`; ⌘K has nothing for
+  it. No head start: an app that matches as well comes first. The history learns it, and `recent` lists it.
+- Read the first time they're wanted and kept: they change only with macOS. `[launcher] system_settings = false`
+  leaves them out, and changing it rebuilds the index.
+- A snapshot, `settings-page`: "blue" finds Bluetooth.
+- Found on the way: System Settings' own search reads `.searchTerms` files in each page, which name its sections and the
+  anchors that open them (decision 79's note), a way to the deeper pages if Edoardo wants them.
 
 ## 3. Search by extension
 

@@ -18,6 +18,16 @@ import Testing
             "Stickies", "TextEdit",
         ].map { Item(name: $0, appAt: URL(filePath: "/System/Applications/\($0).app")) }
         + [Item(name: "Finder", appAt: URL(filePath: "/System/Library/CoreServices/Finder.app"))]
+        // System Settings pages, with their real extensions' icons (decision 79).
+        + [
+            ("Bluetooth", "Bluetooth", "com.apple.BluetoothSettings"),
+            ("Displays", "DisplaysExt", "com.apple.Displays-Settings.extension"),
+        ]
+        .map { name, file, id in
+            Item(
+                settingsPage: id, name: name, at: URL(filePath: "/System/Library/ExtensionKit/Extensions/\(file).appex")
+            )
+        }
 
     private static func app(_ name: String) -> Item { apps.first { $0.name == name }! }
 
@@ -73,6 +83,10 @@ import Testing
         let search = try await panel(emptyState: .none)
         await type("te", in: search)
         try await snapshot(search, "search-\(suffix)")
+
+        let settings = try await panel(emptyState: .none)
+        await type("blue", in: settings)
+        try await snapshot(settings, "settings-page-\(suffix)")
 
         let actions = try await panel(emptyState: .recent)
         actions.launcher.prepareToShow()

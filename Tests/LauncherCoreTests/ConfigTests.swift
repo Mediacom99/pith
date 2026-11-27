@@ -141,6 +141,16 @@ struct ConfigTests {
         #expect(problems == ["line 2: hotkeys.clipboard \"cmd+v\" is Paste in every app, so it's left as it was"])
     }
 
+    /// `[launcher] system_settings` lists System Settings' pages, or not (decision 79).
+    @Test func systemSettingsTurnsOnAndOff() {
+        #expect(Config().systemSettings)
+        #expect(Config.parse("[launcher]\nsystem_settings = false").config.systemSettings == false)
+        #expect(
+            Config.parse("[launcher]\nsystem_settings = \"no\"").problems == [
+                "line 2: launcher.system_settings should be true or false"
+            ])
+    }
+
     /// `[open_with]` takes a type and its app, or an app and its list (decision 82). A type given twice goes to the line
     /// of its own first, then to the earlier list, and the line that loses says so.
     @Test func openWithTakesATypeOrAnAppAndItsList() {

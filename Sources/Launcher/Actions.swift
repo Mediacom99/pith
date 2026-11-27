@@ -56,7 +56,7 @@ nonisolated enum Action: CaseIterable {
         case .app: running ? [.open, .reveal, .quit, .forceQuit] : [.open, .reveal]
         case .file: [.open, .reveal, .copyPath, .openWith, .copyItem, .zip, .trash]
         case .folder: [.open, .reveal, .copyPath, .openInTerminal, .copyItem, .zip, .trash]
-        case .command: []
+        case .settingsPage, .command: []
         }
     }
 }
