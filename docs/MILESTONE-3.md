@@ -258,7 +258,7 @@ longer in the history", and the list's order and times went stale.
 
 ## 15. Bug check of the app
 
-Status: **in review** on `fix/bug-check-2`. Four readers went through every file of the app (`Sources/Launcher`), and
+Status: **done**, published in 0.3.14. Four readers went through every file of the app (`Sources/Launcher`), and
 the clipboard's core beside it; each finding was checked against the code, and all were fixed, each with a test that
 fails without its fix, except where noted. 129 + 148 tests pass; the snapshots are unchanged.
 - **High:**
