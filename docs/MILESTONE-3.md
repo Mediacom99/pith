@@ -126,11 +126,11 @@ Status: **done** (decisions 48–50).
 
 ## 8. Performance
 
-Status: **in progress**. `make bench` on a month of history, 5,000 clips with 312 screenshots: loading it at launch
-5.8 ms, ⌘⇧V → drawn 1.4 ms, a keystroke in the clipboard 0.16 ms; a search 0.01–1.6 ms, 2.4 ms at worst; the clips
-and their keys take 6.9 MB. The launcher's keystroke is 2.3–2.9 ms of work. Memory, by use (step 13): 43 MB at launch,
-53 MB after searching, the clipboard and pasting, 63 MB after a first Quick Look, and up to 90 MB after scrolling a
-long PDF in it, over the 50 MB target; 0 % CPU and 5 threads idle.
+Status: **done**, with memory after use over the 50 MB target (decision 77). `make bench` on a month of history,
+5,000 clips with 312 screenshots: loading it at launch 5.8 ms, ⌘⇧V → drawn 1.4 ms, a keystroke in the clipboard
+0.16 ms; a search 0.01–1.6 ms, 2.4 ms at worst; the clips and their keys take 6.9 MB. The launcher's keystroke is
+2.3–2.9 ms of work. Memory, by use (step 13): 43 MB at launch, 53 MB after searching, the clipboard and pasting, 63 MB
+after a first Quick Look, and up to 90 MB after scrolling a long PDF in it; 0 % CPU and 5 threads idle.
 
 ## 9. Design review
 
@@ -242,8 +242,8 @@ release; published in 0.3.12.
   and reverted, neither measurably helping: giving freed pages back after the panel closes
   (`malloc_zone_pressure_relief`, at once or 5 s later), and Quick Look letting go of its file as it closes. Left:
   Quick Look's memory. Freeing it means a preview window of Pith's own, made and dropped per use, which looks and
-  behaves differently from Quick Look's; Edoardo kept ⌘P and Quick Look as they are (decision 72), and step 8 carries
-  the target.
+  behaves differently from Quick Look's; Edoardo kept ⌘P and Quick Look as they are (decision 72), and step 8 closed
+  over the target (decision 77).
 
 ## 14. The history in step with its database
 
