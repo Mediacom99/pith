@@ -7,6 +7,13 @@ import Testing
 
 /// Reading config.toml, on temporary files: never the real `~/.config/pith/`.
 struct ConfigStoreTests {
+    /// Open Config opens config.toml in the app `[open_with]` gives `toml` (decision 82).
+    @Test func openConfigFollowsOpenWith() {
+        let editor = URL(filePath: "/Applications/Acme Editor.app")
+        #expect(ConfigStore.editor(for: ConfigStore.file, openWith: ["toml": editor]) == editor)
+        #expect(ConfigStore.editor(for: ConfigStore.file, openWith: ["md": editor]) != editor)
+    }
+
     /// A file that's gone or isn't text changes nothing, as a file that isn't valid TOML doesn't (decision 59).
     @Test func aFileThatCantBeReadChangesNothing() throws {
         let folder = try TemporaryDirectory()

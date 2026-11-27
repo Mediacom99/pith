@@ -33,6 +33,22 @@ struct AppResolverTests {
             "http set on its own isn't replaced, even when it's not found")
     }
 
+    /// Each `[open_with]` app is looked up once, and one that isn't found is one problem, whatever it was set for.
+    @Test func openWithSaysOnceWhichAppIsMissing() {
+        let (found, problems) = AppResolver.openWith(
+            [
+                "md": "Terminal", "txt": "No Such App", "json": "No Such App", "csv": "Other Missing",
+                "com.acme.nothing": "Terminal",
+            ], among: apps)
+        #expect(found.mapValues(\.path) == ["md": terminal.path])
+        #expect(
+            problems == [
+                "open_with \"com.acme.nothing\" isn't a known file type",
+                "open_with.csv: can't find the app \"Other Missing\"",
+                "open_with: can't find the app \"No Such App\", set for json, txt",
+            ])
+    }
+
     @Test func picksTheOpenWithAppByExtensionThenMostSpecificType() {
         let a = URL(filePath: "/A.app")
         let b = URL(filePath: "/B.app")

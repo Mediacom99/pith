@@ -40,6 +40,37 @@ nonisolated enum AppResolver {
         return (found, problems)
     }
 
+    /// `[open_with]`'s apps by extension or type, each app looked up once, and a problem for each type that isn't one
+    /// and each app that isn't found (once, with the types it was set for).
+    static func openWith(_ openWith: [String: String], among apps: [App]) -> (apps: [String: URL], problems: [String]) {
+        var found: [String: URL] = [:]
+        var problems: [String] = []
+        var looked: [String: URL?] = [:]
+        var missing: [(app: String, types: [String])] = []
+        for (type, spec) in openWith.sorted(by: { $0.key < $1.key }) {
+            if type.contains("."), UTType(type) == nil {
+                problems.append("open_with \"\(type)\" isn't a known file type")
+                continue
+            }
+            let app = looked[spec] ?? resolve(spec, among: apps)
+            looked[spec] = app
+            if let app {
+                found[type] = app
+            } else if let index = missing.firstIndex(where: { $0.app == spec }) {
+                missing[index].types.append(type)
+            } else {
+                missing.append((spec, [type]))
+            }
+        }
+        for (app, types) in missing {
+            problems.append(
+                types.count == 1
+                    ? "open_with.\(types[0]): can't find the app \"\(app)\""
+                    : "open_with: can't find the app \"\(app)\", set for \(types.joined(separator: ", "))")
+        }
+        return (found, problems)
+    }
+
     /// The app `[open_with]` sets for `file`: by its extension, else by the most specific type it conforms to.
     static func app(forFile file: URL, openWith: [String: URL]) -> URL? {
         let fileExtension = file.pathExtension.lowercased()

@@ -161,11 +161,11 @@ public struct Config: Sendable, Equatable {
         terminal = "Terminal"
 
         [open_with]
-        # Which app opens a file type from the launcher: extension or type = app name, bundle id or path.
-        # Files of other types open in their default app. For example:
-        # md  = "Visual Studio Code"
+        # Which app opens a file type from the launcher, config.toml included: extension or type = app name, bundle id
+        # or path, or an app = a list of them. Files of other types open in their default app. For example:
         # pdf = "Preview"
         # "public.image" = "Pixelmator Pro"
+        # "Visual Studio Code" = ["md", "txt", "json", "toml"]
 
         [open_links]
         # Which app opens a link from the clipboard: URL scheme = app name, bundle id or path. https covers http too,

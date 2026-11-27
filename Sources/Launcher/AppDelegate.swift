@@ -1,6 +1,5 @@
 import AppKit
 import LauncherCore
-import UniformTypeIdentifiers
 
 /// Wires the pieces together: builds the panel up front, applies the config (hotkey, empty state, login item), runs
 /// the launcher's commands and keeps the index fresh.
@@ -219,17 +218,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let generation = resolveGeneration
         Task {
             let (openWith, openLinks, terminal, problems) = await runInBackground(qos: .utility) {
-                var problems: [String] = []
-                var openWith: [String: URL] = [:]
-                for (key, spec) in config.openWith.sorted(by: { $0.key < $1.key }) {
-                    if key.contains("."), UTType(key) == nil {
-                        problems.append("open_with \"\(key)\" isn't a known file type")
-                    } else if let app = AppResolver.resolve(spec, among: apps) {
-                        openWith[key] = app
-                    } else {
-                        problems.append("open_with.\(key): can't find the app \"\(spec)\"")
-                    }
-                }
+                let (openWith, openWithProblems) = AppResolver.openWith(config.openWith, among: apps)
+                var problems = openWithProblems
                 let links = AppResolver.links(config.openLinks, among: apps)
                 problems += links.problems
                 let terminal = AppResolver.resolve(config.terminal, among: apps)
@@ -253,7 +243,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case .clearClipboard: clearClipboard()
         case .installUpdate: updater.installNow()
         case .checkForUpdates: updater.checkNow()
-        case .openConfig: configStore.open()
+        case .openConfig: configStore.open(openWith: panel?.launcher.openWithApps ?? [:])
         case .reloadConfig: configStore.reload()
         case .quit: NSApp.terminate(nil)
         }

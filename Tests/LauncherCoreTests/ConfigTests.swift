@@ -141,6 +141,50 @@ struct ConfigTests {
         #expect(problems == ["line 2: hotkeys.clipboard \"cmd+v\" is Paste in every app, so it's left as it was"])
     }
 
+    /// `[open_with]` takes a type and its app, or an app and its list (decision 82). A type given twice goes to the line
+    /// of its own first, then to the earlier list, and the line that loses says so.
+    @Test func openWithTakesATypeOrAnAppAndItsList() {
+        let (config, problems) = Config.parse(
+            """
+            [open_with]
+            "Visual Studio Code" = [
+              "md", "*.TXT", ".json",
+            ]
+            pdf = "Preview"
+            md = "Typora"
+            Zed = ["json", "toml"]
+            Nothing = []
+            """)
+        #expect(
+            config.openWith == [
+                "md": "Typora", "txt": "Visual Studio Code", "json": "Visual Studio Code", "pdf": "Preview",
+                "toml": "Zed",
+            ])
+        #expect(
+            problems == [
+                "line 2: open_with sets \"md\" on line 6 too, so it opens in \"Typora\"",
+                "line 7: open_with sets \"json\" on line 2 too, so it opens in \"Visual Studio Code\"",
+            ])
+    }
+
+    /// A wrong `[open_with]` value keeps what the setting gave before, in either form.
+    @Test func aWrongOpenWithStaysAsItWas() {
+        var current = Config()
+        current.openWith = ["md": "Zed", "txt": "Zed", "png": "Preview", "pdf": "Preview"]
+        let (config, problems) = Config.parse(
+            """
+            [open_with]
+            Zed = ["md", 3]
+            png = 2
+            """, previous: current)
+        #expect(config.openWith == ["md": "Zed", "txt": "Zed", "png": "Preview"], "pdf isn't written: gone")
+        #expect(
+            problems == [
+                "line 2: open_with.\"Zed\" should list extensions in quotes, like [\"md\", \"txt\"]",
+                "line 3: open_with.png should be an app name in quotes, or a list of extensions",
+            ])
+    }
+
     /// A wrong value keeps what Pith has now; what's right applies, and what isn't written goes back to its default.
     @Test func aWrongSettingStaysAsItWas() {
         var current = Config()
