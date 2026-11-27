@@ -134,7 +134,7 @@ after a first Quick Look, and up to 90 MB after scrolling a long PDF in it; 0 % 
 
 ## 9. Design review
 
-Status: **in review** on `design/clipboard-review`. `/impeccable critique` of clipboard mode against the brief, on
+Status: **done**, published in 0.3.15. `/impeccable critique` of clipboard mode against the brief, on
 the 12 `clipboard-*` snapshots in light and dark: 31/40, no P0 or P1. Edoardo picked the fixes for its four issues:
 - **The tile reads the same for every kind** (issues 1 and 2): half of the 188 pt tile was empty for links, files,
   notices and the empty state, and the line about when and where a clip was copied sat somewhere else for each kind.
