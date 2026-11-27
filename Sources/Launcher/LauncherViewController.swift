@@ -64,7 +64,12 @@ final class LauncherViewController: NSViewController {
     var resolveNotice: (ClipboardNotice) -> Void = { _ in }
     /// Whether Pith may press ⌘V for you (Accessibility access): ⏎ pastes, or only copies.
     var canPaste = false {
-        didSet { if canPaste != oldValue, mode == .clipboard { refresh() } }
+        didSet {
+            guard canPaste != oldValue, mode == .clipboard else { return }
+            refresh()
+            // The rows can stay the same while the tile's words change: "Paste" or "Copy".
+            updateTile()
+        }
     }
     /// Paste next's run (decision 64): the history as it was at its first press, and how far down it is.
     var pasteRun: PasteRun?
@@ -84,6 +89,8 @@ final class LauncherViewController: NSViewController {
     }
     /// The clipboard's hotkey as menus show it (`⇧⌘V`), for the Clipboard History command's tile.
     var clipboardHotkey: String?
+    /// Paste next's hotkey as menus show it (`⌃⌥V`), for the empty clipboard's tile; nil when it's off.
+    var pasteNextHotkey: String?
     /// The version of a downloaded update, ready to install: Update Pith is listed first in the empty state, and
     /// found by search, until then.
     var readyUpdate: String?

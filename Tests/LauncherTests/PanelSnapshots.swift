@@ -121,8 +121,9 @@ import Testing
         try await snapshot(longActions, "long-actions-\(suffix)")
     }
 
-    /// The clipboard (docs/BRIEF-CLIPBOARD.md): a text from Terminal on the tile, then each other kind selected, a
-    /// search with a pin first, the history empty, recording paused, and macOS denying the clipboard.
+    /// The clipboard (docs/BRIEF-CLIPBOARD.md): a text from Terminal on the tile, then each other kind selected, a copy
+    /// of several files, a search with a pin first, the history empty, recording paused, and macOS denying the
+    /// clipboard.
     @Test(arguments: [NSAppearance.Name.aqua, .darkAqua])
     func clipboard(appearance: NSAppearance.Name) async throws {
         _ = NSApplication.shared
@@ -142,6 +143,20 @@ import Testing
             for _ in 0..<row { press("down", in: panel) }
             try await snapshot(panel, "clipboard-\(name)-\(suffix)")
         }
+
+        let folder = NSHomeDirectory() + "/Documents/Acme/"
+        let names = ["Quarterly_Budget_Review.pdf", "Hiring_Plan.pages", "Launch_Dates.numbers", "Logo.svg"]
+        let paths = names.map { folder + $0 }
+        let several = try await clipboardPanel(adding: [
+            (
+                ClipContent(
+                    kind: .files, text: paths.joined(separator: "\n"),
+                    items: paths.map { [representation("public.file-url", URL(filePath: $0).dataRepresentation)] }),
+                "com.apple.finder", 1
+            )
+        ])
+        several.launcher.prepareToShow(.clipboard)
+        try await snapshot(several, "clipboard-files-several-\(suffix)")
 
         let search = try await clipboardPanel()
         search.launcher.prepareToShow(.clipboard)
@@ -187,7 +202,8 @@ import Testing
     /// A made-up clipboard history, oldest first: a file from Finder, a pinned agenda from Notes, a screenshot, a link
     /// from Safari, and a config snippet from Terminal, copied two minutes before the fixed clock.
     private func clipboardPanel(
-        clips: [(content: ClipContent, source: String?, minutesAgo: Double)]? = nil
+        clips: [(content: ClipContent, source: String?, minutesAgo: Double)]? = nil,
+        adding: [(content: ClipContent, source: String?, minutesAgo: Double)] = []
     ) async throws -> LauncherPanel {
         let panel = try await panel(emptyState: .none)
         let now = panel.launcher.now()
@@ -243,7 +259,7 @@ import Testing
                     "com.apple.Terminal", 2
                 ),
             ]
-        for clip in history.sorted(by: { $0.minutesAgo > $1.minutesAgo }) {
+        for clip in (history + adding).sorted(by: { $0.minutesAgo > $1.minutesAgo }) {
             let stored = try await store.add(clip.content, from: clip.source, at: now - clip.minutesAgo * 60)
             // The agenda is pinned, to show the pin.
             if clip.source == "com.apple.Notes" { try await store.setPinned(true, for: stored.id) }
@@ -253,6 +269,7 @@ import Testing
         panel.launcher.clipboard = clipboard
         panel.launcher.deliverClip = { _, _ in }
         panel.launcher.canPaste = true
+        panel.launcher.pasteNextHotkey = "⌃⌥V"
         // The made-up file is there, 2.1 MB.
         panel.launcher.fileFacts = { _ in (true, 2_143_000) }
         return panel

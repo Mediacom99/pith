@@ -14,6 +14,8 @@ extension LauncherViewController {
         var isQuietTitle = false
         var corner: CGFloat = 0
         var isDanger = false
+        // A clip's row says what VoiceOver reads for it; other rows read their text.
+        var spoken: String?
         switch row {
         case .item(let item):
             cell.title = item.name
@@ -47,6 +49,8 @@ extension LauncherViewController {
             detail = ClipText.detail(of: clip)
             tag = ClipText.age(clip.copied, now: now())
             isPinned = clip.pinned
+            spoken = ClipText.spoken(
+                clip, title: title.text, from: clip.source.flatMap { icons.appName(forBundleID: $0) }, now: now())
             switch clip.kind {
             case .image:
                 cell.icon.image = clipboard.flatMap { clipImages.row(clip, store: $0.store) }
@@ -76,6 +80,7 @@ extension LauncherViewController {
         cell.isQuietTitle = isQuietTitle
         cell.icon.cornerRadius = corner
         cell.isDanger = isDanger
+        cell.setAccessibilityLabel(spoken)
     }
 
     /// The folder `url` is in, from the home folder as `~`.
