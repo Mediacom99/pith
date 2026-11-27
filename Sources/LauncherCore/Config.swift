@@ -27,6 +27,8 @@ public struct Config: Sendable, Equatable {
     /// Applies to the copy installed in an Applications folder (decision 14).
     /// Nil when it isn't known (at launch, with config.toml or this setting wrong): the login item is left alone.
     public var launchAtLogin: Bool? = true
+    /// Whether System Settings' pages are among the results (decision 79).
+    public var systemSettings = true
     /// Folders whose files and folders are searched (decision 22). `~` is the home folder.
     public var folders = ["~"]
     /// Names, globs and paths to skip (see `IgnoreRules`).
@@ -140,6 +142,9 @@ public struct Config: Sendable, Equatable {
 
         # Start the launcher when you log in (for the copy installed in an Applications folder).
         launch_at_login = true
+
+        # List System Settings' pages (Wi-Fi, Bluetooth, Displays…) among the results.
+        system_settings = true
 
         # Where files and folders are searched. "~" is your home folder. A folder here is searched even inside one
         # that ignore skips, like "~/Dropbox" (in ~/Library) or "~/.config".

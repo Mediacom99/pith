@@ -415,11 +415,13 @@ final class LauncherViewController: NSViewController {
         }
     }
 
-    /// One list, best first (decision 19). Apps found by the file index too (in ~/Applications) appear once.
+    /// One list, best first (decision 19). Apps found by the file index too (in ~/Applications) appear once. Apps and
+    /// commands get a head start; settings pages compete as files do (decision 79).
     private func merge(apps: [(index: Int, score: Int32)], files hits: [FileHit]) -> [Row] {
         var scored = apps.compactMap { app in
             let item = index.items[app.index]
-            return isHidden(item) ? nil : (item: item, score: app.score + Self.appHeadStart)
+            let headStart = if case .settingsPage = item.kind { Int32(0) } else { Self.appHeadStart }
+            return isHidden(item) ? nil : (item: item, score: app.score + headStart)
         }
         for hit in hits where index.position(of: hit.path) == nil {
             scored.append((Item(path: hit.path, isFolder: hit.isFolder), hit.score))

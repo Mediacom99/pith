@@ -1,4 +1,5 @@
 import AppKit
+import IOKit.ps
 import LauncherCore
 
 /// Wires the pieces together: builds the panel up front, applies the config (hotkey, empty state, login item), runs
@@ -30,6 +31,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var fileRules: FileRules?
     private var panel: LauncherPanel?
     private var appsWatcher: DirectoryWatcher?
+    /// System Settings' pages, read once they're first wanted (decision 79).
+    private var settingsPages: [SettingsPage]?
     private var indexGeneration = 0
     private var hasAppliedConfig = false
     /// Apps in config.toml that don't resolve to an installed app.
@@ -149,6 +152,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await files.rebuild(rules)
         }
 
+        if config.systemSettings != previous.systemSettings { rebuildIndex() }
+
         if let enabled = config.launchAtLogin, !hasAppliedConfig || previous.launchAtLogin != enabled {
             LoginItem.update(enabled: enabled)
         }
@@ -249,21 +254,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Rescans the app folders on a worker thread, then swaps the new index in on the main thread.
+    /// Rescans the app folders on a worker thread, then swaps the new index in on the main thread. System Settings'
+    /// pages are read the first time they're wanted, and kept: they change only with macOS.
     private func rebuildIndex() {
         indexGeneration += 1
         let generation = indexGeneration
+        let wantsSettings = configStore.config.systemSettings
+        let known = settingsPages
         Task {
-            let index = await runInBackground(qos: .utility) {
+            let (index, pages) = await runInBackground(qos: .utility) {
                 let launcher = Bundle.main.bundleURL.resolvingSymlinksInPath().path
                 let apps = AppScanner.scan(AppScanner.defaultRoots, extras: AppScanner.defaultExtras)
                     .filter { $0.id != launcher }
-                return SearchIndex(items: apps + Command.allCases.map(Item.init(command:)))
+                let pages = wantsSettings ? known ?? SettingsScanner.scan(hasBattery: Self.hasBattery) : known
+                let listed = wantsSettings ? pages ?? [] : []
+                return (
+                    SearchIndex(items: apps + listed.map(\.item) + Command.allCases.map(Item.init(command:))), pages
+                )
             }
+            settingsPages = pages
             // A newer rescan started meanwhile: its result wins.
-            guard generation == indexGeneration else { return }
-            panel?.launcher.index = index
+            guard generation == indexGeneration, let launcher = panel?.launcher else { return }
+            launcher.icons.iconTypes = Dictionary(
+                (pages ?? []).compactMap { page in page.iconType.map { (page.bundle, $0) } },
+                uniquingKeysWith: { first, _ in first })
+            launcher.index = index
             resolveApps()
+        }
+    }
+
+    /// Whether this Mac runs on a battery: System Settings calls its page Battery then, and Energy otherwise.
+    private nonisolated static var hasBattery: Bool {
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
+            let sources = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef]
+        else { return false }
+        return sources.contains { source in
+            let description = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any]
+            return description?[kIOPSTypeKey] as? String == kIOPSInternalBatteryType
         }
     }
 }

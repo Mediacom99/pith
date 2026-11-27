@@ -20,7 +20,8 @@ public struct SearchIndex: Sendable {
         self.items = items
         names = items.map { SearchKey($0.name) }
         fileNames = items.map { item in
-            guard let fileName = item.url?.deletingPathExtension().lastPathComponent, fileName != item.name else {
+            guard item.isApp, let fileName = item.url?.deletingPathExtension().lastPathComponent, fileName != item.name
+            else {
                 return nil
             }
             return SearchKey(fileName)

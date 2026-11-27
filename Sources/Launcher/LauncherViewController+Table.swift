@@ -26,6 +26,9 @@ extension LauncherViewController {
             case .file(let url), .folder(let url):
                 cell.icon.image = icons.icon(forFile: url)
                 detail = Self.folder(of: url)
+            case .settingsPage(let url):
+                cell.icon.image = icons.icon(for: url)
+                detail = Self.systemSettings
             case .command(let command):
                 isDanger = command == .clearClipboard && confirming
                 if isDanger { cell.title = Self.clearConfirmation }

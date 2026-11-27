@@ -82,6 +82,7 @@ justify a subscription.
 
 - **Apps, files and folders** in one list. Every word you type must match, in any order, so `acme deploy` finds
   `deploy.sh` in a folder called Acme. What you open often comes first.
+- **System Settings' pages** too: type `blue` and ⏎ opens Bluetooth. They're read from macOS, in its language.
 - **Actions on ⌘K:** Open With…, Reveal in Finder, Copy Path, Copy File, Zip, Move to Trash, Open in Terminal; Quit
   and Force Quit for a running app (Force Quit asks for a second ⏎). ⌘Y, or Space on an empty field, is Quick Look.
 - **Files stay current:** they're indexed in memory and updated as they change on disk.
@@ -188,6 +189,7 @@ to_launcher = "backspace"   # from the clipboard back to the launcher
 empty_state = "recent"      # "recent", "running" or "none"
 clipboard_alias = "c"       # "c" lists Clipboard History first; "c " opens the clipboard
 launch_at_login = true
+system_settings = true      # System Settings' pages among the results
 folders = ["~"]             # a folder here is searched even inside one ignore skips: "~/Dropbox", "~/.config"
 ignore = [".*", "~/Library", "node_modules", ".build", "*.photoslibrary"]
 max_depth = 6

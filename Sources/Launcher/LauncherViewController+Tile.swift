@@ -133,6 +133,10 @@ extension LauncherViewController {
                 icon: icons.icon(forFile: url, size: .tile), name: item.name, place: Self.folder(of: url),
                 kind: kind(icons.typeName(forFile: url), opened), primary: Action.open.title(for: item),
                 secondary: actions)
+        case .settingsPage(let url):
+            return TileView.Content(
+                icon: icons.icon(for: url, size: .tile), name: item.name, place: Self.systemSettings,
+                kind: kind("Settings page", opened), primary: "Open")
         case .command(.clipboard):
             return TileView.Content(
                 icon: icons.symbol(Symbols.command(.clipboard), size: .tile), name: item.name, place: "Pith command",
@@ -155,6 +159,9 @@ extension LauncherViewController {
                 kind: command == .quit ? version.map { "Pith \($0)" } ?? "" : "", primary: "Run")
         }
     }
+
+    /// Where a settings page is, on its row and tile.
+    static let systemSettings = "System Settings"
 
     /// "opened today at 14:05", "opened yesterday", "opened Tuesday" within the week, else "opened Nov 3".
     static func opened(_ date: Date, now: Date = .now) -> String {

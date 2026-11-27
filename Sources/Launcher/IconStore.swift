@@ -39,6 +39,8 @@ final class IconStore {
     }
 
     private var apps: [URL: Pair] = [:]
+    /// Bundles drawn with a type's icon instead of their own: a settings page without one (Battery).
+    var iconTypes: [URL: String] = [:]
     private var symbols: [SymbolKey: CGImage] = [:]
     /// File and folder icons by type (`IconSource.key`), rendered on first request, and the type's name.
     private var types: [String: Pair] = [:]
@@ -311,10 +313,11 @@ final class IconStore {
         let style = self.style
         let pixels = pixelSizes()
         let appearance = Self.appearance
+        let types = iconTypes
         Task {
             let (icons, glyphs, dates) = await runInBackground(qos: .userInitiated) {
                 (
-                    Self.renderApps(urls, pixels: pixels, appearance: appearance),
+                    Self.renderApps(urls, types: types, pixels: pixels, appearance: appearance),
                     wantedSymbols.map { symbol in
                         Self.renderSymbol(
                             symbol.name, tint: symbol.tint, pixels: pixels[symbol.size == .row ? 0 : 1],
@@ -338,13 +341,17 @@ final class IconStore {
     }
 
     /// One icon per core at a time: each is independent, and IconServices renders them in parallel.
-    private nonisolated static func renderApps(_ urls: [URL], pixels: [Int], appearance: NSAppearance.Name) -> [Pair] {
+    private nonisolated static func renderApps(
+        _ urls: [URL], types: [URL: String], pixels: [Int], appearance: NSAppearance.Name
+    ) -> [Pair] {
         var images = [Pair](repeating: Pair(), count: urls.count)
         images.withUnsafeMutableBufferPointer { buffer in
             // Each iteration writes only its own slot, so sharing the buffer across threads is safe.
             nonisolated(unsafe) let slots = buffer
             DispatchQueue.concurrentPerform(iterations: urls.count) { index in
-                let icon = NSWorkspace.shared.icon(forFile: urls[index].path)
+                let icon =
+                    types[urls[index]].flatMap(UTType.init).map(NSWorkspace.shared.icon(for:))
+                    ?? NSWorkspace.shared.icon(forFile: urls[index].path)
                 let images = pixels.map { pixels in bitmap(pixels: pixels, appearance: appearance) { icon.draw(in: $0) }
                 }
                 slots[index] = Pair(row: images[0], tile: images[1])
