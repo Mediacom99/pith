@@ -84,6 +84,8 @@ justify a subscription.
   `deploy.sh` in a folder called Acme. What you open often comes first.
 - **System Settings' pages** too: type `blue` and ⏎ opens Bluetooth. They're read from macOS, in its language.
 - **By extension:** `*.pdf` lists your PDFs, newest first; `budget *.pdf` finds the ones about a budget.
+- **Paths, as in a terminal:** start with `~/` or `/` and the list shows what's in that folder; ⇥ fills in the
+  selected name.
 - **Actions on ⌘K:** Open With…, Reveal in Finder, Copy Path, Copy File, Zip, Move to Trash, Open in Terminal; Quit
   and Force Quit for a running app (Force Quit asks for a second ⏎). ⌘Y, or Space on an empty field, is Quick Look.
 - **Files stay current:** they're indexed in memory and updated as they change on disk.
@@ -185,6 +187,7 @@ back = "escape"
 preview = ["cmd+y", "space"]
 run_actions = ["cmd+q", "cmd+w", "cmd+e", "cmd+r", "cmd+t", "cmd+y", "cmd+u"]
 to_launcher = "backspace"   # from the clipboard back to the launcher
+complete = "tab"            # in a path (~/Documents/re), fills in the selected name
 
 [launcher]
 empty_state = "recent"      # "recent", "running" or "none"

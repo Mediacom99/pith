@@ -129,6 +129,8 @@ public struct Config: Sendable, Equatable {
         run_actions = ["cmd+q", "cmd+w", "cmd+e", "cmd+r", "cmd+t", "cmd+y", "cmd+u"]
         # In the clipboard: back to the launcher.
         to_launcher = "backspace"
+        # In a path (~/Documents/re), fills in the selected name.
+        complete = "tab"
 
         [launcher]
         # What the launcher shows before you type:

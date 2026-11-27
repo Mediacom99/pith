@@ -682,6 +682,39 @@ struct LauncherPanelTests {
         #expect(names(panel.launcher.rows) == ["Old Budget.pdf"])
     }
 
+    /// A path lists what's in its folder, narrowed as it's typed; Tab fills in the selected name, and a folder's
+    /// contents show next (decision 81). Tab pressed before the folder is read waits for it; outside a path it does
+    /// nothing.
+    @Test func aPathListsItsFolderAndTabCompletes() async throws {
+        let folder = try TemporaryDirectory()
+        for file in ["Report.pdf", "Reports/q3.numbers", "Reports/q4.numbers", "notes.md"] { try folder.makeFile(file) }
+        let root = folder.url.path
+        let panel = makePanel(items: apps)
+
+        await type(root + "/", in: panel)
+        #expect(names(panel.launcher.rows) == ["notes.md", "Report.pdf", "Reports"])
+        await type(root + "/rep", in: panel)
+        #expect(names(panel.launcher.rows) == ["Report.pdf", "Reports"])
+        press("down", in: panel)
+        #expect(press("tab", in: panel))
+        await panel.launcher.pendingSearch?.value
+        #expect(panel.launcher.searchField.stringValue == root + "/Reports/")
+        #expect(names(panel.launcher.rows) == ["q3.numbers", "q4.numbers"])
+        #expect(panel.launcher.rows.first == .item(Item(path: root + "/Reports/q3.numbers", isFolder: false)))
+
+        // Tab before the folder is read: it completes on the folder's list, not the one before.
+        panel.launcher.searchField.stringValue = root + "/no"
+        panel.launcher.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification))
+        press("tab", in: panel)
+        await panel.launcher.pendingSearch?.value
+        await panel.launcher.pendingSearch?.value
+        #expect(panel.launcher.searchField.stringValue == root + "/notes.md")
+
+        await type("gizmo", in: panel)
+        #expect(press("tab", in: panel), "taken, so it doesn't leave the field")
+        #expect(panel.launcher.searchField.stringValue == "gizmo")
+    }
+
     @Test func recentListsFilesToo() {
         let panel = makePanel(items: apps, opened: [apps[0].id, "folder:/tmp/Somewhere"], emptyState: .recent)
         panel.launcher.prepareToShow()

@@ -62,19 +62,23 @@ Status: **in review**. 139 + 158 tests pass; each new one fails without its fix.
 
 ## 4. Paths with completion
 
-Status: **todo**.
-- A query that starts with `/` or `~/` is a path (decision 81). The list shows what's in the folder typed so far (up
-  to the last `/`), narrowed to the names that start with the rest, ignoring case and accents, sorted as Finder sorts.
-- Tab fills in the selected name, and a folder gets its `/`, so its contents show next. It's `[keys] complete`
-  (default `tab`), and does nothing outside a path.
-- ⏎, ⌘K and ⌘Y act on the selected row as on any file or folder.
-- It reads the disk on the file engine's queue, never the main thread. Typing within one folder filters the listing
-  already read; a newer keystroke drops an older read.
-- Anywhere on the disk, not only the indexed folders, and the ignore patterns don't apply. Hidden names show once the
-  part after the last `/` starts with a dot. A folder that doesn't exist, or that macOS won't let Pith read, lists
-  nothing.
+Status: **in review**. 140 + 161 tests pass; each new one fails without its fix. The other snapshots are unchanged.
+- A query that starts with `/` or `~/` is a path (decision 81, `PathQuery`). The list shows what's in the folder typed
+  so far (up to the last `/`, `~` expanded, doubled slashes made one), narrowed to the names that start with the rest,
+  ignoring case and accents, sorted as Finder sorts, up to the 50 rows. A link to a folder is a folder; a package (an
+  app, a bundle) is a file, as in the index.
+- Tab (`[keys] complete`, default `tab`) fills in the selected name, `~` kept as typed, and a folder gets its `/`, so
+  its contents show next. Pressed before the folder is read, it waits for it, as ⏎ does. Outside a path it does
+  nothing, as before.
+- ⏎, ⌘K and ⌘Y act on the selected row as on any file or folder, and the history records it.
+- The folder is read once on a worker (`FolderListing`), never the main thread; typing within it narrows that
+  listing on the main thread, and a newer keystroke drops an older read. The listing is forgotten when the panel
+  closes.
+- Anywhere on the disk, not only the indexed folders, and the ignore patterns don't apply. Hidden names (a leading
+  dot) show once the part after the last `/` starts with one. A folder that doesn't exist, or that macOS won't let
+  Pith read, lists nothing.
 - `acme deploy` (no leading `/` or `~/`) keeps the path words of decision 23.
-- Tests: splitting the query, the listing and its filter on a temporary folder, and Tab. A snapshot of `~/Pro`.
+- A snapshot, `path`: `~/Documents/ac` on a made-up folder. For step 5: each row repeats the folder that's typed.
 
 ## 5. Design review
 
