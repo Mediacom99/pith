@@ -37,6 +37,9 @@ extension Config {
         var writtenKeys: [(key: PanelKey, line: Int, shortcuts: [Shortcut])] = []
         /// The line each hotkey is set on, for the problem when two are the same key.
         var hotkeyLines: [String: Int] = [:]
+        /// `[open_with]` as written, settled at the end (`settleOpenWith`): each type and the app it's given, on which
+        /// line, and how it's given: 0 on a line of its own, 1 in an app's list, 2 kept from before a wrong value.
+        var openWithClaims: [(type: String, app: String, line: Int, form: Int)] = []
 
         init(fallback: Config) {
             self.fallback = fallback
@@ -92,7 +95,14 @@ extension Config {
                 if table == "keys", let panelKey = PanelKey(rawValue: key) {
                     writtenKeys.append((panelKey, setting.line, fallback.keys[panelKey]))
                 } else if table == "open_with" {
-                    config.openWith[fileType(key)] = fallback.openWith[fileType(key)]
+                    // Either form, since a wrong value doesn't say which was meant: the type the key names, and the
+                    // types the app it names had.
+                    if let app = fallback.openWith[fileType(key)] {
+                        openWithClaims.append((fileType(key), app, setting.line, 2))
+                    }
+                    for (type, app) in fallback.openWith where app == key {
+                        openWithClaims.append((type, app, setting.line, 2))
+                    }
                 } else if table == "open_links", let scheme = scheme(key) {
                     config.openLinks[scheme] = fallback.openLinks[scheme]
                 }
@@ -222,12 +232,44 @@ extension Config {
             }
         }
 
+        /// `[open_with]`: a type and its app, `md = "Preview"`, or an app and its types, `"Preview" = ["md", "txt"]`
+        /// (decision 82).
         private mutating func readOpenWith(_ setting: Setting, _ value: TOMLValue) {
-            if case .string(let app) = value {
-                config.openWith[fileType(setting.key)] = app
-            } else {
-                problem("open_with.\(setting.key) should be an app name in quotes", setting)
+            switch value {
+            case .string(let app):
+                openWithClaims.append((fileType(setting.key), app, setting.line, 0))
+            case .array(let items):
+                let types = items.compactMap { item -> String? in if case .string(let type) = item { type } else { nil }
+                }
+                guard types.count == items.count else {
+                    return problem(
+                        "open_with.\"\(setting.key)\" should list extensions in quotes, like [\"md\", \"txt\"]", setting
+                    )
+                }
+                for type in types { openWithClaims.append((fileType(type), setting.key, setting.line, 1)) }
+            default:
+                problem("open_with.\(setting.key) should be an app name in quotes, or a list of extensions", setting)
             }
+        }
+
+        /// Gives each `[open_with]` type one app: a line of its own before an app's list, then the earlier line. A
+        /// type given twice is a problem on the line that loses; one kept from before a wrong value gives way quietly.
+        private mutating func settleOpenWith() {
+            var settled: [String: (app: String, line: Int)] = [:]
+            for claim in openWithClaims.sorted(by: { ($0.form, $0.line) < ($1.form, $1.line) }) {
+                guard let winner = settled[claim.type] else {
+                    settled[claim.type] = (claim.app, claim.line)
+                    continue
+                }
+                if claim.form < 2, claim.line != winner.line {
+                    problems.append(
+                        (
+                            claim.line,
+                            "line \(claim.line): open_with sets \"\(claim.type)\" on line \(winner.line) too, so it opens in \"\(winner.app)\""
+                        ))
+                }
+            }
+            config.openWith = settled.mapValues(\.app)
         }
 
         private mutating func readOpenLinks(_ setting: Setting, _ value: TOMLValue) {
@@ -244,6 +286,7 @@ extension Config {
         /// The config and its problems, in file order, once every setting is read: the hotkeys kept apart, and the
         /// panel's keys resolved around them.
         mutating func finish() -> (config: Config, problems: [String]) {
+            settleOpenWith()
             let hotkeys = separateHotkeys()
             let keys = KeyBindings.resolve(written: writtenKeys, hotkeys: hotkeys)
             config.keys = keys.bindings
@@ -272,9 +315,9 @@ extension Config {
             return hotkeys
         }
 
-        /// An `[open_with]` key as it's looked up: lowercased, without a leading dot.
+        /// An `[open_with]` type as it's looked up: lowercased, without a leading `*.` or `.`, so "*.MD" is "md".
         private func fileType(_ key: String) -> String {
-            key.lowercased().trimmingPrefix(".").description
+            key.lowercased().trimmingPrefix("*").trimmingPrefix(".").description
         }
 
         /// An `[open_links]` key as a lowercased URL scheme ("https:" and "https://" mean "https" too), or nil when it

@@ -50,14 +50,14 @@ final class ConfigStore {
         Task { await load() }
     }
 
-    /// Opens the file in the default editor for .toml files, or TextEdit when there's none.
-    func open() {
+    /// Opens the file in the app `[open_with]` sets for it (`toml`, decision 82), else the default editor for .toml
+    /// files, else TextEdit.
+    func open(openWith: [String: URL]) {
         let file = self.file
         Task {
             let editor = await runInBackground(qos: .userInitiated) {
                 Self.createIfMissing(file)
-                return NSWorkspace.shared.urlForApplication(toOpen: file)
-                    ?? URL(filePath: "/System/Applications/TextEdit.app")
+                return Self.editor(for: file, openWith: openWith)
             }
             do {
                 _ = try await NSWorkspace.shared.open([file], withApplicationAt: editor, configuration: .init())
@@ -111,6 +111,13 @@ final class ConfigStore {
             return Config.unchanged("config.toml isn't UTF-8 text", previous: previous)
         }
         return Config.parse(text, previous: previous)
+    }
+
+    /// The app Open Config opens `file` in: `[open_with]`'s for it, else the default app for it, else TextEdit. Asks
+    /// LaunchServices, so call it on a worker.
+    nonisolated static func editor(for file: URL, openWith: [String: URL]) -> URL {
+        AppResolver.app(forFile: file, openWith: openWith) ?? NSWorkspace.shared.urlForApplication(toOpen: file)
+            ?? URL(filePath: "/System/Applications/TextEdit.app")
     }
 
     private nonisolated static func createIfMissing(_ file: URL) {

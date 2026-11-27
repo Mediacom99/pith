@@ -201,8 +201,8 @@ max_age_days = 30
 terminal = "Ghostty"        # the app Open in Terminal uses; "Terminal" by default
 
 [open_with]
-md  = "Visual Studio Code"  # extension or type → app; other files open in their default app
-pdf = "Preview"
+pdf = "Preview"             # extension or type → app; other files open in their default app
+"Visual Studio Code" = ["md", "txt", "json", "toml"]   # or an app → its list; toml is config.toml too
 
 [open_links]
 https = "Firefox"           # URL scheme → app, for links from the clipboard (https covers http)

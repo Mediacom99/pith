@@ -12,17 +12,17 @@ Status values: **done**, **in review** (built and tested, waiting for Edoardo), 
 
 ## 1. `[open_with]` lists, and Open Config
 
-Status: **todo**.
+Status: **in review**. 137 + 150 tests pass; each new one fails without its fix.
 - In `[open_with]`, a list makes its key an app and its items extensions or types (decision 82):
-  `"Visual Studio Code" = ["md", "txt", "json"]`. The one-line form stays: `md = "Visual Studio Code"`.
-- An extension set in both forms, or in two lists, is a problem in the launcher; the one-line form wins, else the
-  first list in the file.
-- Pith checks the app as it does now, and a type with a dot as it does now; never whether such files exist.
-- Open Config opens `config.toml` in the app `[open_with]` sets for `toml`, else the default app for it, else
-  TextEdit.
-- The config template, the README's Configuration and `FEATURES.md` §8 show both forms.
-- Tests: the parser on both forms and their mistakes (an item that isn't text, an empty list, a name set twice), and
-  the editor Open Config picks.
+  `"Visual Studio Code" = ["md", "txt", "json"]`. The one-line form stays: `md = "Visual Studio Code"`. Either form
+  takes `md`, `.md` or `*.md`, in any case. An empty list sets nothing.
+- A type given twice goes to its line of its own first, then to the earlier list; the line that loses is a problem
+  in the launcher ("open_with sets "md" on line 6 too, so it opens in "Typora"").
+- A wrong value (`Zed = ["md", 3]`) keeps what that setting gave before, as any wrong setting does.
+- Each app is looked up once: one that isn't installed is one problem, naming the types it was set for. Pith never
+  checks whether such files exist.
+- Open Config opens `config.toml` in the app `[open_with]` gives `toml`, else the default app for it, else TextEdit.
+- The config template and the README's Configuration show both forms.
 
 ## 2. System Settings pages
 
